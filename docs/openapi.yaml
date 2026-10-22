@@ -1,0 +1,1453 @@
+openapi: 3.0.3
+info:
+  title: Кредитный конвейер «Белые пятна» — публичный API
+  version: 0.1.0
+  description: |
+    Публичный API заявки для кабинета клиента и кабинета андеррайтера.
+
+    - Статусы и переходы — `docs/day1_backend_application-states.md`.
+    - Сущности и ограничения — `docs/day1_backend_data-model.md`.
+    - Деньги — в копейках (`integer`), ставки — в процентах годовых (`number`, например `19.5`).
+    - Недопустимый переход статуса — `409` с кодом `INVALID_TRANSITION`.
+    - Входа по логину нет. На стартовом экране пользователь выбирает роль и персонажа
+      (`GET /demo/users`), фронт передаёт id выбранного пользователя в заголовке
+      `X-Demo-User` в каждом запросе. По нему бэк понимает роль и компанию:
+      какие заявки показывать и какие действия разрешить. Упрощение для демо;
+      в банке на этом месте корпоративный SSO.
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: локальный docker compose
+
+security:
+  - demoUser: []
+
+tags:
+  - name: demo
+    description: выбор роли и персонажа, текущий пользователь
+  - name: catalog
+    description: справочники
+  - name: applications
+    description: заявка клиента — создание, расчёт, подача, оформление
+  - name: spots
+    description: белые пятна и их закрытие
+  - name: offers
+    description: варианты условий
+  - name: underwriting
+    description: |
+      Стык с внутренней системой банка. Когда автоматическое решение невозможно
+      (вилка пересекает границу), заявка передаётся во внутреннюю систему банка.
+      Распределение задач между сотрудниками, их лимиты и права — на её стороне,
+      в нашем продукте у сотрудника нет своих данных. Эти ручки вызывает
+      внутренняя система банка (в демо — кабинет андеррайтера, который её эмулирует).
+
+paths:
+  /demo/users:
+    get:
+      operationId: listDemoUsers
+      tags: [demo]
+      summary: Пользователи для стартового экрана
+      description: |
+        Кнопка «Действующий пользователь» — список клиентов (по одному на персонажа),
+        кнопка «Сотрудник банка» — андеррайтер. Заголовок `X-Demo-User` не нужен.
+      security: []
+      parameters:
+        - name: role
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/UserRole'
+      responses:
+        '200':
+          description: пользователи из seed
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Me'
+
+  /me:
+    get:
+      operationId: getMe
+      tags: [demo]
+      summary: Текущий пользователь и его компания
+      responses:
+        '200':
+          description: пользователь
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /products:
+    get:
+      operationId: listProducts
+      tags: [catalog]
+      summary: Кредитные продукты
+      responses:
+        '200':
+          description: список продуктов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Product'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /applications:
+    get:
+      operationId: listApplications
+      tags: [applications]
+      summary: Заявки текущего клиента
+      description: Клиент видит только заявки своей компании.
+      responses:
+        '200':
+          description: список заявок, новые сверху
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ApplicationSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      operationId: createApplication
+      tags: [applications]
+      summary: Создать заявку (→ DRAFT)
+      description: Переход 1.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplicationCreate'
+      responses:
+        '201':
+          description: заявка создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationDetails'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /applications/{applicationId}:
+    parameters:
+      - $ref: '#/components/parameters/ApplicationId'
+    get:
+      operationId: getApplication
+      tags: [applications]
+      summary: Заявка целиком
+      description: Заявка, текущая вилка, пятна, предложенные варианты, решение, договор. Основной запрос экранов клиента; фронт опрашивает его для обновления статуса.
+      responses:
+        '200':
+          description: заявка
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationDetails'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      operationId: updateApplication
+      tags: [applications]
+      summary: Изменить параметры заявки
+      description: Только в `DRAFT` и `COLLECTING` (переход 3). В `COLLECTING` вилка пересчитывается, офферы устаревают.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplicationUpdate'
+      responses:
+        '200':
+          description: заявка после изменения
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationDetails'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /applications/{applicationId}/evaluate:
+    parameters:
+      - $ref: '#/components/parameters/ApplicationId'
+    post:
+      operationId: evaluateApplication
+      tags: [applications]
+      summary: Рассчитать (DRAFT → COLLECTING)
+      description: Переход 2. Запрос в ЕГРЮЛ, ФНС, БКИ → пятна → первая вилка. Нужны согласия на БКИ и обработку данных.
+      responses:
+        '200':
+          description: заявка с вилкой и пятнами
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationDetails'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /applications/{applicationId}/fork-history:
+    parameters:
+      - $ref: '#/components/parameters/ApplicationId'
+    get:
+      operationId: getForkHistory
+      tags: [applications]
+      summary: История вилки
+      description: Снимки вилки самой заявки (без снимков офферов), от первого к последнему — показывают, как она сужалась.
+      responses:
+        '200':
+          description: снимки
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Fork'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /applications/{applicationId}/submit:
+    parameters:
+      - $ref: '#/components/parameters/ApplicationId'
+    post:
+      operationId: submitApplication
+      tags: [applications]
+      summary: Отправить заявку (COLLECTING → SUBMITTED → AUTO_CHECK → …)
+      description: |
+        Переходы 4–9. Автопроверка синхронная: в ответе уже итоговый статус —
+        `APPROVED`, `COUNTER_OFFER`, `REJECTED` или `UNDERWRITING`.
+        Открытый устранимый стоп-фактор подачу не блокирует, но приводит к отказу.
+      responses:
+        '200':
+          description: заявка после автопроверки
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationDetails'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /applications/{applicationId}/accept:
+    parameters:
+      - $ref: '#/components/parameters/ApplicationId'
+    post:
+      operationId: acceptOffer
+      tags: [applications]
+      summary: Принять условия (APPROVED | COUNTER_OFFER → SIGNING)
+      description: Переход 14. Оффер → `CHOSEN`, остальные `OFFERED` → `DECLINED`. Формируется договор.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcceptRequest'
+      responses:
+        '200':
+          description: заявка в оформлении, с договором
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationDetails'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /applications/{applicationId}/sign:
+    parameters:
+      - $ref: '#/components/parameters/ApplicationId'
+    post:
+      operationId: signContract
+      tags: [applications]
+      summary: Подписать договор (SIGNING → ISSUED, смоделировано)
+      description: Переход 15. Подписание и зачисление моделируются.
+      responses:
+        '200':
+          description: деньги выданы, в договоре — график платежей
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationDetails'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /applications/{applicationId}/cancel:
+    parameters:
+      - $ref: '#/components/parameters/ApplicationId'
+    post:
+      operationId: cancelApplication
+      tags: [applications]
+      summary: Отменить заявку или отказаться от условий (→ CANCELLED)
+      description: Переход 16. Из `DRAFT`, `COLLECTING`, `INFO_REQUESTED`, `APPROVED`, `COUNTER_OFFER`.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelRequest'
+      responses:
+        '200':
+          description: заявка отменена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationDetails'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /applications/{applicationId}/history:
+    parameters:
+      - $ref: '#/components/parameters/ApplicationId'
+    get:
+      operationId: getApplicationHistory
+      tags: [applications]
+      summary: Журнал заявки
+      description: События `AUDIT_LOG` по заявке, от старых к новым.
+      responses:
+        '200':
+          description: события
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AuditEvent'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /applications/{applicationId}/documents:
+    parameters:
+      - $ref: '#/components/parameters/ApplicationId'
+    post:
+      operationId: uploadDocument
+      tags: [spots]
+      summary: Загрузить документ
+      description: Реализация хранения — T22 (Б2). Полученный `id` передаётся в закрытие пятна способом `UPLOAD`.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, kind]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                kind:
+                  type: string
+                  example: CONTRACT_GP
+      responses:
+        '201':
+          description: документ сохранён
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /applications/{applicationId}/spots:
+    parameters:
+      - $ref: '#/components/parameters/ApplicationId'
+    get:
+      operationId: listSpots
+      tags: [spots]
+      summary: Пятна заявки
+      responses:
+        '200':
+          description: пятна
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Spot'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      operationId: addSpot
+      tags: [spots, underwriting]
+      summary: Добавить пятно — дозапрос (UNDERWRITING → INFO_REQUESTED)
+      description: Переход 10. Только андеррайтер. Пятно создаётся с `addedBy = UNDERWRITER`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SpotCreate'
+      responses:
+        '201':
+          description: заявка с новым пятном
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationDetails'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /applications/{applicationId}/spots/{spotId}/close:
+    parameters:
+      - $ref: '#/components/parameters/ApplicationId'
+      - $ref: '#/components/parameters/SpotId'
+    post:
+      operationId: closeSpot
+      tags: [spots]
+      summary: Закрыть пятно
+      description: |
+        Переходы 3 и 11. Только в `COLLECTING` и `INFO_REQUESTED`.
+        Если система может подтвердить закрытие данными — пятно `CLOSED`, вилка пересчитывается,
+        офферы устаревают. Иначе пятно `ON_REVIEW`, вилка его не учитывает до проверки андеррайтером.
+        Когда закрыты все пятна андеррайтера, заявка из `INFO_REQUESTED` возвращается в `UNDERWRITING`.
+
+        Поля запроса по способу:
+        - `CONNECT_SOURCE` — `sourceCode`, `consent: true`;
+        - `ANSWER` — `optionCode` и/или `text`, по желанию `documentId`;
+        - `UPLOAD` — `documentId`;
+        - `PAY` — без полей (смоделированное погашение и повторный запрос в источник);
+        - `ADD_COLLATERAL` — `collateralType`, по желанию `collateralComment`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SpotCloseRequest'
+      responses:
+        '200':
+          description: заявка после закрытия пятна
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationDetails'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /applications/{applicationId}/spots/{spotId}/review:
+    parameters:
+      - $ref: '#/components/parameters/ApplicationId'
+      - $ref: '#/components/parameters/SpotId'
+    post:
+      operationId: reviewSpot
+      tags: [spots, underwriting]
+      summary: Принять или не принять ответ по пятну
+      description: Переход 12. Только андеррайтер, пятно в `ON_REVIEW`. `ACCEPTED` → пятно `CLOSED` и пересчёт вилки; `REJECTED` → пятно `OPEN`, клиент видит комментарий.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SpotReviewRequest'
+      responses:
+        '200':
+          description: заявка после проверки
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationDetails'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /applications/{applicationId}/offers:
+    parameters:
+      - $ref: '#/components/parameters/ApplicationId'
+    get:
+      operationId: listOffers
+      tags: [offers]
+      summary: Варианты условий
+      description: Андеррайтер видит `CALCULATED` и `OFFERED` (таблица проходящих вариантов); клиент — только `OFFERED` и `CHOSEN`.
+      responses:
+        '200':
+          description: варианты
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Offer'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /applications/{applicationId}/decision:
+    parameters:
+      - $ref: '#/components/parameters/ApplicationId'
+    post:
+      operationId: makeDecision
+      tags: [underwriting]
+      summary: Вынести решение (UNDERWRITING → APPROVED | COUNTER_OFFER | REJECTED)
+      description: |
+        Переход 13. Только андеррайтер.
+        - `APPROVED` — одобрить запрошенные условия;
+        - `ALTERNATIVE` — иные условия: 1–3 `offerIds` из `CALCULATED` и/или `manualOffer` (тогда `override = true` и `comment` обязательны);
+        - `REJECTED` — `reasonSpotId` обязателен.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DecisionRequest'
+      responses:
+        '200':
+          description: заявка после решения
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationDetails'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /underwriting/queue:
+    get:
+      operationId: getUnderwritingQueue
+      tags: [underwriting]
+      summary: Очередь андеррайтера
+      description: Заявки в `UNDERWRITING` и `INFO_REQUESTED`, старые сверху.
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ApplicationStatus'
+      responses:
+        '200':
+          description: очередь
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/QueueItem'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /underwriting/applications/{applicationId}/summary:
+    parameters:
+      - $ref: '#/components/parameters/ApplicationId'
+    get:
+      operationId: getUnderwritingSummary
+      tags: [underwriting]
+      summary: Сводка для андеррайтера
+      description: 3–5 выводов, у каждого — ссылки на факты-источники. Генерирует LLM (T27); без LLM — шаблонный текст (`generatedBy = TEMPLATE`).
+      responses:
+        '200':
+          description: сводка
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnderwritingSummary'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    demoUser:
+      type: apiKey
+      in: header
+      name: X-Demo-User
+      description: id пользователя, выбранного на стартовом экране
+
+  parameters:
+    ApplicationId:
+      name: applicationId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    SpotId:
+      name: spotId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    BadRequest:
+      description: некорректный запрос
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: about:blank
+            title: Bad Request
+            status: 400
+            code: VALIDATION_ERROR
+            detail: amount вне диапазона продукта EQUIPMENT
+    Unauthorized:
+      description: нет заголовка X-Demo-User или такого пользователя нет
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Forbidden:
+      description: нет прав (чужая заявка или не та роль)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NotFound:
+      description: не найдено
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Conflict:
+      description: действие недопустимо в текущем статусе
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: about:blank
+            title: Conflict
+            status: 409
+            code: INVALID_TRANSITION
+            detail: Переход SUBMITTED → COLLECTING недопустим
+            currentStatus: SUBMITTED
+
+  schemas:
+    ApplicationStatus:
+      type: string
+      enum: [DRAFT, COLLECTING, SUBMITTED, AUTO_CHECK, UNDERWRITING, INFO_REQUESTED, APPROVED, COUNTER_OFFER, REJECTED, SIGNING, ISSUED, CANCELLED]
+
+    ProductCode:
+      type: string
+      enum: [WORKING_CAPITAL, EQUIPMENT, OVERDRAFT]
+
+    ApplicationAction:
+      type: string
+      description: Что можно сделать с заявкой сейчас — фронт по этому списку показывает кнопки.
+      enum: [EDIT, EVALUATE, CLOSE_SPOT, SUBMIT, ACCEPT, SIGN, CANCEL, REVIEW_SPOT, ADD_SPOT, DECIDE]
+
+    SpotType:
+      type: string
+      enum: [NO_DATA, ANOMALY, DOCUMENT, STOP_FACTOR, COLLATERAL]
+
+    CloseMethod:
+      type: string
+      enum: [CONNECT_SOURCE, ANSWER, UPLOAD, PAY, ADD_COLLATERAL]
+
+    SpotStatus:
+      type: string
+      enum: [OPEN, ON_REVIEW, CLOSED]
+
+    SourceCode:
+      type: string
+      enum: [BKI, EGRUL, FNS, OFD, MARKETPLACE, ACQUIRING, REPUTATION]
+
+    DecidedBy:
+      type: string
+      enum: [SYSTEM, UNDERWRITER]
+
+    DecisionType:
+      type: string
+      enum: [APPROVED, ALTERNATIVE, REJECTED]
+
+    OfferStatus:
+      type: string
+      enum: [CALCULATED, OFFERED, CHOSEN, DECLINED, EXPIRED]
+
+    DecisionZone:
+      type: string
+      description: |
+        Куда ведут края вилки: `APPROVE` — верхний край ≤ порога одобрения;
+        `REJECT` — нижний край ≥ порога отказа; `UNDERWRITER` — вилка пересекает границу.
+      enum: [APPROVE, UNDERWRITER, REJECT]
+
+    UserRole:
+      type: string
+      enum: [CLIENT, UNDERWRITER]
+
+    Me:
+      type: object
+      required: [id, fio, role]
+      properties:
+        id:
+          type: string
+          format: uuid
+        fio:
+          type: string
+          example: Петрова Анна Сергеевна
+        role:
+          $ref: '#/components/schemas/UserRole'
+        personaTitle:
+          type: string
+          nullable: true
+          description: подпись на стартовом экране
+          example: Кофейня — закрывает пятна и получает автоодобрение
+        company:
+          type: object
+          allOf:
+            - $ref: '#/components/schemas/Company'
+          nullable: true
+          description: null у сотрудника банка
+
+    Company:
+      type: object
+      required: [id, inn, name, legalForm]
+      properties:
+        id:
+          type: string
+          format: uuid
+        inn:
+          type: string
+          pattern: '^(\d{10}|\d{12})$'
+          example: '7701234567'
+        name:
+          type: string
+          example: ООО «Кофейня»
+        legalForm:
+          type: string
+          enum: [OOO, IP]
+        address:
+          type: string
+          nullable: true
+        directorFio:
+          type: string
+          nullable: true
+        registeredAt:
+          type: string
+          format: date
+          nullable: true
+        okvedMain:
+          type: string
+          nullable: true
+          example: '56.10'
+
+    Product:
+      type: object
+      required: [code, name, minAmount, maxAmount, allowedTerms]
+      properties:
+        code:
+          $ref: '#/components/schemas/ProductCode'
+        name:
+          type: string
+          example: Кредит на оборудование
+        minAmount:
+          type: integer
+          format: int64
+          description: копейки
+          example: 30000000
+        maxAmount:
+          type: integer
+          format: int64
+          description: копейки
+          example: 1000000000
+        allowedTerms:
+          type: array
+          items:
+            type: integer
+          example: [12, 24, 36]
+
+    ApplicationCreate:
+      type: object
+      required: [productCode, amount, termMonths, goal, consents]
+      properties:
+        productCode:
+          $ref: '#/components/schemas/ProductCode'
+        amount:
+          type: integer
+          format: int64
+          description: копейки
+          example: 200000000
+        termMonths:
+          type: integer
+          example: 24
+        goal:
+          type: string
+          maxLength: 1000
+          example: две кофемашины и витрина
+        consents:
+          $ref: '#/components/schemas/Consents'
+
+    ApplicationUpdate:
+      type: object
+      description: Передаются только меняемые поля.
+      properties:
+        productCode:
+          $ref: '#/components/schemas/ProductCode'
+        amount:
+          type: integer
+          format: int64
+        termMonths:
+          type: integer
+        goal:
+          type: string
+          maxLength: 1000
+        consents:
+          $ref: '#/components/schemas/Consents'
+
+    Consents:
+      type: object
+      required: [bki, personalData]
+      properties:
+        bki:
+          type: boolean
+          description: согласие на запрос в БКИ
+        personalData:
+          type: boolean
+          description: согласие на обработку персональных данных
+
+    ApplicationSummary:
+      type: object
+      required: [id, status, productCode, amount, termMonths, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/ApplicationStatus'
+        productCode:
+          $ref: '#/components/schemas/ProductCode'
+        amount:
+          type: integer
+          format: int64
+        termMonths:
+          type: integer
+        fork:
+          type: object
+          allOf:
+            - $ref: '#/components/schemas/Fork'
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    Application:
+      type: object
+      required: [id, status, company, product, amount, termMonths, goal, consents, availableActions, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/ApplicationStatus'
+        company:
+          $ref: '#/components/schemas/Company'
+        product:
+          $ref: '#/components/schemas/Product'
+        amount:
+          type: integer
+          format: int64
+        termMonths:
+          type: integer
+        goal:
+          type: string
+        consents:
+          $ref: '#/components/schemas/Consents'
+        availableActions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApplicationAction'
+          description: зависит от статуса и роли текущего пользователя
+        createdAt:
+          type: string
+          format: date-time
+        submittedAt:
+          type: string
+          format: date-time
+          nullable: true
+        infoRequestedAt:
+          type: string
+          format: date-time
+          nullable: true
+        infoRequestDeadline:
+          type: string
+          format: date-time
+          nullable: true
+          description: infoRequestedAt + 5 дней, потом CANCELLED
+
+    ApplicationDetails:
+      type: object
+      required: [application, spots, offers]
+      properties:
+        application:
+          $ref: '#/components/schemas/Application'
+        fork:
+          type: object
+          allOf:
+            - $ref: '#/components/schemas/Fork'
+          nullable: true
+          description: null в DRAFT
+        spots:
+          type: array
+          items:
+            $ref: '#/components/schemas/Spot'
+        offers:
+          type: array
+          description: клиенту — OFFERED и CHOSEN; андеррайтеру — CALCULATED, OFFERED, CHOSEN
+          items:
+            $ref: '#/components/schemas/Offer'
+        decision:
+          type: object
+          allOf:
+            - $ref: '#/components/schemas/Decision'
+          nullable: true
+        contract:
+          type: object
+          allOf:
+            - $ref: '#/components/schemas/Contract'
+          nullable: true
+          description: есть в SIGNING и ISSUED
+
+    Fork:
+      type: object
+      required: [id, rateFrom, rateTo, zone, thresholds, rulesVersion, calculatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        rateFrom:
+          type: number
+          description: нижний край, % годовых — если всё неизвестное окажется хорошим
+          example: 17
+        rateTo:
+          type: number
+          description: верхний край, % годовых — если всё неизвестное окажется плохим
+          example: 26
+        zone:
+          $ref: '#/components/schemas/DecisionZone'
+        thresholds:
+          $ref: '#/components/schemas/ZoneThresholds'
+        rulesVersion:
+          type: string
+          example: rules-2026-10-22.1
+        calculatedAt:
+          type: string
+          format: date-time
+
+    ZoneThresholds:
+      type: object
+      description: Границы зон для отрисовки шкалы.
+      required: [approveMax, rejectMin]
+      properties:
+        approveMax:
+          type: number
+          example: 21
+        rejectMin:
+          type: number
+          example: 24
+
+    Spot:
+      type: object
+      required: [id, type, title, clientHint, pricePp, closeMethod, status, addedBy, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          $ref: '#/components/schemas/SpotType'
+        title:
+          type: string
+          example: В марте выручка упала на 45%
+        clientHint:
+          type: string
+          example: Пока нет объяснения — считаем это риском. Что случилось?
+        scoringFactor:
+          type: string
+          nullable: true
+          example: revenue_stability
+        pricePp:
+          type: number
+          description: на сколько п.п. может сузиться вилка, если закрыть пятно
+          example: 2.5
+        closeMethod:
+          $ref: '#/components/schemas/CloseMethod'
+        status:
+          $ref: '#/components/schemas/SpotStatus'
+        addedBy:
+          $ref: '#/components/schemas/DecidedBy'
+        source:
+          type: string
+          allOf:
+            - $ref: '#/components/schemas/SourceCode'
+          nullable: true
+        removable:
+          type: boolean
+          nullable: true
+          description: только для STOP_FACTOR — можно ли устранить действием
+        answerOptions:
+          type: array
+          description: варианты ответа для ANSWER (кнопки на экране)
+          items:
+            $ref: '#/components/schemas/AnswerOption'
+        lastAnswer:
+          type: object
+          allOf:
+            - $ref: '#/components/schemas/SpotAnswer'
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        closedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    AnswerOption:
+      type: object
+      required: [code, label]
+      properties:
+        code:
+          type: string
+          example: RENOVATION
+        label:
+          type: string
+          example: Был ремонт
+
+    SpotAnswer:
+      type: object
+      required: [id, verdict, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        optionCode:
+          type: string
+          nullable: true
+        text:
+          type: string
+          nullable: true
+        documentId:
+          type: string
+          format: uuid
+          nullable: true
+        verdict:
+          type: string
+          enum: [PENDING, ACCEPTED, REJECTED]
+        reviewedBy:
+          type: string
+          nullable: true
+          description: SYSTEM или id андеррайтера
+        reviewComment:
+          type: string
+          nullable: true
+          description: при REJECTED показывается клиенту
+        createdAt:
+          type: string
+          format: date-time
+        reviewedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    SpotCreate:
+      type: object
+      required: [type, title, clientHint, closeMethod]
+      properties:
+        type:
+          $ref: '#/components/schemas/SpotType'
+        title:
+          type: string
+          example: Договор с генподрядчиком
+        clientHint:
+          type: string
+          example: Подтвердите будущие поступления. Нет договора — подойдёт акт сверки.
+        closeMethod:
+          $ref: '#/components/schemas/CloseMethod'
+
+    SpotCloseRequest:
+      type: object
+      required: [method]
+      properties:
+        method:
+          $ref: '#/components/schemas/CloseMethod'
+        sourceCode:
+          $ref: '#/components/schemas/SourceCode'
+        consent:
+          type: boolean
+        optionCode:
+          type: string
+          example: RENOVATION
+        text:
+          type: string
+          maxLength: 2000
+        documentId:
+          type: string
+          format: uuid
+        collateralType:
+          type: string
+          example: OWNER_GUARANTEE
+        collateralComment:
+          type: string
+      example:
+        method: ANSWER
+        optionCode: RENOVATION
+        text: Был ремонт зала, договор подряда приложен
+
+    SpotReviewRequest:
+      type: object
+      required: [verdict]
+      properties:
+        verdict:
+          type: string
+          enum: [ACCEPTED, REJECTED]
+        comment:
+          type: string
+          description: обязателен при REJECTED
+
+    Document:
+      type: object
+      required: [id, kind, fileName, uploadedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        kind:
+          type: string
+        fileName:
+          type: string
+        uploadedAt:
+          type: string
+          format: date-time
+
+    Offer:
+      type: object
+      required: [id, productCode, amount, termMonths, fork, proposedBy, status, isRequested, isManual]
+      properties:
+        id:
+          type: string
+          format: uuid
+        productCode:
+          $ref: '#/components/schemas/ProductCode'
+        amount:
+          type: integer
+          format: int64
+        termMonths:
+          type: integer
+        collateralType:
+          type: string
+          nullable: true
+        collateralComment:
+          type: string
+          nullable: true
+        fork:
+          $ref: '#/components/schemas/Fork'
+        proposedBy:
+          $ref: '#/components/schemas/DecidedBy'
+        status:
+          $ref: '#/components/schemas/OfferStatus'
+        isRequested:
+          type: boolean
+          description: совпадает с запрошенными условиями
+        isManual:
+          type: boolean
+          description: создан андеррайтером вручную (override)
+        comment:
+          type: string
+          nullable: true
+        chosenAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    AcceptRequest:
+      type: object
+      required: [offerId]
+      properties:
+        offerId:
+          type: string
+          format: uuid
+
+    CancelRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          maxLength: 500
+
+    DecisionRequest:
+      type: object
+      required: [type]
+      properties:
+        type:
+          $ref: '#/components/schemas/DecisionType'
+        offerIds:
+          type: array
+          minItems: 1
+          maxItems: 3
+          items:
+            type: string
+            format: uuid
+        manualOffer:
+          $ref: '#/components/schemas/ManualOffer'
+        override:
+          type: boolean
+          default: false
+        comment:
+          type: string
+          description: обязателен при override = true и при REJECTED
+        reasonSpotId:
+          type: string
+          format: uuid
+          description: обязателен при REJECTED
+
+    ManualOffer:
+      type: object
+      required: [productCode, amount, termMonths]
+      properties:
+        productCode:
+          $ref: '#/components/schemas/ProductCode'
+        amount:
+          type: integer
+          format: int64
+        termMonths:
+          type: integer
+        collateralType:
+          type: string
+          nullable: true
+
+    Decision:
+      type: object
+      required: [id, type, decidedBy, rulesVersion, override, decidedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          $ref: '#/components/schemas/DecisionType'
+        decidedBy:
+          $ref: '#/components/schemas/DecidedBy'
+        decidedByUserId:
+          type: string
+          format: uuid
+          nullable: true
+        rulesVersion:
+          type: string
+        override:
+          type: boolean
+        comment:
+          type: string
+          nullable: true
+        reasonSpotId:
+          type: string
+          format: uuid
+          nullable: true
+        decidedAt:
+          type: string
+          format: date-time
+
+    Contract:
+      type: object
+      required: [offerId, amount, termMonths, rate, monthlyPayment, schedule]
+      properties:
+        offerId:
+          type: string
+          format: uuid
+        amount:
+          type: integer
+          format: int64
+        termMonths:
+          type: integer
+        rate:
+          type: number
+          example: 19.5
+        monthlyPayment:
+          type: integer
+          format: int64
+        signedAt:
+          type: string
+          format: date-time
+          nullable: true
+        issuedAt:
+          type: string
+          format: date-time
+          nullable: true
+        schedule:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentScheduleItem'
+
+    PaymentScheduleItem:
+      type: object
+      required: [number, date, payment, principal, interest, balance]
+      properties:
+        number:
+          type: integer
+        date:
+          type: string
+          format: date
+        payment:
+          type: integer
+          format: int64
+        principal:
+          type: integer
+          format: int64
+        interest:
+          type: integer
+          format: int64
+        balance:
+          type: integer
+          format: int64
+
+    AuditEvent:
+      type: object
+      required: [id, event, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        event:
+          type: string
+          enum: [STATUS_CHANGE, SPOT_CREATED, SPOT_CLOSED, SPOT_REVIEWED, OFFER_CREATED, OFFER_CHOSEN, DECISION, OVERRIDE]
+        fromState:
+          type: string
+          nullable: true
+        toState:
+          type: string
+          nullable: true
+        userId:
+          type: string
+          format: uuid
+          nullable: true
+          description: null — система
+        reason:
+          type: string
+          nullable: true
+        payload:
+          type: object
+          additionalProperties: true
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    QueueItem:
+      type: object
+      required: [applicationId, companyName, inn, productCode, amount, termMonths, status, openSpots, onReviewSpots]
+      properties:
+        applicationId:
+          type: string
+          format: uuid
+        companyName:
+          type: string
+        inn:
+          type: string
+        productCode:
+          $ref: '#/components/schemas/ProductCode'
+        amount:
+          type: integer
+          format: int64
+        termMonths:
+          type: integer
+        status:
+          $ref: '#/components/schemas/ApplicationStatus'
+        fork:
+          type: object
+          allOf:
+            - $ref: '#/components/schemas/Fork'
+          nullable: true
+        openSpots:
+          type: integer
+        onReviewSpots:
+          type: integer
+        submittedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    UnderwritingSummary:
+      type: object
+      required: [items, generatedBy]
+      properties:
+        generatedBy:
+          type: string
+          enum: [LLM, TEMPLATE]
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SummaryItem'
+
+    SummaryItem:
+      type: object
+      required: [text, facts]
+      properties:
+        text:
+          type: string
+          example: Выручка в марте упала на 45%, клиент объясняет ремонтом — в выписке есть платежи подрядчику.
+        facts:
+          type: array
+          items:
+            $ref: '#/components/schemas/FactRef'
+
+    FactRef:
+      type: object
+      required: [source, label]
+      properties:
+        source:
+          type: string
+          example: OFD
+        label:
+          type: string
+          example: выручка 2026-03 — 830 000 ₽
+        spotId:
+          type: string
+          format: uuid
+          nullable: true
+
+    Problem:
+      type: object
+      description: RFC 7807
+      required: [title, status, code]
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        code:
+          type: string
+          enum: [VALIDATION_ERROR, UNAUTHORIZED, FORBIDDEN, NOT_FOUND, INVALID_TRANSITION, SOURCE_UNAVAILABLE]
+        detail:
+          type: string
+        currentStatus:
+          $ref: '#/components/schemas/ApplicationStatus'
