@@ -3,7 +3,7 @@ from pathlib import Path
 from fastapi import FastAPI
 
 from scoring.engine import Engine
-from scoring.schemas import OfferGridResponse, ScoreRequest, ScoreResponse
+from scoring.schemas import AnomaliesRequest, AnomaliesResponse, OfferGridResponse, ScoreRequest, ScoreResponse
 
 RULES_PATH = Path(__file__).resolve().parent / "scoring_rules.yaml"
 
@@ -25,6 +25,11 @@ def score(request: ScoreRequest) -> ScoreResponse:
 @app.post("/offers/grid", response_model=OfferGridResponse, tags=["scoring"])
 def offer_grid(request: ScoreRequest) -> OfferGridResponse:
     return engine.offer_grid(request)
+
+
+@app.post("/anomalies", response_model=AnomaliesResponse, tags=["scoring"])
+def detect_anomalies(request: AnomaliesRequest) -> AnomaliesResponse:
+    return engine.detect_anomalies(request)
 
 
 if __name__ == "__main__":

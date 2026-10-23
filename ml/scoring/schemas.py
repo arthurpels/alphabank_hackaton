@@ -1,7 +1,7 @@
 from datetime import date
 from enum import Enum
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic.alias_generators import to_camel
 
 
@@ -109,3 +109,53 @@ class Offer(CamelModel):
 class OfferGridResponse(CamelModel):
     rules_version: str
     offers: list[Offer]
+
+
+class SourceCode(str, Enum):
+    BKI = "BKI"
+    EGRUL = "EGRUL"
+    FNS = "FNS"
+    OFD = "OFD"
+    MARKETPLACE = "MARKETPLACE"
+    ACQUIRING = "ACQUIRING"
+    REPUTATION = "REPUTATION"
+
+
+class SeriesPoint(CamelModel):
+    month: str = Field(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")
+    value: int = Field(ge=0)
+
+
+class Series(CamelModel):
+    source: SourceCode
+    points: list[SeriesPoint]
+
+    @model_validator(mode="after")
+    def months_are_unique(self) -> "Series":
+        months = [point.month for point in self.points]
+        if len(months) != len(set(months)):
+            raise ValueError("месяцы в ряду повторяются")
+        return self
+
+
+class AnomaliesRequest(CamelModel):
+    series: list[Series]
+
+
+class AnswerOption(CamelModel):
+    code: str
+    label: str
+
+
+class Anomaly(CamelModel):
+    code: str
+    source: SourceCode
+    month: str
+    change_pct: int
+    title: str
+    client_hint: str
+    answer_options: list[AnswerOption]
+
+
+class AnomaliesResponse(CamelModel):
+    anomalies: list[Anomaly]

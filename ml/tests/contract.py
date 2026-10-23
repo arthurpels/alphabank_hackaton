@@ -21,6 +21,7 @@ def load_examples(endpoint: str) -> dict[str, tuple[dict, dict]]:
 
 SCORE_EXAMPLES = load_examples("/score")
 GRID_EXAMPLES = load_examples("/offers/grid")
+ANOMALY_EXAMPLES = load_examples("/anomalies")
 
 
 def post(endpoint: str, payload: dict) -> dict:

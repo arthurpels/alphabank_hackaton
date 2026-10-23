@@ -6,8 +6,11 @@ from typing import Any
 
 import yaml
 
+from scoring.anomalies import AnomalyDetector
 from scoring.conditions import Condition, ConditionError
 from scoring.schemas import (
+    AnomaliesRequest,
+    AnomaliesResponse,
     Collateral,
     Factor,
     Offer,
@@ -199,6 +202,7 @@ class Engine:
                 for item in raw["stop_factors"]
             )
             self.grid = _grid(raw["offer_grid"], self.products)
+            self.anomaly_detector = AnomalyDetector(raw["anomalies"])
         except (KeyError, TypeError, ConditionError) as exc:
             raise RulesError(f"некорректный файл правил: {exc}") from exc
 
@@ -251,6 +255,9 @@ class Engine:
             policy=policy,
             passes=policy.ok and rate_to <= product.approve_max,
         )
+
+    def detect_anomalies(self, request: AnomaliesRequest) -> AnomaliesResponse:
+        return self.anomaly_detector.detect(request)
 
     def offer_grid(self, request: ScoreRequest) -> OfferGridResponse:
         offers = []

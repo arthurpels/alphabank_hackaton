@@ -25,6 +25,15 @@ def _dotted_name(node: ast.expr) -> str:
     raise ConditionError(f"недопустимое имя: {ast.unparse(node)}")
 
 
+def _is_negative_number(node: ast.expr) -> bool:
+    return (
+        isinstance(node, ast.UnaryOp)
+        and isinstance(node.op, ast.USub)
+        and isinstance(node.operand, ast.Constant)
+        and type(node.operand.value) in (int, float)
+    )
+
+
 class Condition:
     def __init__(self, source: str) -> None:
         self.source = source
@@ -41,6 +50,8 @@ class Condition:
             return [name for value in node.values for name in self._collect_names(value)]
         if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
             return self._collect_names(node.operand)
+        if _is_negative_number(node):
+            return []
         if isinstance(node, ast.Compare):
             if not all(type(op) in _COMPARISONS for op in node.ops):
                 raise ConditionError(f"недопустимое сравнение в «{self.source}»")
@@ -63,7 +74,9 @@ class Condition:
         if isinstance(node, ast.BoolOp):
             values = (self._eval(value, context) for value in node.values)
             return all(values) if isinstance(node.op, ast.And) else any(values)
-        if isinstance(node, ast.UnaryOp):
+        if _is_negative_number(node):
+            return -node.operand.value
+        if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
             return not self._eval(node.operand, context)
         if isinstance(node, ast.Compare):
             left = self._eval(node.left, context)

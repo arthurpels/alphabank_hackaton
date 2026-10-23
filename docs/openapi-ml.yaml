@@ -754,7 +754,9 @@ paths:
       summary: Аномалии в помесячных рядах выручки
       description: Падение месяц к месяцу больше 30 % — `REVENUE_DROP`, рост больше чем в 3 раза — `REVENUE_SPIKE`. Каждая
         аномалия — готовое пятно `ANOMALY` по фактору `revenue_stability`. Пустой список — аномалий нет, бэкенд передаёт в
-        `/score` `stability = CLEAN`.
+        `/score` `stability = CLEAN`. Точки ряда сортируются по месяцу; сравниваются только соседние календарные месяцы
+        (через пропуск — нет), месяц с нулевой выручкой базой для сравнения не служит. Повтор месяца в ряду — 422. Пороги и
+        тексты — в `ml/scoring_rules.yaml`, раздел `anomalies`.
       requestBody:
         required: true
         content:
@@ -1230,11 +1232,12 @@ components:
       properties:
         month:
           type: string
-          pattern: ^\d{4}-\d{2}$
+          pattern: ^\d{4}-(0[1-9]|1[0-2])$
           example: 2026-03
         value:
           type: integer
           format: int64
+          minimum: 0
           description: копейки
     Series:
       type: object
@@ -1289,8 +1292,8 @@ components:
           type: string
           pattern: ^\d{4}-\d{2}$
         changePct:
-          type: number
-          description: изменение к прошлому месяцу, %, округлено до целого
+          type: integer
+          description: изменение к прошлому месяцу, %, округлено до целого (половина — от нуля)
         title:
           type: string
           description: заголовок пятна для клиента
