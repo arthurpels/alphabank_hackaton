@@ -999,9 +999,11 @@ components:
         amount:
           type: integer
           format: int64
+          minimum: 1
           description: сумма, копейки
         termMonths:
           type: integer
+          minimum: 1
         egrulStatus:
           type: string
           description: ЕГРЮЛ `status`
@@ -1022,23 +1024,28 @@ components:
           description: БКИ `credit_score`
         delinq12m:
           type: integer
+          minimum: 0
           description: БКИ `delinquencies.last_12m`
         bkiCurrentOverdue:
           type: integer
+          minimum: 0
           description: БКИ `delinquencies.current`
         taxDebt:
           type: integer
           format: int64
+          minimum: 0
           description: ФНС `tax_debt.amount`, копейки
         unfiledReports:
           type: integer
+          minimum: 0
           description: ФНС `unfiled_reports`
         monthlyRevenue:
           type: integer
           format: int64
           nullable: true
+          minimum: 1
           description: 'среднемесячная подтверждённая выручка, копейки: ОФД `revenue`, маркетплейс `payout`, эквайринг `turnover`
-            или договор (сумма / срок); при нескольких источниках — максимум. `null` — выручка не подтверждена'
+            или договор (сумма / срок); при нескольких источниках — максимум. `null` — выручка не подтверждена, 0 не передаём'
         stability:
           $ref: '#/components/schemas/Stability'
         purpose:
@@ -1283,7 +1290,7 @@ components:
           pattern: ^\d{4}-\d{2}$
         changePct:
           type: number
-          description: изменение к прошлому месяцу, %
+          description: изменение к прошлому месяцу, %, округлено до целого
         title:
           type: string
           description: заголовок пятна для клиента
