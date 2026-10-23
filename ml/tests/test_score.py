@@ -1,35 +1,16 @@
-import copy
-from pathlib import Path
-
 import pytest
 import yaml
-from fastapi.testclient import TestClient
 
-from main import RULES_PATH, app
+from main import RULES_PATH
 from scoring.conditions import Condition, ConditionError
 from scoring.engine import Engine, RulesError
 from scoring.schemas import ScoreRequest
-
-CONTRACT_PATH = Path(__file__).resolve().parents[2] / "docs" / "openapi-ml.yaml"
-
-
-def _load_contract_examples() -> dict[str, tuple[dict, dict]]:
-    contract = yaml.safe_load(CONTRACT_PATH.read_text(encoding="utf-8"))
-    operation = contract["paths"]["/score"]["post"]
-    requests = operation["requestBody"]["content"]["application/json"]["examples"]
-    responses = operation["responses"]["200"]["content"]["application/json"]["examples"]
-    return {name: (example["value"], responses[name]["value"]) for name, example in requests.items()}
-
-
-CONTRACT_EXAMPLES = _load_contract_examples()
-
-client = TestClient(app)
+from tests.contract import SCORE_EXAMPLES as CONTRACT_EXAMPLES
+from tests.contract import client, persona_request, post
 
 
 def _post(payload: dict) -> dict:
-    response = client.post("/score", json=payload)
-    assert response.status_code == 200, response.text
-    return response.json()
+    return post("/score", payload)
 
 
 def _factor(body: dict, code: str) -> dict:
@@ -37,9 +18,7 @@ def _factor(body: dict, code: str) -> dict:
 
 
 def _request(name: str, **changes) -> dict:
-    payload = copy.deepcopy(CONTRACT_EXAMPLES[name][0])
-    payload.update(changes)
-    return payload
+    return persona_request(name, **changes)
 
 
 def test_contract_covers_all_personas() -> None:

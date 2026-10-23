@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import date
+from decimal import ROUND_FLOOR, ROUND_HALF_UP, Decimal
 from pathlib import Path
 from typing import Any
 
@@ -9,7 +10,10 @@ from scoring.conditions import Condition, ConditionError
 from scoring.schemas import (
     Collateral,
     Factor,
+    Offer,
+    OfferGridResponse,
     Policy,
+    ProductCode,
     Purpose,
     ScoreRequest,
     ScoreResponse,
@@ -57,6 +61,10 @@ def annuity_payment(amount: float, term_months: int, rate_pct: float) -> float:
     return amount * monthly_rate / (1 - (1 + monthly_rate) ** -term_months)
 
 
+def round_to_step(value: Decimal, step: int, rounding: str) -> int:
+    return int((value / step).quantize(Decimal(1), rounding=rounding)) * step
+
+
 @dataclass(frozen=True)
 class Rule:
     condition: Condition | None
@@ -100,7 +108,16 @@ class ProductSpec:
     amount_max: int
     metric: str
     cap: float
+    terms: tuple[int, ...]
     skip_factors: frozenset[str]
+
+
+@dataclass(frozen=True)
+class GridSpec:
+    amount_cuts: tuple[Decimal, ...]
+    amount_step: int
+    limit_step: int
+    other_products: frozenset[str]
 
 
 def _condition(source: str) -> Condition:
@@ -136,7 +153,21 @@ def _product(code: str, raw: dict[str, Any]) -> ProductSpec:
         amount_max=amount_max * KOPECKS_PER_RUBLE,
         metric=metric,
         cap=float(cap),
+        terms=tuple(int(term) for term in raw["terms"]),
         skip_factors=frozenset(raw.get("skip_factors", [])),
+    )
+
+
+def _grid(raw: dict[str, Any], products: dict[str, ProductSpec]) -> GridSpec:
+    other_products = frozenset(raw.get("other_products", []))
+    unknown_products = other_products - products.keys()
+    if unknown_products:
+        raise RulesError(f"в сетке неизвестные продукты: {', '.join(sorted(unknown_products))}")
+    return GridSpec(
+        amount_cuts=tuple(Decimal(str(cut)) for cut in raw["amount_cuts"]),
+        amount_step=int(raw["amount_step_rub"]) * KOPECKS_PER_RUBLE,
+        limit_step=int(raw["limit_step_rub"]) * KOPECKS_PER_RUBLE,
+        other_products=other_products,
     )
 
 
@@ -167,6 +198,7 @@ class Engine:
                 )
                 for item in raw["stop_factors"]
             )
+            self.grid = _grid(raw["offer_grid"], self.products)
         except (KeyError, TypeError, ConditionError) as exc:
             raise RulesError(f"некорректный файл правил: {exc}") from exc
 
@@ -219,6 +251,66 @@ class Engine:
             policy=policy,
             passes=policy.ok and rate_to <= product.approve_max,
         )
+
+    def offer_grid(self, request: ScoreRequest) -> OfferGridResponse:
+        offers = []
+        for product in self.products.values():
+            if product.code != request.product_code.value and product.code not in self.grid.other_products:
+                continue
+            candidates = self._grid_candidates(request, product)
+            for collateral in (Collateral.DECLINED, Collateral.GUARANTEE):
+                if collateral == Collateral.GUARANTEE and "collateral" in product.skip_factors:
+                    continue
+                offer = self._best_offer(request, product, candidates, collateral)
+                if offer is not None:
+                    offers.append(offer)
+                    break
+        return OfferGridResponse(rules_version=self.rules_version, offers=offers)
+
+    def _grid_candidates(self, request: ScoreRequest, product: ProductSpec) -> list[tuple[int, int]]:
+        if product.metric == "LIMIT_SHARE":
+            if request.monthly_revenue is None:
+                return []
+            revenue_cap = Decimal(request.monthly_revenue) * Decimal(str(product.cap))
+            limit = min(request.amount, round_to_step(revenue_cap, self.grid.limit_step, ROUND_FLOOR))
+            return [(limit, max(product.terms))] if limit > 0 else []
+        terms = sorted({term for term in (request.term_months, max(product.terms)) if term in product.terms})
+        amounts = [] if product.code == request.product_code.value else [request.amount]
+        amounts += [
+            round_to_step(Decimal(request.amount) * (1 - cut), self.grid.amount_step, ROUND_HALF_UP)
+            for cut in self.grid.amount_cuts
+        ]
+        return [(amount, term) for amount in amounts if amount > 0 for term in terms]
+
+    def _best_offer(
+        self,
+        request: ScoreRequest,
+        product: ProductSpec,
+        candidates: list[tuple[int, int]],
+        collateral: Collateral,
+    ) -> Offer | None:
+        best: Offer | None = None
+        for amount, term in candidates:
+            variant = request.model_copy(
+                update={
+                    "product_code": ProductCode(product.code),
+                    "amount": amount,
+                    "term_months": term,
+                    "collateral": collateral,
+                }
+            )
+            result = self.score(variant)
+            if result.passes and (best is None or amount > best.amount):
+                best = Offer(
+                    product_code=result.product_code,
+                    amount=amount,
+                    term_months=term,
+                    collateral_type=None if collateral == Collateral.DECLINED else collateral.value,
+                    rate_from=result.rate_from,
+                    rate_to=result.rate_to,
+                    policy=result.policy,
+                )
+        return best
 
     def _metric_value(self, request: ScoreRequest, product: ProductSpec) -> float | None:
         if request.monthly_revenue is None:

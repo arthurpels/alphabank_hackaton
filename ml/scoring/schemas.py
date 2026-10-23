@@ -94,3 +94,18 @@ class ScoreResponse(CamelModel):
     stop_factors: list[StopFactor]
     policy: Policy
     passes: bool
+
+
+class Offer(CamelModel):
+    product_code: ProductCode
+    amount: int
+    term_months: int
+    collateral_type: str | None = None
+    rate_from: float
+    rate_to: float
+    policy: Policy
+
+
+class OfferGridResponse(CamelModel):
+    rules_version: str
+    offers: list[Offer]
