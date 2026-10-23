@@ -30,7 +30,7 @@ GET /mock/bki/v1/report?inn={inn}
 ```json
 {
   "source": "BKI",
-  "inn": "7701234567",
+  "inn": "7701234560",
   "credit_score": 712,
   "open_credits": [
     { "type": "OVERDRAFT", "bank": "АО «Банк»", "limit": 300000,
@@ -61,7 +61,7 @@ GET /mock/egrul/v1/company?inn={inn}
 ```json
 {
   "source": "EGRUL",
-  "inn": "7719999999",
+  "inn": "7719999994",
   "name": "ООО «Однодневка»",
   "legal_form": "OOO",
   "status": "ACTIVE",
@@ -95,7 +95,7 @@ GET /mock/fns/v1/debts?inn={inn}
 ```json
 {
   "source": "FNS",
-  "inn": "7725555555",
+  "inn": "7725555556",
   "tax_debt": { "amount": 3412, "currency": "RUB", "as_of": "2026-10-15" },
   "unfiled_reports": 0,
   "tax_system": "USN"
@@ -115,7 +115,7 @@ GET /mock/fns/v1/debts?inn={inn}
 
 **Запрос** (подключение по согласию клиента — способ `CONNECT_SOURCE`)
 ```
-POST /mock/ofd/v1/connect { "inn": "7701234567", "consent": true }
+POST /mock/ofd/v1/connect { "inn": "7701234560", "consent": true }
 GET  /mock/ofd/v1/revenue?inn={inn}&months=12
 ```
 
@@ -123,7 +123,7 @@ GET  /mock/ofd/v1/revenue?inn={inn}&months=12
 ```json
 {
   "source": "OFD",
-  "inn": "7701234567",
+  "inn": "7701234560",
   "months": [
     { "month": "2026-01", "revenue": 1450000 },
     { "month": "2026-02", "revenue": 1520000 },
@@ -156,7 +156,7 @@ GET  /mock/marketplace/v1/sales?inn={inn}&months=6
 ```json
 {
   "source": "MARKETPLACE",
-  "inn": "590123456789",
+  "inn": "590987654351",
   "months": [
     { "month": "2026-05", "gmv": 620000, "payout": 465000, "returns_pct": 12 },
     { "month": "2026-06", "gmv": 580000, "payout": 430000, "returns_pct": 14 }
@@ -187,7 +187,7 @@ GET  /mock/acquiring/v1/turnover?inn={inn}&months=12
 ```json
 {
   "source": "ACQUIRING",
-  "inn": "7701234567",
+  "inn": "7701234560",
   "months": [
     { "month": "2026-01", "turnover": 980000, "tx_count": 4200 },
     { "month": "2026-02", "turnover": 1010000, "tx_count": 4350 }
@@ -217,7 +217,7 @@ GET /mock/reputation/v1/summary?inn={inn}
 ```json
 {
   "source": "REPUTATION",
-  "inn": "7701234567",
+  "inn": "7701234560",
   "maps": { "rating": 4.7, "reviews_count": 312, "rating_delta_3m": -0.1 },
   "social": { "active": true, "account_age_months": 30 },
   "news": { "negative": false }
@@ -238,11 +238,11 @@ GET /mock/reputation/v1/summary?inn={inn}
 
 | Компания | ИНН | Какие моки задействованы |
 |---|---|---|
-| ООО «Кофейня» | 7701234567 | все, кроме маркетплейса |
-| ИП-строитель | 590123456789 → _переиспользуется для WB, завести отдельный_ | ЕГРИП, БКИ, ФНС + документ-договор (UPLOAD) |
-| ИП, продавец на WB | 590987654321 | ЕГРИП, БКИ, ФНС, маркетплейс |
-| ООО с долгом в ФНС | 7725555555 | ФНС (pay-сценарий), остальные стандартно |
-| ООО «Однодневка» | 7719999999 | ЕГРЮЛ (3 красных флага), эквайринг (обороты ×5) |
+| ООО «Кофейня» | 7701234560 | все, кроме маркетплейса |
+| ИП-строитель | 590234567822 | ЕГРИП, БКИ, ФНС + документ-договор (UPLOAD) |
+| ИП, продавец на WB | 590987654351 | ЕГРИП, БКИ, ФНС, маркетплейс |
+| ООО с долгом в ФНС | 7725555556 | ФНС (pay-сценарий), остальные стандартно |
+| ООО «Однодневка» | 7719999994 | ЕГРЮЛ (3 красных флага), эквайринг (обороты ×5) |
 
 > ⚠️ Открытый вопрос: для ИП-строителя в моках нет источника — его пятно
 > «договор с генподрядчиком» закрывается `UPLOAD` (клиент грузит PDF), без

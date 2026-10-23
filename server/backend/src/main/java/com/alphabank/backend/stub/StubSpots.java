@@ -27,23 +27,29 @@ public final class StubSpots {
         boolean collecting = status == ApplicationStatus.COLLECTING || status == ApplicationStatus.CANCELLED;
         boolean inReview = status == ApplicationStatus.UNDERWRITING || status == ApplicationStatus.INFO_REQUESTED
                 || status == ApplicationStatus.REJECTED;
-        SpotStatus answered = collecting ? SpotStatus.OPEN : SpotStatus.CLOSED;
+        SpotStatus sourceSpots = collecting ? SpotStatus.OPEN : SpotStatus.CLOSED;
 
         List<SpotDto> spots = new ArrayList<>();
-        spots.add(spot(StubIds.SPOT_OFD, SpotType.NO_DATA, "Продажи через кассу (~70% выручки)",
-                "Видим только деньги на счёте. Продажи через кассу пока считаем нулём.",
-                "revenue_coverage", 3.5, CloseMethod.CONNECT_SOURCE, SourceCode.OFD, List.of(), answered, null));
-        spots.add(spot(StubIds.SPOT_MARCH, SpotType.ANOMALY, "В марте выручка упала на 45%",
-                "Пока нет объяснения — считаем это риском. Что случилось?",
-                "revenue_stability", 2.5, CloseMethod.ANSWER, SourceCode.OFD, marchOptions(), answered,
-                collecting ? null : marchAnswer()));
+        spots.add(spot(StubIds.SPOT_OFD, SpotType.NO_DATA, "Продажи через кассу не видны",
+                "Видим только деньги на счёте. Подключите онлайн-кассу — банк увидит реальную выручку.",
+                "debt_load", 3.5, CloseMethod.CONNECT_SOURCE, SourceCode.OFD, List.of(), sourceSpots, null));
+        spots.add(spot(StubIds.SPOT_STABILITY, SpotType.NO_DATA,
+                "Не знаем, стабильна ли выручка — закроется, когда подключите источник",
+                "Закроется само, когда подключите кассу.",
+                "revenue_stability", 2.5, CloseMethod.CONNECT_SOURCE, SourceCode.OFD, List.of(), sourceSpots, null));
         spots.add(spot(StubIds.SPOT_GOAL, SpotType.NO_DATA, "На что именно нужны деньги",
                 "Опишите своими словами — подберём продукт и учтём цель.",
-                "loan_purpose", 1.5, CloseMethod.ANSWER, null, List.of(),
+                "purpose", 1.5, CloseMethod.ANSWER, null, List.of(),
                 collecting || inReview ? SpotStatus.OPEN : SpotStatus.CLOSED, null));
-        spots.add(spot(StubIds.SPOT_COLLATERAL, SpotType.COLLATERAL, "Залог или поручительство",
+        spots.add(spot(StubIds.SPOT_COLLATERAL, SpotType.COLLATERAL, "Залог или поручительство — по желанию",
                 "Самый дорогой для вас способ — оставьте на конец.",
                 "collateral", 1.5, CloseMethod.ADD_COLLATERAL, null, List.of(), SpotStatus.OPEN, null));
+        if (!collecting) {
+            spots.add(spot(StubIds.SPOT_MARCH, SpotType.ANOMALY, "Почему в марте выручка упала на 45 %",
+                    "Пока нет объяснения — считаем это риском. Что случилось?",
+                    "revenue_stability", 2.5, CloseMethod.ANSWER, SourceCode.OFD, marchOptions(),
+                    SpotStatus.CLOSED, marchAnswer()));
+        }
         if (status == ApplicationStatus.INFO_REQUESTED) {
             spots.add(underwriterRequest());
         }
@@ -72,7 +78,8 @@ public final class StubSpots {
     }
 
     private static SpotAnswerDto marchAnswer() {
-        return new SpotAnswerDto(StubIds.id("e001"), "RENOVATION", "Был ремонт зала", null,
-                AnswerVerdict.ACCEPTED, "SYSTEM", null, StubIds.T0.plusMinutes(3), StubIds.T0.plusMinutes(3));
+        return new SpotAnswerDto(StubIds.id("e001"), "RENOVATION", "Был ремонт, точка закрывалась на 2 недели",
+                StubIds.id("e101"), AnswerVerdict.ACCEPTED, "SYSTEM", null,
+                StubIds.T0.plusMinutes(3), StubIds.T0.plusMinutes(3));
     }
 }

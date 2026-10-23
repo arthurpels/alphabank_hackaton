@@ -30,7 +30,7 @@ public final class StubApplications {
         boolean infoRequested = status == ApplicationStatus.INFO_REQUESTED;
         ApplicationDto application = new ApplicationDto(id, status, StubUsers.coffeeCompany(),
                 StubCatalog.product(ProductCode.EQUIPMENT), StubOffers.COFFEE_AMOUNT, StubOffers.COFFEE_TERM,
-                "две кофемашины и витрина", new ConsentsDto(true, true), actions,
+                "2 кофемашины и витрина для второй точки", new ConsentsDto(true, true), actions,
                 StubIds.T0, isSubmitted(status) ? StubIds.T0.plusMinutes(4) : null,
                 infoRequested ? StubIds.T0.plusHours(1) : null,
                 infoRequested ? StubIds.T0.plusHours(1).plusDays(5) : null);
@@ -40,7 +40,7 @@ public final class StubApplications {
 
     public static ApplicationSummaryDto coffeeSummary() {
         return new ApplicationSummaryDto(StubIds.COFFEE_APPLICATION_ID, ApplicationStatus.COLLECTING,
-                ProductCode.EQUIPMENT, StubOffers.COFFEE_AMOUNT, StubOffers.COFFEE_TERM, StubForks.wide(), StubIds.T0);
+                ProductCode.EQUIPMENT, StubOffers.COFFEE_AMOUNT, StubOffers.COFFEE_TERM, StubForks.afterEvaluate(), StubIds.T0);
     }
 
 
@@ -52,9 +52,9 @@ public final class StubApplications {
     private static ForkDto fork(ApplicationStatus status) {
         return switch (status) {
             case DRAFT -> null;
-            case COLLECTING, CANCELLED -> StubForks.wide();
-            case UNDERWRITING, INFO_REQUESTED, REJECTED -> StubForks.middle();
-            default -> StubForks.narrow();
+            case COLLECTING, CANCELLED -> StubForks.afterEvaluate();
+            case UNDERWRITING, INFO_REQUESTED, REJECTED -> StubForks.afterAnomalyAnswer();
+            default -> StubForks.afterPurpose();
         };
     }
 
@@ -64,7 +64,7 @@ public final class StubApplications {
                     DecidedBy.SYSTEM, null, StubIds.RULES_VERSION, false, null, null, StubIds.T0.plusMinutes(4));
             case COUNTER_OFFER -> new DecisionDto(StubIds.id("f002"), DecisionType.ALTERNATIVE,
                     DecidedBy.UNDERWRITER, StubIds.UNDERWRITER_ID, StubIds.RULES_VERSION, false,
-                    "Предлагаю дольше срок или меньше сумму", null, StubIds.T0.plusHours(2));
+                    "Предлагаю меньшую сумму", null, StubIds.T0.plusHours(2));
             case REJECTED -> new DecisionDto(StubIds.id("f003"), DecisionType.REJECTED,
                     DecidedBy.UNDERWRITER, StubIds.UNDERWRITER_ID, StubIds.RULES_VERSION, false,
                     "Падение выручки не подтверждено", StubIds.SPOT_MARCH, StubIds.T0.plusHours(2));
@@ -77,7 +77,7 @@ public final class StubApplications {
             return null;
         }
         boolean issued = status == ApplicationStatus.ISSUED;
-        double rate = StubForks.narrow().rateTo();
+        double rate = StubForks.afterPurpose().rateTo();
         List<PaymentScheduleItemDto> schedule = AnnuityScheduleCalculator.calculate(StubOffers.COFFEE_AMOUNT, rate,
                 StubOffers.COFFEE_TERM, LocalDate.of(2026, 11, 23));
         return new ContractDto(StubIds.OFFER_REQUESTED, StubOffers.COFFEE_AMOUNT, StubOffers.COFFEE_TERM, rate,

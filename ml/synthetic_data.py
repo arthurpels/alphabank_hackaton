@@ -8,6 +8,7 @@ import json
 import re
 import sys
 from datetime import date
+from pathlib import Path
 
 import yaml
 
@@ -161,7 +162,7 @@ def avg(xs):
 
 
 def check():
-    e = Engine(yaml.safe_load(open("scoring_rules.yaml", encoding="utf-8")))
+    e = Engine(yaml.safe_load(open(Path(__file__).with_name("scoring_rules.yaml"), encoding="utf-8")))
     print("Производные:")
     for k, series in [("coffee OFD", coffee_ofd), ("fns acquiring", fns_acq), ("wb payout", wb_payout),
                       ("shell acquiring", shell_acq)]:

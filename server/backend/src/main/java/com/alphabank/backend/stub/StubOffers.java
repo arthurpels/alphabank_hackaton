@@ -14,7 +14,7 @@ import com.alphabank.backend.enums.UserRole;
 public final class StubOffers {
 
     public static final long COFFEE_AMOUNT = 200_000_000L;
-    public static final int COFFEE_TERM = 24;
+    public static final int COFFEE_TERM = 36;
 
     private StubOffers() {
     }
@@ -24,9 +24,9 @@ public final class StubOffers {
             case UNDERWRITING -> role == UserRole.UNDERWRITER ? calculated() : List.of();
             case APPROVED -> List.of(requested(OfferStatus.OFFERED));
             case COUNTER_OFFER -> List.of(
-                    offer(StubIds.OFFER_LONGER, COFFEE_AMOUNT, 36, StubForks.longerTerm(),
+                    offer(StubIds.OFFER_MINUS_20, 160_000_000L, COFFEE_TERM, StubForks.afterPurpose(),
                             DecidedBy.UNDERWRITER, OfferStatus.OFFERED, false),
-                    offer(StubIds.OFFER_SMALLER, 150_000_000L, COFFEE_TERM, StubForks.smallerAmount(),
+                    offer(StubIds.OFFER_MINUS_35, 130_000_000L, COFFEE_TERM, StubForks.afterPurpose(),
                             DecidedBy.UNDERWRITER, OfferStatus.OFFERED, false));
             case SIGNING, ISSUED -> List.of(requested(OfferStatus.CHOSEN));
             default -> List.of();
@@ -35,14 +35,14 @@ public final class StubOffers {
 
     public static List<OfferDto> calculated() {
         return List.of(
-                offer(StubIds.OFFER_LONGER, COFFEE_AMOUNT, 36, StubForks.longerTerm(),
+                offer(StubIds.OFFER_MINUS_20, 160_000_000L, COFFEE_TERM, StubForks.afterPurpose(),
                         DecidedBy.SYSTEM, OfferStatus.CALCULATED, false),
-                offer(StubIds.OFFER_SMALLER, 150_000_000L, COFFEE_TERM, StubForks.smallerAmount(),
+                offer(StubIds.OFFER_MINUS_35, 130_000_000L, COFFEE_TERM, StubForks.afterPurpose(),
                         DecidedBy.SYSTEM, OfferStatus.CALCULATED, false));
     }
 
     private static OfferDto requested(OfferStatus status) {
-        return offer(StubIds.OFFER_REQUESTED, COFFEE_AMOUNT, COFFEE_TERM, StubForks.narrow(), DecidedBy.SYSTEM,
+        return offer(StubIds.OFFER_REQUESTED, COFFEE_AMOUNT, COFFEE_TERM, StubForks.afterPurpose(), DecidedBy.SYSTEM,
                 status, true);
     }
 

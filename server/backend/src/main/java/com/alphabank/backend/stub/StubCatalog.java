@@ -12,11 +12,12 @@ public final class StubCatalog {
 
     public static List<ProductDto> products() {
         return List.of(
-                new ProductDto(ProductCode.WORKING_CAPITAL, "Оборотный кредит", 30_000_000L, 1_000_000_000L,
-                        List.of(6, 12, 24)),
-                new ProductDto(ProductCode.EQUIPMENT, "Кредит на оборудование", 50_000_000L, 1_500_000_000L,
+                new ProductDto(ProductCode.WORKING_CAPITAL, "Кредит на пополнение оборотных средств",
+                        10_000_000L, 1_000_000_000L, List.of(6, 12, 24, 36)),
+                new ProductDto(ProductCode.EQUIPMENT, "Кредит на оборудование", 30_000_000L, 1_000_000_000L,
                         List.of(12, 24, 36)),
-                new ProductDto(ProductCode.OVERDRAFT, "Овердрафт", 10_000_000L, 300_000_000L, List.of(12)));
+                new ProductDto(ProductCode.OVERDRAFT, "Овердрафт для бизнеса", 5_000_000L, 300_000_000L,
+                        List.of(3, 6, 12)));
     }
 
     public static ProductDto product(ProductCode code) {

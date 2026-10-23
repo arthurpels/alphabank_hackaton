@@ -56,7 +56,7 @@ class ApiSkeletonTest {
         mvc.perform(get(API + "/me").header(DemoUserInterceptor.HEADER, CLIENT))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.role").value("CLIENT"))
-                .andExpect(jsonPath("$.company.inn").value("7701234567"));
+                .andExpect(jsonPath("$.company.inn").value("7701234560"));
     }
 
     @Test

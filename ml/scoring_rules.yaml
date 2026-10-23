@@ -13,7 +13,7 @@ products:
     base_rate: 22.0
     approve_max: 20.0      # правый край ≤ — автоодобрение
     reject_min: 24.0       # левый край ≥ — отказ
-    amount: [500000, 10000000]
+    amount: [300000, 10000000]
     terms: [12, 24, 36]
     pti_cap: 0.30          # политика: платёж / выручка в месяц не выше 30 %
   WORKING_CAPITAL:
@@ -21,16 +21,16 @@ products:
     base_rate: 20.0
     approve_max: 21.0
     reject_min: 25.0
-    amount: [300000, 5000000]
-    terms: [6, 12]
+    amount: [100000, 10000000]
+    terms: [6, 12, 24, 36]
     pti_cap: 0.30
   OVERDRAFT:
-    name: Овердрафт
+    name: Овердрафт для бизнеса
     base_rate: 21.0
     approve_max: 22.0
     reject_min: 26.0
-    amount: [100000, 2000000]
-    terms: [12]            # срок действия лимита
+    amount: [50000, 3000000]
+    terms: [3, 6, 12]      # срок действия лимита
     limit_cap: 0.30        # политика: лимит ≤ 30 % среднемесячной выручки
     skip_factors: [purpose, collateral]
 

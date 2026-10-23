@@ -715,14 +715,14 @@ components:
           format: uuid
         fio:
           type: string
-          example: Петрова Анна Сергеевна
+          example: Смирнова А. В.
         role:
           $ref: '#/components/schemas/UserRole'
         personaTitle:
           type: string
           nullable: true
           description: подпись на стартовом экране
-          example: Кофейня — закрывает пятна и получает автоодобрение
+          example: ООО «Кофейня» — автоодобрение
         company:
           type: object
           allOf:
@@ -740,7 +740,7 @@ components:
         inn:
           type: string
           pattern: '^(\d{10}|\d{12})$'
-          example: '7701234567'
+          example: '7701234560'
         name:
           type: string
           example: ООО «Кофейня»
@@ -760,7 +760,7 @@ components:
         okvedMain:
           type: string
           nullable: true
-          example: '56.10'
+          example: '56.30'
 
     Product:
       type: object
@@ -800,11 +800,11 @@ components:
           example: 200000000
         termMonths:
           type: integer
-          example: 24
+          example: 36
         goal:
           type: string
           maxLength: 1000
-          example: две кофемашины и витрина
+          example: 2 кофемашины и витрина для второй точки
         consents:
           $ref: '#/components/schemas/Consents'
 
@@ -959,7 +959,7 @@ components:
           $ref: '#/components/schemas/ZoneThresholds'
         rulesVersion:
           type: string
-          example: rules-2026-10-22.1
+          example: 2026-10-23.draft1
         calculatedAt:
           type: string
           format: date-time
@@ -971,7 +971,7 @@ components:
       properties:
         approveMax:
           type: number
-          example: 21
+          example: 20
         rejectMin:
           type: number
           example: 24
@@ -987,7 +987,7 @@ components:
           $ref: '#/components/schemas/SpotType'
         title:
           type: string
-          example: В марте выручка упала на 45%
+          example: Почему в марте выручка упала на 45 %
         clientHint:
           type: string
           example: Пока нет объяснения — считаем это риском. Что случилось?
@@ -1121,7 +1121,7 @@ components:
       example:
         method: ANSWER
         optionCode: RENOVATION
-        text: Был ремонт зала, договор подряда приложен
+        text: Был ремонт, точка закрывалась на 2 недели
 
     SpotReviewRequest:
       type: object
@@ -1412,7 +1412,7 @@ components:
       properties:
         text:
           type: string
-          example: Выручка в марте упала на 45%, клиент объясняет ремонтом — в выписке есть платежи подрядчику.
+          example: Выручка в марте упала на 45 %, клиент объясняет ремонтом и приложил договор подряда.
         facts:
           type: array
           items:

@@ -114,9 +114,9 @@ stateDiagram-v2
 | Персонаж | Путь |
 |---|---|
 | ООО «Кофейня» | `DRAFT → COLLECTING` (закрыла 3 пятна) `→ SUBMITTED → AUTO_CHECK → APPROVED → SIGNING → ISSUED` |
-| ИП-строитель | `… → AUTO_CHECK → UNDERWRITING → INFO_REQUESTED → UNDERWRITING → APPROVED → SIGNING → ISSUED` |
-| ИП, продавец на WB | `… → AUTO_CHECK → COUNTER_OFFER` (1,5 млн не проходит даже в лучшем случае — платёж больше допустимой доли выручки; проходят 1 млн или овердрафт) `→ SIGNING → ISSUED` |
-| ООО с долгом в ФНС | `COLLECTING` (погасил долг, устранимый стоп-фактор закрыт) `→ … → APPROVED`; если не погасил — `AUTO_CHECK → REJECTED` |
+| ИП Петров | `… → AUTO_CHECK → UNDERWRITING → INFO_REQUESTED → UNDERWRITING → COUNTER_OFFER → SIGNING → ISSUED` (андеррайтер отмечает 1 950 000 ₽ на 36 мес) |
+| ИП Кузнецова | `… → AUTO_CHECK → COUNTER_OFFER` (1 500 000 ₽ не проходит даже в лучшем случае — платёж 34,7 % выручки при допустимых 30 %; проходят 1 200 000 ₽ на 36 мес или овердрафт 120 000 ₽) `→ SIGNING → ISSUED` |
+| ООО «Техснаб» | `COLLECTING` (погасил долг, устранимый стоп-фактор закрыт) `→ … → APPROVED`; если не погасил — `AUTO_CHECK → REJECTED` |
 | ООО «Однодневка» | `… → AUTO_CHECK → REJECTED` (неустранимые стоп-факторы: массовый адрес, новый директор) |
 
 ## Открытые вопросы
