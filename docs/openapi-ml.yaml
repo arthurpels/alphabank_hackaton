@@ -1,0 +1,1322 @@
+openapi: 3.0.3
+info:
+  title: Скоринг-сервис ml/ — внутренний API
+  version: 0.1.0
+  description: 'Контракт backend ↔ ml (T10). Его вызывает только бэкенд, наружу сервис не открыт.
+
+
+    - Модель и правила — `docs/scoring-model.md`, `ml/scoring_rules.yaml`, калькулятор `ml/scoring_calc.py`.
+
+    - Сервис только считает: в моки и в БД не ходит. Ответы моков в входы факторов переводит бэкенд (T19).
+
+    - Строго детерминированно: одинаковый запрос и одна `rulesVersion` — одинаковый ответ. Поэтому дата расчёта `asOf` передаётся
+    во входе, а не берётся из часов сервиса.
+
+    - Решение по заявке принимает бэкенд (статусная машина, T31) по `rateFrom`, `rateTo`, `thresholds`, `policy` и `stopFactors`.
+
+    - Авторизации нет: сервис доступен только внутри сети compose.
+
+    - Деньги — в копейках (`integer`), ставки и вклады — в процентах и процентных пунктах (`number`).
+
+    - Фактор неизвестен — поле входа равно `null`.
+
+    - Примеры посчитаны калькулятором T06 по персонажам из `docs/synthetic-data.md` на 23.10.2026.'
+servers:
+- url: http://ml:8001
+  description: внутри docker compose
+- url: http://localhost:8001
+  description: с хоста
+security: []
+tags:
+- name: scoring
+  description: вилка, сетка иных условий, аномалии
+paths:
+  /score:
+    post:
+      operationId: score
+      tags:
+      - scoring
+      summary: Вилка ставки по запрошенным условиям
+      description: Края вилки, вклад или диапазон каждого фактора, цена открытых пятен, стоп-факторы и проверка политики продукта.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScoreRequest'
+            examples:
+              coffee:
+                summary: 'ООО «Кофейня» — подаёт после закрытия пятен: APPROVED'
+                value:
+                  asOf: '2026-10-23'
+                  productCode: EQUIPMENT
+                  amount: 200000000
+                  termMonths: 36
+                  egrulStatus: ACTIVE
+                  registeredAt: '2019-04-15'
+                  directorSince: '2019-04-15'
+                  massAddress: false
+                  creditScore: 712
+                  delinq12m: 0
+                  bkiCurrentOverdue: 0
+                  taxDebt: 0
+                  unfiledReports: 0
+                  monthlyRevenue: 140666667
+                  stability: EXPLAINED
+                  purpose: MATCH
+                  collateral: null
+              builder:
+                summary: 'ИП Петров — подаёт без источника выручки: вилка пересекает порог, UNDERWRITING'
+                value:
+                  asOf: '2026-10-23'
+                  productCode: WORKING_CAPITAL
+                  amount: 300000000
+                  termMonths: 12
+                  egrulStatus: ACTIVE
+                  registeredAt: '2024-03-01'
+                  directorSince: '2024-03-01'
+                  massAddress: false
+                  creditScore: 655
+                  delinq12m: 0
+                  bkiCurrentOverdue: 0
+                  taxDebt: 0
+                  unfiledReports: 0
+                  monthlyRevenue: null
+                  stability: null
+                  purpose: MATCH
+                  collateral: null
+              wb:
+                summary: 'ИП Кузнецова — нагрузка выше 30 %: политика не выполнена, нужна сетка'
+                value:
+                  asOf: '2026-10-23'
+                  productCode: WORKING_CAPITAL
+                  amount: 150000000
+                  termMonths: 12
+                  egrulStatus: ACTIVE
+                  registeredAt: '2024-05-20'
+                  directorSince: '2024-05-20'
+                  massAddress: false
+                  creditScore: 680
+                  delinq12m: 0
+                  bkiCurrentOverdue: 0
+                  taxDebt: 0
+                  unfiledReports: 0
+                  monthlyRevenue: 40000000
+                  stability: CLEAN
+                  purpose: MATCH
+                  collateral: null
+              fns:
+                summary: ООО «Техснаб» — открыт устранимый стоп-фактор TAX_DEBT
+                value:
+                  asOf: '2026-10-23'
+                  productCode: WORKING_CAPITAL
+                  amount: 80000000
+                  termMonths: 12
+                  egrulStatus: ACTIVE
+                  registeredAt: '2021-02-10'
+                  directorSince: '2021-02-10'
+                  massAddress: false
+                  creditScore: 730
+                  delinq12m: 0
+                  bkiCurrentOverdue: 0
+                  taxDebt: 341200
+                  unfiledReports: 0
+                  monthlyRevenue: 120000000
+                  stability: CLEAN
+                  purpose: MATCH
+                  collateral: null
+              shell:
+                summary: ООО «Однодневка» — неустранимые стоп-факторы
+                value:
+                  asOf: '2026-10-23'
+                  productCode: WORKING_CAPITAL
+                  amount: 200000000
+                  termMonths: 12
+                  egrulStatus: ACTIVE
+                  registeredAt: '2025-08-01'
+                  directorSince: '2026-09-15'
+                  massAddress: true
+                  creditScore: 600
+                  delinq12m: 0
+                  bkiCurrentOverdue: 0
+                  taxDebt: 0
+                  unfiledReports: 0
+                  monthlyRevenue: null
+                  stability: null
+                  purpose: null
+                  collateral: null
+              coffeeStart:
+                summary: 'ООО «Кофейня» — сразу после «Рассчитать»: 4 открытых пятна'
+                value:
+                  asOf: '2026-10-23'
+                  productCode: EQUIPMENT
+                  amount: 200000000
+                  termMonths: 36
+                  egrulStatus: ACTIVE
+                  registeredAt: '2019-04-15'
+                  directorSince: '2019-04-15'
+                  massAddress: false
+                  creditScore: 712
+                  delinq12m: 0
+                  bkiCurrentOverdue: 0
+                  taxDebt: 0
+                  unfiledReports: 0
+                  monthlyRevenue: null
+                  stability: null
+                  purpose: null
+                  collateral: null
+      responses:
+        '200':
+          description: вилка
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScoreResponse'
+              examples:
+                coffee:
+                  summary: 'ООО «Кофейня» — подаёт после закрытия пятен: APPROVED'
+                  value:
+                    rulesVersion: 2026-10-23.draft1
+                    productCode: EQUIPMENT
+                    rateFrom: 18.0
+                    rateTo: 19.5
+                    thresholds:
+                      approveMax: 20.0
+                      rejectMin: 24.0
+                    factors:
+                    - code: credit_history
+                      title: Кредитная история
+                      applicable: true
+                      known: true
+                      value: -1.0
+                      best: null
+                      worst: null
+                      spotPricePp: null
+                    - code: business_age
+                      title: Возраст бизнеса
+                      applicable: true
+                      known: true
+                      value: -0.5
+                      best: null
+                      worst: null
+                      spotPricePp: null
+                    - code: tax_discipline
+                      title: Налоговая дисциплина
+                      applicable: true
+                      known: true
+                      value: 0.0
+                      best: null
+                      worst: null
+                      spotPricePp: null
+                    - code: debt_load
+                      title: Подтверждённая выручка и долговая нагрузка
+                      applicable: true
+                      known: true
+                      value: -0.5
+                      best: null
+                      worst: null
+                      spotPricePp: null
+                    - code: revenue_stability
+                      title: Стабильность выручки
+                      applicable: true
+                      known: true
+                      value: 0.0
+                      best: null
+                      worst: null
+                      spotPricePp: null
+                    - code: purpose
+                      title: Цель кредита
+                      applicable: true
+                      known: true
+                      value: -0.5
+                      best: null
+                      worst: null
+                      spotPricePp: null
+                    - code: collateral
+                      title: Обеспечение
+                      applicable: true
+                      known: false
+                      value: null
+                      best: -1.5
+                      worst: 0.0
+                      spotPricePp: 1.5
+                    stopFactors: []
+                    policy:
+                      metric: PTI
+                      value: 0.053
+                      cap: 0.3
+                      amountInRange: true
+                      ok: true
+                    passes: true
+                builder:
+                  summary: 'ИП Петров — подаёт без источника выручки: вилка пересекает порог, UNDERWRITING'
+                  value:
+                    rulesVersion: 2026-10-23.draft1
+                    productCode: WORKING_CAPITAL
+                    rateFrom: 17.0
+                    rateTo: 24.5
+                    thresholds:
+                      approveMax: 21.0
+                      rejectMin: 25.0
+                    factors:
+                    - code: credit_history
+                      title: Кредитная история
+                      applicable: true
+                      known: true
+                      value: 0.0
+                      best: null
+                      worst: null
+                      spotPricePp: null
+                    - code: business_age
+                      title: Возраст бизнеса
+                      applicable: true
+                      known: true
+                      value: 0.5
+                      best: null
+                      worst: null
+                      spotPricePp: null
+                    - code: tax_discipline
+                      title: Налоговая дисциплина
+                      applicable: true
+                      known: true
+                      value: 0.0
+                      best: null
+                      worst: null
+                      spotPricePp: null
+                    - code: debt_load
+                      title: Подтверждённая выручка и долговая нагрузка
+                      applicable: true
+                      known: false
+                      value: null
+                      best: -1.5
+                      worst: 2.0
+                      spotPricePp: 3.5
+                    - code: revenue_stability
+                      title: Стабильность выручки
+                      applicable: true
+                      known: false
+                      value: null
+                      best: 0.0
+                      worst: 2.5
+                      spotPricePp: 2.5
+                    - code: purpose
+                      title: Цель кредита
+                      applicable: true
+                      known: true
+                      value: -0.5
+                      best: null
+                      worst: null
+                      spotPricePp: null
+                    - code: collateral
+                      title: Обеспечение
+                      applicable: true
+                      known: false
+                      value: null
+                      best: -1.5
+                      worst: 0.0
+                      spotPricePp: 1.5
+                    stopFactors: []
+                    policy:
+                      metric: null
+                      value: null
+                      cap: null
+                      amountInRange: true
+                      ok: true
+                    passes: false
+                wb:
+                  summary: 'ИП Кузнецова — нагрузка выше 30 %: политика не выполнена, нужна сетка'
+                  value:
+                    rulesVersion: 2026-10-23.draft1
+                    productCode: WORKING_CAPITAL
+                    rateFrom: 20.0
+                    rateTo: 21.5
+                    thresholds:
+                      approveMax: 21.0
+                      rejectMin: 25.0
+                    factors:
+                    - code: credit_history
+                      title: Кредитная история
+                      applicable: true
+                      known: true
+                      value: 0.0
+                      best: null
+                      worst: null
+                      spotPricePp: null
+                    - code: business_age
+                      title: Возраст бизнеса
+                      applicable: true
+                      known: true
+                      value: 0.5
+                      best: null
+                      worst: null
+                      spotPricePp: null
+                    - code: tax_discipline
+                      title: Налоговая дисциплина
+                      applicable: true
+                      known: true
+                      value: 0.0
+                      best: null
+                      worst: null
+                      spotPricePp: null
+                    - code: debt_load
+                      title: Подтверждённая выручка и долговая нагрузка
+                      applicable: true
+                      known: true
+                      value: 1.5
+                      best: null
+                      worst: null
+                      spotPricePp: null
+                    - code: revenue_stability
+                      title: Стабильность выручки
+                      applicable: true
+                      known: true
+                      value: 0.0
+                      best: null
+                      worst: null
+                      spotPricePp: null
+                    - code: purpose
+                      title: Цель кредита
+                      applicable: true
+                      known: true
+                      value: -0.5
+                      best: null
+                      worst: null
+                      spotPricePp: null
+                    - code: collateral
+                      title: Обеспечение
+                      applicable: true
+                      known: false
+                      value: null
+                      best: -1.5
+                      worst: 0.0
+                      spotPricePp: 1.5
+                    stopFactors: []
+                    policy:
+                      metric: PTI
+                      value: 0.347
+                      cap: 0.3
+                      amountInRange: true
+                      ok: false
+                    passes: false
+                fns:
+                  summary: ООО «Техснаб» — открыт устранимый стоп-фактор TAX_DEBT
+                  value:
+                    rulesVersion: 2026-10-23.draft1
+                    productCode: WORKING_CAPITAL
+                    rateFrom: 16.0
+                    rateTo: 17.5
+                    thresholds:
+                      approveMax: 21.0
+                      rejectMin: 25.0
+                    factors:
+                    - code: credit_history
+                      title: Кредитная история
+                      applicable: true
+                      known: true
+                      value: -1.0
+                      best: null
+                      worst: null
+                      spotPricePp: null
+                    - code: business_age
+                      title: Возраст бизнеса
+                      applicable: true
+                      known: true
+                      value: -0.5
+                      best: null
+                      worst: null
+                      spotPricePp: null
+                    - code: tax_discipline
+                      title: Налоговая дисциплина
+                      applicable: true
+                      known: true
+                      value: 0.0
+                      best: null
+                      worst: null
+                      spotPricePp: null
+                    - code: debt_load
+                      title: Подтверждённая выручка и долговая нагрузка
+                      applicable: true
+                      known: true
+                      value: -0.5
+                      best: null
+                      worst: null
+                      spotPricePp: null
+                    - code: revenue_stability
+                      title: Стабильность выручки
+                      applicable: true
+                      known: true
+                      value: 0.0
+                      best: null
+                      worst: null
+                      spotPricePp: null
+                    - code: purpose
+                      title: Цель кредита
+                      applicable: true
+                      known: true
+                      value: -0.5
+                      best: null
+                      worst: null
+                      spotPricePp: null
+                    - code: collateral
+                      title: Обеспечение
+                      applicable: true
+                      known: false
+                      value: null
+                      best: -1.5
+                      worst: 0.0
+                      spotPricePp: 1.5
+                    stopFactors:
+                    - code: TAX_DEBT
+                      removable: true
+                      closeMethod: PAY
+                    policy:
+                      metric: PTI
+                      value: 0.062
+                      cap: 0.3
+                      amountInRange: true
+                      ok: true
+                    passes: true
+                shell:
+                  summary: ООО «Однодневка» — неустранимые стоп-факторы
+                  value:
+                    rulesVersion: 2026-10-23.draft1
+                    productCode: WORKING_CAPITAL
+                    rateFrom: 17.0
+                    rateTo: 26.0
+                    thresholds:
+                      approveMax: 21.0
+                      rejectMin: 25.0
+                    factors:
+                    - code: credit_history
+                      title: Кредитная история
+                      applicable: true
+                      known: true
+                      value: 0.0
+                      best: null
+                      worst: null
+                      spotPricePp: null
+                    - code: business_age
+                      title: Возраст бизнеса
+                      applicable: true
+                      known: true
+                      value: 0.5
+                      best: null
+                      worst: null
+                      spotPricePp: null
+                    - code: tax_discipline
+                      title: Налоговая дисциплина
+                      applicable: true
+                      known: true
+                      value: 0.0
+                      best: null
+                      worst: null
+                      spotPricePp: null
+                    - code: debt_load
+                      title: Подтверждённая выручка и долговая нагрузка
+                      applicable: true
+                      known: false
+                      value: null
+                      best: -1.5
+                      worst: 2.0
+                      spotPricePp: 3.5
+                    - code: revenue_stability
+                      title: Стабильность выручки
+                      applicable: true
+                      known: false
+                      value: null
+                      best: 0.0
+                      worst: 2.5
+                      spotPricePp: 2.5
+                    - code: purpose
+                      title: Цель кредита
+                      applicable: true
+                      known: false
+                      value: null
+                      best: -0.5
+                      worst: 1.0
+                      spotPricePp: 1.5
+                    - code: collateral
+                      title: Обеспечение
+                      applicable: true
+                      known: false
+                      value: null
+                      best: -1.5
+                      worst: 0.0
+                      spotPricePp: 1.5
+                    stopFactors:
+                    - code: NEW_DIRECTOR
+                      removable: false
+                      closeMethod: null
+                    - code: MASS_ADDRESS
+                      removable: false
+                      closeMethod: null
+                    policy:
+                      metric: null
+                      value: null
+                      cap: null
+                      amountInRange: true
+                      ok: true
+                    passes: false
+                coffeeStart:
+                  summary: 'ООО «Кофейня» — сразу после «Рассчитать»: 4 открытых пятна'
+                  value:
+                    rulesVersion: 2026-10-23.draft1
+                    productCode: EQUIPMENT
+                    rateFrom: 17.0
+                    rateTo: 26.0
+                    thresholds:
+                      approveMax: 20.0
+                      rejectMin: 24.0
+                    factors:
+                    - code: credit_history
+                      title: Кредитная история
+                      applicable: true
+                      known: true
+                      value: -1.0
+                      best: null
+                      worst: null
+                      spotPricePp: null
+                    - code: business_age
+                      title: Возраст бизнеса
+                      applicable: true
+                      known: true
+                      value: -0.5
+                      best: null
+                      worst: null
+                      spotPricePp: null
+                    - code: tax_discipline
+                      title: Налоговая дисциплина
+                      applicable: true
+                      known: true
+                      value: 0.0
+                      best: null
+                      worst: null
+                      spotPricePp: null
+                    - code: debt_load
+                      title: Подтверждённая выручка и долговая нагрузка
+                      applicable: true
+                      known: false
+                      value: null
+                      best: -1.5
+                      worst: 2.0
+                      spotPricePp: 3.5
+                    - code: revenue_stability
+                      title: Стабильность выручки
+                      applicable: true
+                      known: false
+                      value: null
+                      best: 0.0
+                      worst: 2.5
+                      spotPricePp: 2.5
+                    - code: purpose
+                      title: Цель кредита
+                      applicable: true
+                      known: false
+                      value: null
+                      best: -0.5
+                      worst: 1.0
+                      spotPricePp: 1.5
+                    - code: collateral
+                      title: Обеспечение
+                      applicable: true
+                      known: false
+                      value: null
+                      best: -1.5
+                      worst: 0.0
+                      spotPricePp: 1.5
+                    stopFactors: []
+                    policy:
+                      metric: null
+                      value: null
+                      cap: null
+                      amountInRange: true
+                      ok: true
+                    passes: false
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /offers/grid:
+    post:
+      operationId: offerGrid
+      tags:
+      - scoring
+      summary: Сетка иных условий
+      description: 'Прогоняет варианты (сумма −20/−35/−50 %, запрошенный и максимальный срок, овердрафт, поручительство) через
+        тот же расчёт и возвращает только проходящие: политика выполнена и `rateTo ≤ approveMax`. По каждому продукту — одна
+        наибольшая сумма; вариант без обеспечения важнее.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScoreRequest'
+            examples:
+              builder:
+                summary: ИП Петров — после принятого договора с генподрядчиком
+                value:
+                  asOf: '2026-10-23'
+                  productCode: WORKING_CAPITAL
+                  amount: 300000000
+                  termMonths: 12
+                  egrulStatus: ACTIVE
+                  registeredAt: '2024-03-01'
+                  directorSince: '2024-03-01'
+                  massAddress: false
+                  creditScore: 655
+                  delinq12m: 0
+                  bkiCurrentOverdue: 0
+                  taxDebt: 0
+                  unfiledReports: 0
+                  monthlyRevenue: 80000000
+                  stability: DOCUMENT
+                  purpose: MATCH
+                  collateral: null
+              wb:
+                summary: ИП Кузнецова — система сама предлагает иные условия
+                value:
+                  asOf: '2026-10-23'
+                  productCode: WORKING_CAPITAL
+                  amount: 150000000
+                  termMonths: 12
+                  egrulStatus: ACTIVE
+                  registeredAt: '2024-05-20'
+                  directorSince: '2024-05-20'
+                  massAddress: false
+                  creditScore: 680
+                  delinq12m: 0
+                  bkiCurrentOverdue: 0
+                  taxDebt: 0
+                  unfiledReports: 0
+                  monthlyRevenue: 40000000
+                  stability: CLEAN
+                  purpose: MATCH
+                  collateral: null
+      responses:
+        '200':
+          description: проходящие варианты
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OfferGridResponse'
+              examples:
+                builder:
+                  summary: ИП Петров — после принятого договора с генподрядчиком
+                  value:
+                    rulesVersion: 2026-10-23.draft1
+                    offers:
+                    - productCode: WORKING_CAPITAL
+                      amount: 195000000
+                      termMonths: 36
+                      collateralType: null
+                      rateFrom: 20.5
+                      rateTo: 20.5
+                      policy:
+                        metric: PTI
+                        value: 0.091
+                        cap: 0.3
+                        amountInRange: true
+                        ok: true
+                wb:
+                  summary: ИП Кузнецова — система сама предлагает иные условия
+                  value:
+                    rulesVersion: 2026-10-23.draft1
+                    offers:
+                    - productCode: WORKING_CAPITAL
+                      amount: 120000000
+                      termMonths: 36
+                      collateralType: null
+                      rateFrom: 20.5
+                      rateTo: 20.5
+                      policy:
+                        metric: PTI
+                        value: 0.111
+                        cap: 0.3
+                        amountInRange: true
+                        ok: true
+                    - productCode: OVERDRAFT
+                      amount: 12000000
+                      termMonths: 12
+                      collateralType: null
+                      rateFrom: 22.0
+                      rateTo: 22.0
+                      policy:
+                        metric: LIMIT_SHARE
+                        value: 0.3
+                        cap: 0.3
+                        amountInRange: true
+                        ok: true
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /anomalies:
+    post:
+      operationId: detectAnomalies
+      tags:
+      - scoring
+      summary: Аномалии в помесячных рядах выручки
+      description: Падение месяц к месяцу больше 30 % — `REVENUE_DROP`, рост больше чем в 3 раза — `REVENUE_SPIKE`. Каждая
+        аномалия — готовое пятно `ANOMALY` по фактору `revenue_stability`. Пустой список — аномалий нет, бэкенд передаёт в
+        `/score` `stability = CLEAN`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnomaliesRequest'
+            examples:
+              coffee:
+                summary: ООО «Кофейня» — ОФД, падение в марте
+                value:
+                  series:
+                  - source: OFD
+                    points:
+                    - month: 2025-10
+                      value: 141000000
+                    - month: 2025-11
+                      value: 138000000
+                    - month: 2025-12
+                      value: 156000000
+                    - month: 2026-01
+                      value: 145000000
+                    - month: 2026-02
+                      value: 152000000
+                    - month: 2026-03
+                      value: 83000000
+                    - month: 2026-04
+                      value: 149000000
+                    - month: 2026-05
+                      value: 147000000
+                    - month: 2026-06
+                      value: 143000000
+                    - month: 2026-07
+                      value: 140000000
+                    - month: 2026-08
+                      value: 146000000
+                    - month: 2026-09
+                      value: 148000000
+              shell:
+                summary: ООО «Однодневка» — эквайринг, всплеск оборотов
+                value:
+                  series:
+                  - source: ACQUIRING
+                    points:
+                    - month: 2026-04
+                      value: 12000000
+                    - month: 2026-05
+                      value: 11000000
+                    - month: 2026-06
+                      value: 13000000
+                    - month: 2026-07
+                      value: 12500000
+                    - month: 2026-08
+                      value: 11800000
+                    - month: 2026-09
+                      value: 64000000
+              techsnab:
+                summary: ООО «Техснаб» — эквайринг без аномалий
+                value:
+                  series:
+                  - source: ACQUIRING
+                    points:
+                    - month: 2025-10
+                      value: 115000000
+                    - month: 2025-11
+                      value: 119000000
+                    - month: 2025-12
+                      value: 126000000
+                    - month: 2026-01
+                      value: 118000000
+                    - month: 2026-02
+                      value: 121000000
+                    - month: 2026-03
+                      value: 123000000
+                    - month: 2026-04
+                      value: 117000000
+                    - month: 2026-05
+                      value: 122000000
+                    - month: 2026-06
+                      value: 119000000
+                    - month: 2026-07
+                      value: 124000000
+                    - month: 2026-08
+                      value: 118000000
+                    - month: 2026-09
+                      value: 118000000
+      responses:
+        '200':
+          description: найденные аномалии
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnomaliesResponse'
+              examples:
+                coffee:
+                  summary: ООО «Кофейня» — ОФД, падение в марте
+                  value:
+                    anomalies:
+                    - code: REVENUE_DROP
+                      source: OFD
+                      month: 2026-03
+                      changePct: -45
+                      title: Почему в марте выручка упала на 45 %
+                      clientHint: Пока нет объяснения — считаем это риском. Что случилось?
+                      answerOptions:
+                      - code: RENOVATION
+                        label: Был ремонт
+                      - code: SEASONAL
+                        label: Сезонный спад
+                      - code: CLIENT_LOST
+                        label: Ушёл крупный клиент
+                shell:
+                  summary: ООО «Однодневка» — эквайринг, всплеск оборотов
+                  value:
+                    anomalies:
+                    - code: REVENUE_SPIKE
+                      source: ACQUIRING
+                      month: 2026-09
+                      changePct: 442
+                      title: Почему в сентябре обороты выросли в 5,4 раза
+                      clientHint: Резкий рост оборотов перед заявкой — объясните, откуда поступления.
+                      answerOptions: []
+                techsnab:
+                  summary: ООО «Техснаб» — эквайринг без аномалий
+                  value:
+                    anomalies: []
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /health:
+    get:
+      operationId: health
+      tags:
+      - scoring
+      summary: Проверка для healthcheck в compose
+      responses:
+        '200':
+          description: сервис жив
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+components:
+  responses:
+    ValidationError:
+      description: некорректный вход (стандартный ответ FastAPI)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationError'
+  schemas:
+    ProductCode:
+      type: string
+      enum:
+      - WORKING_CAPITAL
+      - EQUIPMENT
+      - OVERDRAFT
+    SourceCode:
+      type: string
+      enum:
+      - BKI
+      - EGRUL
+      - FNS
+      - OFD
+      - MARKETPLACE
+      - ACQUIRING
+      - REPUTATION
+    FactorCode:
+      type: string
+      enum:
+      - credit_history
+      - business_age
+      - tax_discipline
+      - debt_load
+      - revenue_stability
+      - purpose
+      - collateral
+    StopFactorCode:
+      type: string
+      enum:
+      - LIQUIDATION
+      - YOUNG_BUSINESS
+      - NEW_DIRECTOR
+      - MASS_ADDRESS
+      - TAX_DEBT
+      - BKI_OVERDUE
+    Stability:
+      type: string
+      nullable: true
+      description: '`null` — рядов нет, фактор неизвестен; `ANOMALY_OPEN` — аномалия найдена, ответа нет (тоже неизвестен);
+        `CLEAN` — аномалий нет; `EXPLAINED` — объяснение принято; `DOCUMENT` — выручка подтверждена только договором; `REJECTED`
+        — объяснение отклонено.'
+      enum:
+      - CLEAN
+      - ANOMALY_OPEN
+      - EXPLAINED
+      - DOCUMENT
+      - REJECTED
+      - null
+    Purpose:
+      type: string
+      nullable: true
+      description: '`null` — цель не описана; `MATCH` — цель соответствует продукту; `MISMATCH` — не соответствует.'
+      enum:
+      - MATCH
+      - MISMATCH
+      - null
+    Collateral:
+      type: string
+      nullable: true
+      description: '`null` — клиент ещё не решил; `GUARANTEE` / `PLEDGE` — поручительство или залог; `DECLINED` — отказался.'
+      enum:
+      - GUARANTEE
+      - PLEDGE
+      - DECLINED
+      - null
+    ScoreRequest:
+      type: object
+      required:
+      - asOf
+      - productCode
+      - amount
+      - termMonths
+      - egrulStatus
+      - registeredAt
+      - directorSince
+      - massAddress
+      - creditScore
+      - delinq12m
+      - bkiCurrentOverdue
+      - taxDebt
+      - unfiledReports
+      properties:
+        asOf:
+          type: string
+          format: date
+          description: 'дата расчёта: от неё считаются возраст бизнеса и срок директора'
+        productCode:
+          $ref: '#/components/schemas/ProductCode'
+        amount:
+          type: integer
+          format: int64
+          description: сумма, копейки
+        termMonths:
+          type: integer
+        egrulStatus:
+          type: string
+          description: ЕГРЮЛ `status`
+          example: ACTIVE
+        registeredAt:
+          type: string
+          format: date
+          description: ЕГРЮЛ `registered_at`
+        directorSince:
+          type: string
+          format: date
+          description: ЕГРЮЛ `director.appointed_at`
+        massAddress:
+          type: boolean
+          description: ЕГРЮЛ `address.is_mass`
+        creditScore:
+          type: integer
+          description: БКИ `credit_score`
+        delinq12m:
+          type: integer
+          description: БКИ `delinquencies.last_12m`
+        bkiCurrentOverdue:
+          type: integer
+          description: БКИ `delinquencies.current`
+        taxDebt:
+          type: integer
+          format: int64
+          description: ФНС `tax_debt.amount`, копейки
+        unfiledReports:
+          type: integer
+          description: ФНС `unfiled_reports`
+        monthlyRevenue:
+          type: integer
+          format: int64
+          nullable: true
+          description: 'среднемесячная подтверждённая выручка, копейки: ОФД `revenue`, маркетплейс `payout`, эквайринг `turnover`
+            или договор (сумма / срок); при нескольких источниках — максимум. `null` — выручка не подтверждена'
+        stability:
+          $ref: '#/components/schemas/Stability'
+        purpose:
+          $ref: '#/components/schemas/Purpose'
+        collateral:
+          $ref: '#/components/schemas/Collateral'
+    Thresholds:
+      type: object
+      required:
+      - approveMax
+      - rejectMin
+      properties:
+        approveMax:
+          type: number
+          description: правый край ≤ — автоодобрение
+        rejectMin:
+          type: number
+          description: левый край ≥ — отказ
+    Factor:
+      type: object
+      required:
+      - code
+      - title
+      - applicable
+      - known
+      properties:
+        code:
+          $ref: '#/components/schemas/FactorCode'
+        title:
+          type: string
+        applicable:
+          type: boolean
+          description: false — фактор не применяется к продукту (у овердрафта `purpose` и `collateral`)
+        known:
+          type: boolean
+        value:
+          type: number
+          nullable: true
+          description: вклад, п.п., если фактор известен
+        best:
+          type: number
+          nullable: true
+          description: лучший вклад, если фактор неизвестен
+        worst:
+          type: number
+          nullable: true
+          description: худший вклад, если фактор неизвестен
+        spotPricePp:
+          type: number
+          nullable: true
+          description: цена пятна = worst − best
+    StopFactor:
+      type: object
+      required:
+      - code
+      - removable
+      properties:
+        code:
+          $ref: '#/components/schemas/StopFactorCode'
+        removable:
+          type: boolean
+        closeMethod:
+          type: string
+          nullable: true
+          enum:
+          - PAY
+          - null
+          description: как клиент устраняет; `null` у неустранимого
+    Policy:
+      type: object
+      required:
+      - amountInRange
+      - ok
+      properties:
+        metric:
+          type: string
+          nullable: true
+          enum:
+          - PTI
+          - LIMIT_SHARE
+          - null
+          description: '`PTI` — платёж / выручка; `LIMIT_SHARE` — лимит овердрафта / выручка; `null` — выручка неизвестна'
+        value:
+          type: number
+          nullable: true
+          description: доля, например 0.347
+        cap:
+          type: number
+          nullable: true
+          description: допустимая доля продукта
+        amountInRange:
+          type: boolean
+        ok:
+          type: boolean
+    ScoreResponse:
+      type: object
+      required:
+      - rulesVersion
+      - productCode
+      - rateFrom
+      - rateTo
+      - thresholds
+      - factors
+      - stopFactors
+      - policy
+      - passes
+      properties:
+        rulesVersion:
+          type: string
+          description: версия YAML-правил — пишется в FORK_SNAPSHOT и DECISION
+        productCode:
+          $ref: '#/components/schemas/ProductCode'
+        rateFrom:
+          type: number
+          description: левый край, %
+        rateTo:
+          type: number
+          description: правый край, %
+        thresholds:
+          $ref: '#/components/schemas/Thresholds'
+        factors:
+          type: array
+          items:
+            $ref: '#/components/schemas/Factor'
+        stopFactors:
+          type: array
+          items:
+            $ref: '#/components/schemas/StopFactor'
+        policy:
+          $ref: '#/components/schemas/Policy'
+        passes:
+          type: boolean
+          description: policy.ok и rateTo ≤ approveMax
+    Offer:
+      type: object
+      required:
+      - productCode
+      - amount
+      - termMonths
+      - rateFrom
+      - rateTo
+      - policy
+      properties:
+        productCode:
+          $ref: '#/components/schemas/ProductCode'
+        amount:
+          type: integer
+          format: int64
+          description: копейки
+        termMonths:
+          type: integer
+        collateralType:
+          type: string
+          nullable: true
+          enum:
+          - GUARANTEE
+          - null
+          description: '`null` — без обеспечения'
+        rateFrom:
+          type: number
+        rateTo:
+          type: number
+        policy:
+          $ref: '#/components/schemas/Policy'
+    OfferGridResponse:
+      type: object
+      required:
+      - rulesVersion
+      - offers
+      properties:
+        rulesVersion:
+          type: string
+        offers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Offer'
+    SeriesPoint:
+      type: object
+      required:
+      - month
+      - value
+      properties:
+        month:
+          type: string
+          pattern: ^\d{4}-\d{2}$
+          example: 2026-03
+        value:
+          type: integer
+          format: int64
+          description: копейки
+    Series:
+      type: object
+      required:
+      - source
+      - points
+      properties:
+        source:
+          $ref: '#/components/schemas/SourceCode'
+        points:
+          type: array
+          items:
+            $ref: '#/components/schemas/SeriesPoint'
+    AnomaliesRequest:
+      type: object
+      required:
+      - series
+      properties:
+        series:
+          type: array
+          items:
+            $ref: '#/components/schemas/Series'
+    AnswerOption:
+      type: object
+      required:
+      - code
+      - label
+      properties:
+        code:
+          type: string
+        label:
+          type: string
+    Anomaly:
+      type: object
+      required:
+      - code
+      - source
+      - month
+      - changePct
+      - title
+      - clientHint
+      - answerOptions
+      properties:
+        code:
+          type: string
+          enum:
+          - REVENUE_DROP
+          - REVENUE_SPIKE
+        source:
+          $ref: '#/components/schemas/SourceCode'
+        month:
+          type: string
+          pattern: ^\d{4}-\d{2}$
+        changePct:
+          type: number
+          description: изменение к прошлому месяцу, %
+        title:
+          type: string
+          description: заголовок пятна для клиента
+        clientHint:
+          type: string
+        answerOptions:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnswerOption'
+    AnomaliesResponse:
+      type: object
+      required:
+      - anomalies
+      properties:
+        anomalies:
+          type: array
+          items:
+            $ref: '#/components/schemas/Anomaly'
+    ValidationError:
+      type: object
+      properties:
+        detail:
+          type: array
+          items:
+            type: object
+            properties:
+              loc:
+                type: array
+                items:
+                  oneOf:
+                  - type: string
+                  - type: integer
+              msg:
+                type: string
+              type:
+                type: string
