@@ -37,3 +37,6 @@ logs/
 
 # Docker
 docker-compose.override.yml
+
+# Рабочие заметки (см. AGENTS.md)
+.docs/
