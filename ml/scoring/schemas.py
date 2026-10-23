@@ -1,5 +1,6 @@
 from datetime import date
 from enum import Enum
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic.alias_generators import to_camel
@@ -159,3 +160,67 @@ class Anomaly(CamelModel):
 
 class AnomaliesResponse(CamelModel):
     anomalies: list[Anomaly]
+
+
+class SpotType(str, Enum):
+    NO_DATA = "NO_DATA"
+    ANOMALY = "ANOMALY"
+    DOCUMENT = "DOCUMENT"
+    STOP_FACTOR = "STOP_FACTOR"
+    COLLATERAL = "COLLATERAL"
+
+
+class SpotStatus(str, Enum):
+    OPEN = "OPEN"
+    ON_REVIEW = "ON_REVIEW"
+    CLOSED = "CLOSED"
+
+
+class FactRef(CamelModel):
+    source: str = Field(min_length=1, max_length=32)
+    label: str = Field(min_length=1, max_length=300)
+    spot_id: str | None = None
+
+
+class SummarySpot(CamelModel):
+    spot_id: str
+    type: SpotType
+    title: str = Field(min_length=1, max_length=300)
+    status: SpotStatus
+    price_pp: float | None = None
+    answer: str | None = Field(default=None, max_length=2000)
+
+
+class SummaryRequest(CamelModel):
+    product_code: ProductCode
+    amount: int = Field(gt=0)
+    term_months: int = Field(gt=0)
+    goal: str | None = Field(default=None, max_length=1000)
+    rate_from: float
+    rate_to: float
+    approve_max: float
+    spots: list[SummarySpot] = Field(default_factory=list, max_length=50)
+    facts: list[FactRef] = Field(default_factory=list, max_length=50)
+
+
+class SummaryItem(CamelModel):
+    text: str
+    facts: list[FactRef]
+
+
+class UnderwritingSummary(CamelModel):
+    generated_by: Literal["LLM", "TEMPLATE"]
+    items: list[SummaryItem]
+
+
+class PurposeRequest(CamelModel):
+    product_code: ProductCode
+    goal: str | None = Field(default=None, max_length=1000)
+
+
+class PurposeResponse(CamelModel):
+    purpose: Purpose | None
+    applicable: bool
+    generated_by: Literal["KEYWORDS", "LLM"]
+    matched_keywords: list[str]
+    reason: str | None = None
