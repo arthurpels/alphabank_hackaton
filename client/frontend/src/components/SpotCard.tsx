@@ -1,0 +1,48 @@
+import { Button } from '@alfalab/core-components/button';
+import { Text } from '@alfalab/core-components/text';
+import { CheckmarkCircleMIcon } from '@alfalab/icons-glyph/CheckmarkCircleMIcon';
+import { CLOSE_METHOD_LABELS } from '../constants';
+import type { Spot } from '../types';
+import './SpotCard.css';
+
+type Props = {
+  spot: Spot;
+  onClose: (id: string) => void;
+};
+
+const fmt = (v: number) => String(v).replace('.', ',');
+const SECONDARY = 'var(--color-light-text-secondary)';
+
+export function SpotCard({ spot, onClose }: Props) {
+  const isClosed = spot.status === 'CLOSED';
+  const isReview = spot.status === 'ON_REVIEW';
+
+  return (
+    <div className={`spot ${isClosed ? 'spot--closed' : ''}`}>
+      <div className="spot__text">
+        <div className="spot__title">
+          {isClosed && <CheckmarkCircleMIcon className="spot__check" />}
+          <span>{spot.title}</span>
+        </div>
+        {!isClosed && (
+          <Text tag="div" color={SECONDARY} className="spot__desc">
+            {spot.clientHint}
+          </Text>
+        )}
+      </div>
+
+      {!isClosed && (
+        <div className="spot__side">
+          <span className="spot__price">до −{fmt(spot.pricePp)} п.п.</span>
+          {isReview ? (
+            <span className="spot__review">Передано на проверку специалисту</span>
+          ) : (
+            <Button view="secondary" size={40} onClick={() => onClose(spot.id)}>
+              {CLOSE_METHOD_LABELS[spot.closeMethod]}
+            </Button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
