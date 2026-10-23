@@ -89,7 +89,7 @@ stateDiagram-v2
 | 13 | `UNDERWRITING` | `APPROVED` / `COUNTER_OFFER` / `REJECTED` | андеррайтер | вынес решение с комментарием; для иных условий — отметил 1–3 варианта из `GET /applications/{id}/offers` | `POST /applications/{id}/decision` |
 | 14 | `APPROVED` / `COUNTER_OFFER` | `SIGNING` | клиент | принял условия; в иных условиях — выбрал один из отмеченных вариантов | `POST /applications/{id}/accept` (с `offerId`) |
 | 15 | `SIGNING` | `ISSUED` | клиент, система | подписал → зачисление (оба шага смоделированы) | `POST /applications/{id}/sign` |
-| 16 | `DRAFT` / `COLLECTING` / `APPROVED` / `COUNTER_OFFER` | `CANCELLED` | клиент | отменил или отказался | `POST /applications/{id}/cancel` |
+| 16 | `DRAFT` / `COLLECTING` / `INFO_REQUESTED` / `APPROVED` / `COUNTER_OFFER` | `CANCELLED` | клиент | отменил или отказался | `POST /applications/{id}/cancel` |
 | 17 | `INFO_REQUESTED` | `CANCELLED` | система | нет ответа на дозапрос 5 дней | — |
 
 ## Правила

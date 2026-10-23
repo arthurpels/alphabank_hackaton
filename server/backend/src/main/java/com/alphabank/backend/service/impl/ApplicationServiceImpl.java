@@ -19,6 +19,7 @@ import com.alphabank.backend.enums.UserRole;
 import com.alphabank.backend.security.CurrentUser;
 import com.alphabank.backend.service.ApplicationService;
 import com.alphabank.backend.service.CatalogService;
+import com.alphabank.backend.statemachine.ApplicationStateMachine;
 import com.alphabank.backend.stub.StubApplications;
 import com.alphabank.backend.stub.StubForks;
 import com.alphabank.backend.stub.StubIds;
@@ -30,10 +31,13 @@ public class ApplicationServiceImpl implements ApplicationService {
 
     private final CatalogService catalogService;
     private final ApplicationParamsValidator paramsValidator;
+    private final ApplicationStateMachine stateMachine;
 
-    public ApplicationServiceImpl(CatalogService catalogService, ApplicationParamsValidator paramsValidator) {
+    public ApplicationServiceImpl(CatalogService catalogService, ApplicationParamsValidator paramsValidator,
+                                  ApplicationStateMachine stateMachine) {
         this.catalogService = catalogService;
         this.paramsValidator = paramsValidator;
+        this.stateMachine = stateMachine;
     }
 
     @Override
@@ -47,14 +51,14 @@ public class ApplicationServiceImpl implements ApplicationService {
         user.requireRole(UserRole.CLIENT);
         paramsValidator.validate(catalogService.getProduct(request.productCode()), request.amount(),
                 request.termMonths());
-        return StubApplications.coffee(StubIds.COFFEE_APPLICATION_ID,
-                ApplicationStatus.DRAFT, user.role());
+        return details(StubIds.COFFEE_APPLICATION_ID,
+                ApplicationStatus.DRAFT, user);
     }
 
     @Override
     public ApplicationDetailsDto getApplication(CurrentUser user, UUID applicationId) {
         ApplicationStatus status = user.isUnderwriter() ? ApplicationStatus.UNDERWRITING : ApplicationStatus.COLLECTING;
-        return StubApplications.coffee(applicationId, status, user.role());
+        return details(applicationId, status, user);
     }
 
     @Override
@@ -62,7 +66,7 @@ public class ApplicationServiceImpl implements ApplicationService {
         user.requireRole(UserRole.CLIENT);
         ProductCode productCode = request.productCode() != null ? request.productCode() : ProductCode.EQUIPMENT;
         paramsValidator.validate(catalogService.getProduct(productCode), request.amount(), request.termMonths());
-        return StubApplications.coffee(applicationId, ApplicationStatus.COLLECTING, user.role());
+        return details(applicationId, ApplicationStatus.COLLECTING, user);
     }
 
     @Override
@@ -102,6 +106,11 @@ public class ApplicationServiceImpl implements ApplicationService {
 
     private ApplicationDetailsDto clientAction(CurrentUser user, UUID applicationId, ApplicationStatus result) {
         user.requireRole(UserRole.CLIENT);
-        return StubApplications.coffee(applicationId, result, user.role());
+        return details(applicationId, result, user);
+    }
+
+    private ApplicationDetailsDto details(UUID applicationId, ApplicationStatus status, CurrentUser user) {
+        return StubApplications.coffee(applicationId, status, user.role(),
+                stateMachine.availableActions(status, user.role()));
     }
 }

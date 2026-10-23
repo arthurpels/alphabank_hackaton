@@ -13,6 +13,7 @@ import com.alphabank.backend.enums.ApplicationStatus;
 import com.alphabank.backend.enums.UserRole;
 import com.alphabank.backend.security.CurrentUser;
 import com.alphabank.backend.service.UnderwritingService;
+import com.alphabank.backend.statemachine.ApplicationStateMachine;
 import com.alphabank.backend.stub.StubApplications;
 import com.alphabank.backend.stub.StubUnderwriting;
 import com.alphabank.backend.validator.DecisionRequestValidator;
@@ -21,9 +22,11 @@ import com.alphabank.backend.validator.DecisionRequestValidator;
 public class UnderwritingServiceImpl implements UnderwritingService {
 
     private final DecisionRequestValidator decisionValidator;
+    private final ApplicationStateMachine stateMachine;
 
-    public UnderwritingServiceImpl(DecisionRequestValidator decisionValidator) {
+    public UnderwritingServiceImpl(DecisionRequestValidator decisionValidator, ApplicationStateMachine stateMachine) {
         this.decisionValidator = decisionValidator;
+        this.stateMachine = stateMachine;
     }
 
     @Override
@@ -49,6 +52,11 @@ public class UnderwritingServiceImpl implements UnderwritingService {
             case ALTERNATIVE -> ApplicationStatus.COUNTER_OFFER;
             case REJECTED -> ApplicationStatus.REJECTED;
         };
-        return StubApplications.coffee(applicationId, next, user.role());
+        return details(applicationId, next, user);
+    }
+
+    private ApplicationDetailsDto details(UUID applicationId, ApplicationStatus status, CurrentUser user) {
+        return StubApplications.coffee(applicationId, status, user.role(),
+                stateMachine.availableActions(status, user.role()));
     }
 }

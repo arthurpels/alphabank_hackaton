@@ -14,6 +14,7 @@ import com.alphabank.backend.enums.ApplicationStatus;
 import com.alphabank.backend.enums.UserRole;
 import com.alphabank.backend.security.CurrentUser;
 import com.alphabank.backend.service.SpotService;
+import com.alphabank.backend.statemachine.ApplicationStateMachine;
 import com.alphabank.backend.stub.StubApplications;
 import com.alphabank.backend.stub.StubSpots;
 import com.alphabank.backend.validator.SpotCloseRequestValidator;
@@ -24,10 +25,13 @@ public class SpotServiceImpl implements SpotService {
 
     private final SpotCloseRequestValidator closeValidator;
     private final SpotReviewRequestValidator reviewValidator;
+    private final ApplicationStateMachine stateMachine;
 
-    public SpotServiceImpl(SpotCloseRequestValidator closeValidator, SpotReviewRequestValidator reviewValidator) {
+    public SpotServiceImpl(SpotCloseRequestValidator closeValidator, SpotReviewRequestValidator reviewValidator,
+                           ApplicationStateMachine stateMachine) {
         this.closeValidator = closeValidator;
         this.reviewValidator = reviewValidator;
+        this.stateMachine = stateMachine;
     }
 
     @Override
@@ -39,19 +43,24 @@ public class SpotServiceImpl implements SpotService {
     public ApplicationDetailsDto close(CurrentUser user, UUID applicationId, UUID spotId, SpotCloseRequest request) {
         user.requireRole(UserRole.CLIENT);
         closeValidator.validate(request);
-        return StubApplications.coffee(applicationId, ApplicationStatus.COLLECTING, user.role());
+        return details(applicationId, ApplicationStatus.COLLECTING, user);
     }
 
     @Override
     public ApplicationDetailsDto add(CurrentUser user, UUID applicationId, SpotCreateRequest request) {
         user.requireRole(UserRole.UNDERWRITER);
-        return StubApplications.coffee(applicationId, ApplicationStatus.INFO_REQUESTED, user.role());
+        return details(applicationId, ApplicationStatus.INFO_REQUESTED, user);
     }
 
     @Override
     public ApplicationDetailsDto review(CurrentUser user, UUID applicationId, UUID spotId, SpotReviewRequest request) {
         user.requireRole(UserRole.UNDERWRITER);
         reviewValidator.validate(request);
-        return StubApplications.coffee(applicationId, ApplicationStatus.UNDERWRITING, user.role());
+        return details(applicationId, ApplicationStatus.UNDERWRITING, user);
+    }
+
+    private ApplicationDetailsDto details(UUID applicationId, ApplicationStatus status, CurrentUser user) {
+        return StubApplications.coffee(applicationId, status, user.role(),
+                stateMachine.availableActions(status, user.role()));
     }
 }

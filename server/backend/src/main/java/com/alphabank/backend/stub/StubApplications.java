@@ -25,11 +25,12 @@ public final class StubApplications {
     private StubApplications() {
     }
 
-    public static ApplicationDetailsDto coffee(UUID id, ApplicationStatus status, UserRole role) {
+    public static ApplicationDetailsDto coffee(UUID id, ApplicationStatus status, UserRole role,
+                                               List<ApplicationAction> actions) {
         boolean infoRequested = status == ApplicationStatus.INFO_REQUESTED;
         ApplicationDto application = new ApplicationDto(id, status, StubUsers.coffeeCompany(),
                 StubCatalog.product(ProductCode.EQUIPMENT), StubOffers.COFFEE_AMOUNT, StubOffers.COFFEE_TERM,
-                "две кофемашины и витрина", new ConsentsDto(true, true), availableActions(status, role),
+                "две кофемашины и витрина", new ConsentsDto(true, true), actions,
                 StubIds.T0, isSubmitted(status) ? StubIds.T0.plusMinutes(4) : null,
                 infoRequested ? StubIds.T0.plusHours(1) : null,
                 infoRequested ? StubIds.T0.plusHours(1).plusDays(5) : null);
@@ -42,22 +43,6 @@ public final class StubApplications {
                 ProductCode.EQUIPMENT, StubOffers.COFFEE_AMOUNT, StubOffers.COFFEE_TERM, StubForks.wide(), StubIds.T0);
     }
 
-    private static List<ApplicationAction> availableActions(ApplicationStatus status, UserRole role) {
-        if (role == UserRole.UNDERWRITER) {
-            return status == ApplicationStatus.UNDERWRITING
-                    ? List.of(ApplicationAction.REVIEW_SPOT, ApplicationAction.ADD_SPOT, ApplicationAction.DECIDE)
-                    : List.of();
-        }
-        return switch (status) {
-            case DRAFT -> List.of(ApplicationAction.EDIT, ApplicationAction.EVALUATE, ApplicationAction.CANCEL);
-            case COLLECTING -> List.of(ApplicationAction.EDIT, ApplicationAction.CLOSE_SPOT,
-                    ApplicationAction.SUBMIT, ApplicationAction.CANCEL);
-            case INFO_REQUESTED -> List.of(ApplicationAction.CLOSE_SPOT, ApplicationAction.CANCEL);
-            case APPROVED, COUNTER_OFFER -> List.of(ApplicationAction.ACCEPT, ApplicationAction.CANCEL);
-            case SIGNING -> List.of(ApplicationAction.SIGN);
-            default -> List.of();
-        };
-    }
 
     private static boolean isSubmitted(ApplicationStatus status) {
         return status != ApplicationStatus.DRAFT && status != ApplicationStatus.COLLECTING
