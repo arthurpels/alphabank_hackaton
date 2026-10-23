@@ -7,6 +7,12 @@ spring:
     multipart:
       max-file-size: 10MB
       max-request-size: 10MB
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/credit_pipeline}
+    username: ${SPRING_DATASOURCE_USERNAME:alphabank}
+    password: ${SPRING_DATASOURCE_PASSWORD:alphabank}
+  flyway:
+    enabled: true
 
 server:
   port: ${SERVER_PORT:8080}
