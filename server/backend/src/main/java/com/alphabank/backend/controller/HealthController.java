@@ -1,4 +1,4 @@
-package com.alphabank.backend;
+package com.alphabank.backend.controller;
 
 import java.util.Map;
 

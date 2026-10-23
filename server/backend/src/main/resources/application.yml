@@ -1,0 +1,25 @@
+spring:
+  application:
+    name: backend
+  jackson:
+    default-property-inclusion: always
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+server:
+  port: ${SERVER_PORT:8080}
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+  paths-to-match: /api/**
+
+app:
+  ml-url: ${ML_URL:http://localhost:8001}
+  mocks-url: ${MOCKS_URL:http://localhost:8002}
+  cors-allowed-origins: http://localhost:5173

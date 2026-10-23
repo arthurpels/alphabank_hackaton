@@ -1,0 +1,15 @@
+# THIRD_PARTY_NOTICES
+
+Сторонние компоненты, модели, данные и смоделированные интеграции. Платных зависимостей нет (ограничение ТЗ 02).
+Полный файл собирает А (T46); каждый модуль дописывает свой раздел при добавлении зависимости.
+
+## Backend (`server/backend/`)
+
+Версии зафиксированы в `server/backend/pom.xml` (родитель `spring-boot-starter-parent` 3.3.4).
+
+| Компонент | Версия | Лицензия | Зачем |
+|---|---|---|---|
+| Spring Boot (`spring-boot-starter-web`, `-validation`, `-test`) | 3.3.4 | Apache-2.0 | веб-сервер, REST, валидация запросов, тесты |
+| Hibernate Validator (через `spring-boot-starter-validation`) | 8.0.1.Final | Apache-2.0 | проверка полей запросов (`@NotNull`, `@Size`…) |
+| springdoc-openapi (`springdoc-openapi-starter-webmvc-ui`) | 2.6.0 | Apache-2.0 | Swagger UI и `/v3/api-docs` |
+| Swagger UI (через springdoc) | 5.17.14 | Apache-2.0 | интерфейс документации API |

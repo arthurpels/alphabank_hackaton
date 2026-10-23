@@ -1,0 +1,5 @@
+package com.alphabank.backend.enums;
+
+public enum ApplicationStatus {
+    DRAFT, COLLECTING, SUBMITTED, AUTO_CHECK, UNDERWRITING, INFO_REQUESTED, APPROVED, COUNTER_OFFER, REJECTED, SIGNING, ISSUED, CANCELLED
+}
