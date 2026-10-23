@@ -1,0 +1,114 @@
+# Правила скоринга «Белые пятна» — черновик для согласования с Лидом (T06 → T10/T24).
+# Все вклады — в процентных пунктах (п.п.) к базовой ставке продукта.
+# Минус — ставка ниже (лучше), плюс — выше (хуже).
+rules_version: "2026-10-23.draft1"
+
+# Платёж для расчёта нагрузки считаем по фиксированной расчётной ставке,
+# а не по итоговой — иначе ставка зависит от нагрузки, а нагрузка от ставки.
+calc_rate_pct: 20
+
+products:
+  EQUIPMENT:
+    name: Кредит на оборудование
+    base_rate: 22.0
+    approve_max: 20.0      # правый край ≤ — автоодобрение
+    reject_min: 24.0       # левый край ≥ — отказ
+    amount: [500000, 10000000]
+    terms: [12, 24, 36]
+    pti_cap: 0.30          # политика: платёж / выручка в месяц не выше 30 %
+  WORKING_CAPITAL:
+    name: Кредит на пополнение оборотных средств
+    base_rate: 20.0
+    approve_max: 21.0
+    reject_min: 25.0
+    amount: [300000, 5000000]
+    terms: [6, 12]
+    pti_cap: 0.30
+  OVERDRAFT:
+    name: Овердрафт
+    base_rate: 21.0
+    approve_max: 22.0
+    reject_min: 26.0
+    amount: [100000, 2000000]
+    terms: [12]            # срок действия лимита
+    limit_cap: 0.30        # политика: лимит ≤ 30 % среднемесячной выручки
+    skip_factors: [purpose, collateral]
+
+factors:
+  credit_history:          # БКИ
+    title: Кредитная история
+    unknown: null          # БКИ запрашивается сразу по ИНН — фактор всегда известен
+    rules:                 # первое сработавшее правило
+      - {if: "delinquencies_12m > 0 or credit_score < 500", value: 2.0}
+      - {if: "credit_score >= 700", value: -1.0}
+      - {if: "credit_score >= 600", value: 0.0}
+      - {else: 1.0}
+
+  business_age:            # ЕГРЮЛ/ЕГРИП, registered_at
+    title: Возраст бизнеса
+    unknown: null
+    rules:                 # < 6 мес — неустранимый стоп-фактор, сюда не доходит
+      - {if: "age_months < 12", value: 1.5}
+      - {if: "age_months < 36", value: 0.5}
+      - {else: -0.5}
+
+  tax_discipline:          # ФНС
+    title: Налоговая дисциплина
+    unknown: null
+    rules:                 # долг > 0 — устранимый стоп-фактор, сюда не доходит
+      - {if: "unfiled_reports > 0", value: 1.0}
+      - {else: 0.0}
+
+  debt_load:               # ОФД / маркетплейс / эквайринг / договор (документ)
+    title: Подтверждённая выручка и долговая нагрузка
+    unknown: [-1.5, 2.0]   # выручка не подтверждена — пятно NO_DATA
+    metric: "pti = платёж по кредиту / среднемесячная подтверждённая выручка"
+    rules:                 # выше pti_cap — запрошенные условия не проходят политику
+      - {if: "pti <= 0.05", value: -1.5}
+      - {if: "pti <= 0.10", value: -0.5}
+      - {if: "pti <= 0.25", value: 0.5}
+      - {else: 1.5}
+    overdraft_rules:       # для овердрафта метрика = лимит / выручка
+      - {if: "limit_share <= 0.15", value: -0.5}
+      - {else: 0.5}
+
+  revenue_stability:       # детектор аномалий по рядам (T26)
+    title: Стабильность выручки
+    unknown: [0.0, 2.5]    # нет рядов или найдена аномалия без ответа — пятно ANOMALY
+    rules:
+      - {if: "series and no_anomalies", value: 0.0}
+      - {if: "anomaly_explained_accepted", value: 0.0}
+      - {if: "only_document", value: 1.0}   # выручка подтверждена договором, истории нет
+      - {if: "anomaly_explanation_rejected", value: 2.5}
+
+  purpose:                 # анкета: цель кредита
+    title: Цель кредита
+    unknown: [-0.5, 1.0]   # цель не описана — пятно «На что нужны деньги»
+    rules:
+      - {if: "purpose_matches_product", value: -0.5}
+      - {else: 0.5}
+
+  collateral:              # клиент; самое дорогое для клиента пятно — всегда последнее
+    title: Обеспечение
+    unknown: [-1.5, 0.0]   # пятно COLLATERAL «по желанию»
+    rules:
+      - {if: "guarantee_or_pledge", value: -1.5}
+      - {else: 0.0}        # клиент явно отказался
+
+  # reputation: кандидат (мок «Репутация»), вклад только ≤ 0: unknown [-0.5, 0.0]
+
+stop_factors:
+  - {code: LIQUIDATION,    if: "egrul.status != 'ACTIVE'",            removable: false}
+  - {code: YOUNG_BUSINESS, if: "age_months < 6",                       removable: false}
+  - {code: NEW_DIRECTOR,   if: "director_months < 3",                  removable: false}
+  - {code: MASS_ADDRESS,   if: "egrul.address.is_mass",                removable: false}
+  - {code: TAX_DEBT,       if: "fns.tax_debt.amount > 0",              removable: true, close: PAY}
+  - {code: BKI_OVERDUE,    if: "bki.delinquencies.current > 0",        removable: true, close: PAY}
+
+offer_grid:
+  amount_cuts: [0.20, 0.35, 0.50]
+  terms: [requested, max_allowed]
+  collateral: [none, guarantee]          # с обеспечением — только если без него ничего не прошло
+  other_products: [OVERDRAFT]            # не привязан к цели; кредит на оборудование — только при цели «оборудование»
+  pick: "по каждому продукту — наибольшая проходящая сумма; без обеспечения важнее"
+  passes: "политика продукта выполнена и правый край ≤ approve_max"
