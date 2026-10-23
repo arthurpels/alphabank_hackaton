@@ -32,3 +32,4 @@
 | @vitejs/plugin-react | 6.1.2 | MIT | поддержка React в Vite |
 | TypeScript | 6.0.3 | Apache-2.0 | типизация (только разработка) |
 | oxlint | 1.89.0 | MIT | линтер (только разработка) |
+| react-router-dom | 7.18.4 | MIT | переходы между страницами |

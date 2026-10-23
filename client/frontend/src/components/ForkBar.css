@@ -1,9 +1,6 @@
 .fork {
-  --fork-color: var(--color-light-text-negative-press);
+  --fork-color: var(--color-light-bg-accent);
   margin: 20px 0;
-  --zone-good: var(--color-light-status-muted-alt-positive);
-  --zone-mid: var(--color-light-status-muted-alt-attention);
-  --zone-bad: var(--color-light-status-muted-alt-negative);
 }
 
 .fork__row { position: relative; height: 22px; }
@@ -45,9 +42,9 @@
   border-radius: 10px; overflow: hidden;
 }
 .fork__zone { position: absolute; top: 0; bottom: 0; }
-.fork__zone--good { background: var(--zone-good); }
-.fork__zone--mid { background: var(--zone-mid); }
-.fork__zone--bad { background: var(--zone-bad); }
+.fork__zone--good { background: var(--color-light-status-muted-alt-positive); }
+.fork__zone--mid { background: var(--color-light-status-muted-alt-attention); }
+.fork__zone--bad { background: var(--color-light-status-muted-alt-negative); }
 
 .fork__range {
   position: absolute; top: 0; height: 20px; border-radius: 10px;
@@ -72,15 +69,14 @@
 }
 .fork__legend-item::before {
   content: '';
-  width: 16px;
-  height: 16px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   background: var(--dot);
-  box-shadow: inset 0 0 0 1px var(--color-light-neutral-translucent-300);
 }
-.fork__legend-item--good { --dot: var(--zone-good); }
-.fork__legend-item--mid { --dot: var(--zone-mid); }
-.fork__legend-item--bad { --dot: var(--zone-bad); }
+.fork__legend-item--good { --dot: var(--color-light-status-positive); }
+.fork__legend-item--mid { --dot: var(--color-light-status-attention); }
+.fork__legend-item--bad { --dot: var(--color-light-status-negative); }
 
 @media (max-width: 600px) {
   .fork__tick,

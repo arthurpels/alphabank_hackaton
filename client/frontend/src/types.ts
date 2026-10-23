@@ -7,6 +7,7 @@ export type SpotType = 'NO_DATA' | 'ANOMALY' | 'DOCUMENT' | 'STOP_FACTOR' | 'COL
 export type SpotStatus = 'OPEN' | 'ON_REVIEW' | 'CLOSED';
 export type CloseMethod = 'CONNECT_SOURCE' | 'ANSWER' | 'UPLOAD' | 'PAY' | 'ADD_COLLATERAL';
 export type DecisionZone = 'APPROVE' | 'UNDERWRITER' | 'REJECT';
+export type UserRole = 'CLIENT' | 'UNDERWRITER';
 
 export interface Spot {
   id: string;
@@ -35,4 +36,12 @@ export interface ApplicationDetails {
   };
   fork: Fork | null;
   spots: Spot[];
+}
+
+export interface DemoUser {
+  id: string;
+  fio: string;
+  role: UserRole;
+  personaTitle: string | null;
+  company: { name: string; inn: string } | null;
 }

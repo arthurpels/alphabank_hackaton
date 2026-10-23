@@ -14,20 +14,26 @@ const fmt = (v: number) => String(v).replace('.', ',');
 export function ForkBar({ from, to, scaleMin, scaleMax, approveMax, rejectMin }: Props) {
   const pct = (v: number) => ((v - scaleMin) / (scaleMax - scaleMin)) * 100;
 
+  const exact = from === to;
+
   const ticks = [scaleMin, approveMax, rejectMin, scaleMax];
 
   return (
     <div className="fork">
       <div className="fork__row fork__row--top">
         <span className="fork__edge" style={{ left: `${pct(from)}%` }}>{fmt(from)}%</span>
-        <span className="fork__edge" style={{ left: `${pct(to)}%` }}>{fmt(to)}%</span>
+        {!exact && (
+          <span className="fork__edge" style={{ left: `${pct(to)}%` }}>{fmt(to)}%</span>
+        )}
       </div>
 
       <div className="fork__bar">
-        <div
-          className="fork__range"
-          style={{ left: `${pct(from)}%`, width: `${pct(to) - pct(from)}%` }}
-        />
+        {!exact && (
+          <div
+            className="fork__range"
+            style={{ left: `${pct(from)}%`, width: `${pct(to) - pct(from)}%` }}
+          />
+        )}
         <div className="fork__track">
           <div className="fork__zone fork__zone--good"
                style={{ left: 0, width: `${pct(approveMax)}%` }} />

@@ -1,0 +1,32 @@
+.fork-decor {
+  margin-top: 24px;
+  padding: 16px 20px 20px;
+  background: var(--color-light-bg-primary);
+  border-radius: 20px;
+}
+
+.fork-decor__labels {
+  position: relative;
+  height: 24px;
+  margin-bottom: 8px;
+}
+.fork-decor__label {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 17px;
+  line-height: 24px;
+  font-weight: 600;
+  color: var(--color-light-text-primary);
+}
+
+.fork-decor__track {
+  display: flex;
+  height: 16px;
+  border-radius: 8px;
+  overflow: hidden;
+  opacity: 0.28;
+}
+.fork-decor__zone { display: block; height: 100%; }
+.fork-decor__zone--good { width: 38%; background: var(--color-light-graphic-positive); }
+.fork-decor__zone--mid { width: 23%; background: var(--color-light-graphic-attention); }
+.fork-decor__zone--bad { width: 39%; background: var(--color-light-graphic-negative); }
