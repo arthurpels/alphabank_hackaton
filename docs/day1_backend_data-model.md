@@ -149,7 +149,9 @@ erDiagram
         uuid id PK
         uuid application_id FK
         string kind "например CONTRACT_GP, REPAIR_CONTRACT"
-        string file_path
+        string file_path "имя файла в хранилище backend (volume /data/documents)"
+        string original_name "имя файла от клиента, отдаётся при скачивании"
+        string content_type "application/pdf | image/jpeg | image/png"
         timestamp uploaded_at
     }
 
@@ -220,7 +222,7 @@ CALCULATED → OFFERED → CHOSEN
 - **устранимое** (долг в ФНС) — клиент закрывает действием (`PAY`),
   заявка продолжает путь;
 - **неустранимое** (ликвидация, массовый адрес, директор < 3 мес.,
-  возраст бизнеса < минимума) — автоотказ с причиной.
+  возраст бизнеса < минимума, текущая просрочка в БКИ) — автоотказ с причиной.
 
 Так «Однодневка» уходит в `REJECTED` сразу в `AUTO_CHECK`, без андеррайтера.
 

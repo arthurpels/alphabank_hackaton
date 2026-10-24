@@ -37,7 +37,6 @@ public final class SpotRules {
 
         List<SpotDraft> spots = new ArrayList<>(stopFactors);
         spots.addAll(evaluateNoDataSpots(availableRevenueSources));
-        spots.addAll(evaluateAnomalies(egrul, bki));
 
         return List.copyOf(spots);
     }
@@ -223,36 +222,6 @@ public final class SpotRules {
                 null));
 
         return List.copyOf(list);
-    }
-
-    public static List<SpotDraft> evaluateAnomalies(EgrulResponse egrul, BkiResponse bki) {
-        List<SpotDraft> anomalies = new ArrayList<>();
-
-        if (bki != null) {
-            if (bki.delinquencies() != null && bki.delinquencies().last12m() > 0) {
-                anomalies.add(new SpotDraft(
-                        SpotType.ANOMALY,
-                        "Были просрочки за последние 12 месяцев",
-                        "Расскажите о причинах просрочки в прошлом",
-                        "credit_history",
-                        2.0,
-                        CloseMethod.ANSWER,
-                        SourceCode.BKI));
-            }
-
-            if (bki.inquiries6m() > 5) {
-                anomalies.add(new SpotDraft(
-                        SpotType.ANOMALY,
-                        "Частые запросы в банки — срочно нужны деньги?",
-                        "Поясните причину частых обращений в другие банки",
-                        "credit_history",
-                        1.0,
-                        CloseMethod.ANSWER,
-                        SourceCode.BKI));
-            }
-        }
-
-        return List.copyOf(anomalies);
     }
 
     public static int monthsBetween(LocalDate d1, LocalDate d2) {
