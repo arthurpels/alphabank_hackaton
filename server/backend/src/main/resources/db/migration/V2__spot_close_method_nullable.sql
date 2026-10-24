@@ -1,0 +1,2 @@
+ALTER TABLE spot ALTER COLUMN close_method DROP NOT NULL;
+ALTER TABLE spot ADD COLUMN IF NOT EXISTS removable boolean;
