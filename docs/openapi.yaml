@@ -416,7 +416,10 @@ paths:
       operationId: addSpot
       tags: [spots, underwriting]
       summary: Добавить пятно — дозапрос (UNDERWRITING → INFO_REQUESTED)
-      description: Переход 10. Только андеррайтер. Пятно создаётся с `addedBy = UNDERWRITER`.
+      description: |
+        Переход 10. Только андеррайтер. Пятно создаётся с `addedBy = UNDERWRITER`, цену ставит система по текущей
+        вилке, если указан `scoringFactor`. `STOP_FACTOR` добавить нельзя — стоп-факторы приходят только из источников.
+        Заявке ставится `infoRequestedAt`, клиенту — срок ответа `infoRequestDeadline`.
       requestBody:
         required: true
         content:
@@ -434,8 +437,12 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/SourceUnavailable'
 
   /applications/{applicationId}/spots/{spotId}/close:
     parameters:
@@ -497,7 +504,12 @@ paths:
       operationId: reviewSpot
       tags: [spots, underwriting]
       summary: Принять или не принять ответ по пятну
-      description: Переход 12. Только андеррайтер, пятно в `ON_REVIEW`. `ACCEPTED` → пятно `CLOSED` и пересчёт вилки; `REJECTED` → пятно `OPEN`, клиент видит комментарий.
+      description: |
+        Переход 12. Только андеррайтер, пятно в `ON_REVIEW` — иначе `409`.
+        `ACCEPTED` → пятно `CLOSED`; если в ответе есть договор (`contractAmount`, `contractTermMonths`),
+        выручка = сумма / срок, а пятна `NO_DATA` по `debt_load` и `revenue_stability` закрываются.
+        `REJECTED` → пятно `OPEN`, клиент видит комментарий.
+        После проверки вилка пересчитывается, сетка иных условий прогоняется заново (`CALCULATED`).
       requestBody:
         required: true
         content:
@@ -515,8 +527,12 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/SourceUnavailable'
 
   /applications/{applicationId}/offers:
     parameters:
@@ -547,9 +563,12 @@ paths:
       summary: Вынести решение (UNDERWRITING → APPROVED | COUNTER_OFFER | REJECTED)
       description: |
         Переход 13. Только андеррайтер.
-        - `APPROVED` — одобрить запрошенные условия;
-        - `ALTERNATIVE` — иные условия: 1–3 `offerIds` из `CALCULATED` и/или `manualOffer` (тогда `override = true` и `comment` обязательны);
-        - `REJECTED` — `reasonSpotId` обязателен.
+        - `APPROVED` — одобрить запрошенные условия: создаётся оффер `OFFERED` на них;
+        - `ALTERNATIVE` — иные условия: всего 1–3 варианта — `offerIds` из `CALCULATED` и/или `manualOffer`
+          (тогда `override = true` и `comment` обязательны). Отмеченные варианты становятся `OFFERED`;
+          ручной вариант — `proposedBy = UNDERWRITER`, `isManual = true`, в журнал пишется `OVERRIDE`
+          с условиями до и после (`payload.before`, `payload.after`);
+        - `REJECTED` — `reasonSpotId` (пятно этой заявки) и `comment` обязательны.
       requestBody:
         required: true
         content:
@@ -567,8 +586,12 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/SourceUnavailable'
 
   /underwriting/queue:
     get:
@@ -613,6 +636,14 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          description: вилка ещё не рассчитана
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          $ref: '#/components/responses/SourceUnavailable'
 
 components:
   securitySchemes:
@@ -1106,6 +1137,14 @@ components:
           type: string
           format: uuid
           nullable: true
+        contractAmount:
+          type: integer
+          format: int64
+          nullable: true
+          description: сумма договора из ответа клиента, копейки
+        contractTermMonths:
+          type: integer
+          nullable: true
         verdict:
           type: string
           enum: [PENDING, ACCEPTED, REJECTED]
@@ -1139,6 +1178,12 @@ components:
           example: Подтвердите будущие поступления. Нет договора — подойдёт акт сверки.
         closeMethod:
           $ref: '#/components/schemas/CloseMethod'
+        scoringFactor:
+          type: string
+          nullable: true
+          enum: [debt_load, revenue_stability, purpose, collateral, null]
+          description: какой фактор закрывает пятно; без него пятно не влияет на вилку
+          example: debt_load
 
     SpotCloseRequest:
       type: object
@@ -1165,6 +1210,15 @@ components:
           example: GUARANTEE
         collateralComment:
           type: string
+        contractAmount:
+          type: integer
+          format: int64
+          description: сумма договора, копейки; для UPLOAD — вместе с contractTermMonths, обязательна у пятна по debt_load
+          example: 960000000
+        contractTermMonths:
+          type: integer
+          description: срок договора в месяцах
+          example: 12
       example:
         method: ANSWER
         optionCode: RENOVATION

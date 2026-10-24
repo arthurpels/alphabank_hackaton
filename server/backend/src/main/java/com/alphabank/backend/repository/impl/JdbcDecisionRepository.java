@@ -24,16 +24,17 @@ public class JdbcDecisionRepository implements DecisionRepository {
     @Override
     public void insert(DecisionRecord decision) {
         jdbc.sql("""
-                        INSERT INTO decision (id, application_id, type, offer_id, decided_by, rules_version, override,
-                                              comment, reason_spot_id, decided_at)
-                        VALUES (:id, :applicationId, :type, :offerId, :decidedBy, :rulesVersion, :override,
-                                :comment, :reasonSpotId, :decidedAt)
+                        INSERT INTO decision (id, application_id, type, offer_id, decided_by, decided_by_user_id,
+                                              rules_version, override, comment, reason_spot_id, decided_at)
+                        VALUES (:id, :applicationId, :type, :offerId, :decidedBy, :decidedByUserId,
+                                :rulesVersion, :override, :comment, :reasonSpotId, :decidedAt)
                         """)
                 .param("id", decision.id())
                 .param("applicationId", decision.applicationId())
                 .param("type", decision.type().name())
                 .param("offerId", decision.offerId())
                 .param("decidedBy", decision.decidedBy().name())
+                .param("decidedByUserId", decision.decidedByUserId())
                 .param("rulesVersion", decision.rulesVersion())
                 .param("override", decision.override())
                 .param("comment", decision.comment())
@@ -45,8 +46,8 @@ public class JdbcDecisionRepository implements DecisionRepository {
     @Override
     public Optional<DecisionRecord> findByApplicationId(UUID applicationId) {
         return jdbc.sql("""
-                        SELECT id, application_id, type, offer_id, decided_by, rules_version, override, comment,
-                               reason_spot_id, decided_at
+                        SELECT id, application_id, type, offer_id, decided_by, decided_by_user_id, rules_version,
+                               override, comment, reason_spot_id, decided_at
                         FROM decision
                         WHERE application_id = :applicationId
                         """)
@@ -57,6 +58,7 @@ public class JdbcDecisionRepository implements DecisionRepository {
                         DecisionType.valueOf(rs.getString("type")),
                         rs.getObject("offer_id", UUID.class),
                         DecidedBy.valueOf(rs.getString("decided_by")),
+                        rs.getObject("decided_by_user_id", UUID.class),
                         rs.getString("rules_version"),
                         rs.getBoolean("override"),
                         rs.getString("comment"),

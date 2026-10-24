@@ -95,6 +95,8 @@ erDiagram
         string option_code "выбранный вариант ответа или итог проверки: MATCH / MISMATCH для цели, GUARANTEE / PLEDGE / DECLINED для обеспечения"
         string text "свободный ответ клиента"
         uuid document_id FK "может быть null"
+        bigint contract_amount "сумма договора из ответа клиента, копейки; выручка = сумма / срок"
+        int contract_term_months "срок договора, месяцев; вместе с contract_amount"
         string verdict "PENDING | ACCEPTED | REJECTED"
         string reviewed_by "SYSTEM | <user_id>"
         string review_comment "при REJECTED показывается клиенту"
@@ -135,6 +137,7 @@ erDiagram
         string type "APPROVED | ALTERNATIVE | REJECTED"
         uuid offer_id FK "для ALTERNATIVE — выбранный клиентом оффер"
         string decided_by "SYSTEM | UNDERWRITER"
+        uuid decided_by_user_id FK "андеррайтер; null у системы"
         string rules_version
         boolean override "true = ручная правка условий андеррайтером"
         string comment "обязателен при override = true; при REJECTED — причина"
@@ -187,7 +190,7 @@ CALCULATED → OFFERED → CHOSEN
 
 - `CALCULATED` — движок посчитал вариант сетки и он проходит (верхний край ≤
   порога одобрения). Непроходящие варианты не сохраняются.
-- `OFFERED` — показан клиенту: отмечен андеррайтером (`proposed_by=UNDERWRITER`)
+- `OFFERED` — показан клиенту: вариант сетки отмечен андеррайтером, ручной вариант андеррайтера (`proposed_by=UNDERWRITER`, с комментарием), оффер на запрошенных условиях при одобрении
   или автопредложен системой при переходе `AUTO_CHECK → COUNTER_OFFER`.
 - `CHOSEN` — клиент принял через `POST /applications/{id}/accept {offerId}`;
   заявка уходит в `SIGNING`.

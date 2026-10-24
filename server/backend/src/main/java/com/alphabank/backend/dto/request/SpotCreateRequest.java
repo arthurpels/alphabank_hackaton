@@ -10,5 +10,6 @@ public record SpotCreateRequest(
         @NotNull SpotType type,
         @NotBlank String title,
         @NotBlank String clientHint,
-        @NotNull CloseMethod closeMethod) {
+        @NotNull CloseMethod closeMethod,
+        String scoringFactor) {
 }

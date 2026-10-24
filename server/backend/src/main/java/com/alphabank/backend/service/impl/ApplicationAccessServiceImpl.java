@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import com.alphabank.backend.dto.response.MeDto;
 import com.alphabank.backend.exception.ApiException;
 import com.alphabank.backend.exception.ErrorCode;
+import com.alphabank.backend.repository.AppUserRepository;
 import com.alphabank.backend.repository.ApplicationRepository;
 import com.alphabank.backend.repository.CompanyRepository;
 import com.alphabank.backend.repository.model.ApplicationRecord;
@@ -23,12 +24,21 @@ public class ApplicationAccessServiceImpl implements ApplicationAccessService {
     private final ApplicationRepository applicationRepository;
     private final CompanyRepository companyRepository;
     private final DemoUserService demoUserService;
+    private final AppUserRepository appUserRepository;
 
     public ApplicationAccessServiceImpl(ApplicationRepository applicationRepository,
-                                        CompanyRepository companyRepository, DemoUserService demoUserService) {
+                                        CompanyRepository companyRepository, DemoUserService demoUserService,
+                                        AppUserRepository appUserRepository) {
         this.applicationRepository = applicationRepository;
         this.companyRepository = companyRepository;
         this.demoUserService = demoUserService;
+        this.appUserRepository = appUserRepository;
+    }
+
+    @Override
+    public void registerUser(CurrentUser user) {
+        appUserRepository.ensureExists(demoUserService.findById(user.id())
+                .orElseThrow(() -> new ApiException(ErrorCode.UNAUTHORIZED, "Пользователь не найден")));
     }
 
     @Override

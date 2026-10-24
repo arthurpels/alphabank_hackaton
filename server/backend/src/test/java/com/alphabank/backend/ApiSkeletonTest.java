@@ -103,11 +103,11 @@ class ApiSkeletonTest {
     }
 
     @Test
-    void rejectWithoutReasonIs400() throws Exception {
+    void decisionOnUnknownApplicationIs404() throws Exception {
         mvc.perform(post(APP + "/decision").header(DemoUserInterceptor.HEADER, UNDERWRITER)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"type\":\"REJECTED\"}"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isNotFound());
     }
 
     @Test

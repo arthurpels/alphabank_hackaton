@@ -13,4 +13,6 @@ public interface ApplicationAccessService {
     Optional<UUID> resolveCompanyId(CurrentUser user);
 
     String companyInn(ApplicationRecord application);
+
+    void registerUser(CurrentUser user);
 }

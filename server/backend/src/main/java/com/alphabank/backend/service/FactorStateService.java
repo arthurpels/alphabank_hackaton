@@ -6,5 +6,5 @@ import com.alphabank.backend.model.FactorStates;
 
 public interface FactorStateService {
 
-    FactorStates resolve(UUID applicationId, boolean revenueConfirmed);
+    FactorStates resolve(UUID applicationId, boolean revenueConfirmed, boolean contractOnly);
 }

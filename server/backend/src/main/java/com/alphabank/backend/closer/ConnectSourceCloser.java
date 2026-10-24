@@ -29,7 +29,7 @@ import com.alphabank.backend.service.impl.RevenueSeriesServiceImpl;
 @Component
 public class ConnectSourceCloser implements SpotCloser {
 
-    private static final Set<String> REVENUE_FACTORS = Set.of("debt_load", FactorStateServiceImpl.REVENUE_STABILITY);
+    private static final Set<String> REVENUE_FACTORS = Set.of(FactorStateServiceImpl.DEBT_LOAD, FactorStateServiceImpl.REVENUE_STABILITY);
 
     private final MocksClient mocksClient;
     private final EnrichmentService enrichmentService;

@@ -11,11 +11,10 @@ import com.alphabank.backend.enums.SpotStatus;
 import com.alphabank.backend.enums.SpotType;
 import com.alphabank.backend.repository.model.SpotRecord;
 import com.alphabank.backend.scoringclient.dto.ScoreResponse;
+import com.alphabank.backend.service.impl.FactorStateServiceImpl;
 
 @Component
 public class AutoDecisionRule {
-
-    private static final String DEBT_LOAD = "debt_load";
 
     public AutoDecision decide(List<SpotRecord> spots, ScoreResponse score) {
         Optional<SpotRecord> hardStop = openStopFactor(spots, false);
@@ -51,7 +50,7 @@ public class AutoDecisionRule {
         return spots.stream()
                 .filter(spot -> spot.status() != SpotStatus.CLOSED && spot.pricePp() != null)
                 .max(Comparator.comparingDouble(SpotRecord::pricePp))
-                .or(() -> spots.stream().filter(spot -> DEBT_LOAD.equals(spot.scoringFactor())).findFirst())
+                .or(() -> spots.stream().filter(spot -> FactorStateServiceImpl.DEBT_LOAD.equals(spot.scoringFactor())).findFirst())
                 .or(() -> spots.stream().findFirst())
                 .map(SpotRecord::id)
                 .orElse(null);

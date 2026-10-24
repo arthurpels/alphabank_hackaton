@@ -23,6 +23,7 @@ import com.alphabank.backend.service.FactorStateService;
 @Service
 public class FactorStateServiceImpl implements FactorStateService {
 
+    public static final String DEBT_LOAD = "debt_load";
     public static final String REVENUE_STABILITY = "revenue_stability";
     public static final String PURPOSE = "purpose";
     public static final String COLLATERAL = "collateral";
@@ -36,12 +37,12 @@ public class FactorStateServiceImpl implements FactorStateService {
     }
 
     @Override
-    public FactorStates resolve(UUID applicationId, boolean revenueConfirmed) {
+    public FactorStates resolve(UUID applicationId, boolean revenueConfirmed, boolean contractOnly) {
         List<SpotRecord> spots = spotRepository.findByApplicationId(applicationId);
         Map<UUID, SpotAnswerRecord> answers = spotAnswerRepository.findLatestBySpotIds(
                 spots.stream().map(SpotRecord::id).toList());
         return new FactorStates(
-                revenueConfirmed ? stability(spots, answers) : null,
+                !revenueConfirmed ? null : contractOnly ? Stability.DOCUMENT : stability(spots, answers),
                 closedAnswerCode(spots, answers, PURPOSE).map(Purpose::valueOf).orElse(null),
                 closedAnswerCode(spots, answers, COLLATERAL).map(Collateral::valueOf).orElse(null));
     }

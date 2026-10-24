@@ -18,6 +18,7 @@ import com.alphabank.backend.dto.response.QueueItemDto;
 import com.alphabank.backend.dto.response.UnderwritingSummaryDto;
 import com.alphabank.backend.enums.ApplicationStatus;
 import com.alphabank.backend.security.CurrentUser;
+import com.alphabank.backend.service.DecisionService;
 import com.alphabank.backend.service.UnderwritingService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -30,9 +31,11 @@ import jakarta.validation.Valid;
 public class UnderwritingController {
 
     private final UnderwritingService underwritingService;
+    private final DecisionService decisionService;
 
-    public UnderwritingController(UnderwritingService underwritingService) {
+    public UnderwritingController(UnderwritingService underwritingService, DecisionService decisionService) {
         this.underwritingService = underwritingService;
+        this.decisionService = decisionService;
     }
 
     @GetMapping("/underwriting/queue")
@@ -52,6 +55,6 @@ public class UnderwritingController {
     @Operation(operationId = "makeDecision", summary = "Вынести решение (UNDERWRITING → APPROVED | COUNTER_OFFER | REJECTED)")
     public ApplicationDetailsDto makeDecision(CurrentUser user, @PathVariable UUID applicationId,
                                               @Valid @RequestBody DecisionRequest request) {
-        return underwritingService.decide(user, applicationId, request);
+        return decisionService.decide(user, applicationId, request);
     }
 }

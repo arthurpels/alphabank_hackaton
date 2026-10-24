@@ -20,6 +20,7 @@ import com.alphabank.backend.dto.response.ApplicationDetailsDto;
 import com.alphabank.backend.dto.response.SpotDto;
 import com.alphabank.backend.security.CurrentUser;
 import com.alphabank.backend.service.SpotService;
+import com.alphabank.backend.service.UnderwriterSpotService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -31,9 +32,11 @@ import jakarta.validation.Valid;
 public class SpotController {
 
     private final SpotService spotService;
+    private final UnderwriterSpotService underwriterSpotService;
 
-    public SpotController(SpotService spotService) {
+    public SpotController(SpotService spotService, UnderwriterSpotService underwriterSpotService) {
         this.spotService = spotService;
+        this.underwriterSpotService = underwriterSpotService;
     }
 
     @GetMapping
@@ -47,7 +50,7 @@ public class SpotController {
     @Operation(operationId = "addSpot", summary = "Добавить пятно — дозапрос (UNDERWRITING → INFO_REQUESTED)")
     public ApplicationDetailsDto addSpot(CurrentUser user, @PathVariable UUID applicationId,
                                          @Valid @RequestBody SpotCreateRequest request) {
-        return spotService.add(user, applicationId, request);
+        return underwriterSpotService.add(user, applicationId, request);
     }
 
     @PostMapping("/{spotId}/close")
@@ -63,6 +66,6 @@ public class SpotController {
     public ApplicationDetailsDto reviewSpot(CurrentUser user, @PathVariable UUID applicationId,
                                             @PathVariable UUID spotId,
                                             @Valid @RequestBody SpotReviewRequest request) {
-        return spotService.review(user, applicationId, spotId, request);
+        return underwriterSpotService.review(user, applicationId, spotId, request);
     }
 }

@@ -5,6 +5,7 @@ import java.sql.SQLException;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -71,6 +72,22 @@ public class JdbcApplicationRepository implements ApplicationRepository {
                 .param("submittedAt", submittedAt)
                 .param("id", id)
                 .update();
+    }
+
+    @Override
+    public void markInfoRequested(UUID id, OffsetDateTime infoRequestedAt) {
+        jdbc.sql("UPDATE application SET info_requested_at = :infoRequestedAt WHERE id = :id")
+                .param("infoRequestedAt", infoRequestedAt)
+                .param("id", id)
+                .update();
+    }
+
+    @Override
+    public List<ApplicationRecord> findByStatuses(Set<ApplicationStatus> statuses) {
+        return jdbc.sql(COLUMNS + "WHERE status IN (:statuses) ORDER BY submitted_at, created_at, id")
+                .param("statuses", statuses.stream().map(Enum::name).toList())
+                .query((rs, rowNum) -> map(rs))
+                .list();
     }
 
     @Override

@@ -79,7 +79,7 @@ public final class StubSpots {
 
     private static SpotAnswerDto marchAnswer() {
         return new SpotAnswerDto(StubIds.id("e001"), "RENOVATION", "Был ремонт, точка закрывалась на 2 недели",
-                StubIds.id("e101"), AnswerVerdict.ACCEPTED, "SYSTEM", null,
+                StubIds.id("e101"), null, null, AnswerVerdict.ACCEPTED, "SYSTEM", null,
                 StubIds.T0.plusMinutes(3), StubIds.T0.plusMinutes(3));
     }
 }

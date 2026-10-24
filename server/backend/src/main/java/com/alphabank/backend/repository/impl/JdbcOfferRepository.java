@@ -58,6 +58,14 @@ public class JdbcOfferRepository implements OfferRepository {
     }
 
     @Override
+    public void updateStatus(UUID id, OfferStatus status) {
+        jdbc.sql("UPDATE offer SET status = :status WHERE id = :id")
+                .param("status", status.name())
+                .param("id", id)
+                .update();
+    }
+
+    @Override
     public List<OfferRecord> findByApplicationId(UUID applicationId) {
         return jdbc.sql("""
                         SELECT id, application_id, product_id, amount, term_months, collateral_type,

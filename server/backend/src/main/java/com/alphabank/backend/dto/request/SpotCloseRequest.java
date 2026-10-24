@@ -3,6 +3,7 @@ package com.alphabank.backend.dto.request;
 import java.util.UUID;
 
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
 import com.alphabank.backend.enums.CloseMethod;
@@ -16,5 +17,7 @@ public record SpotCloseRequest(
         @Size(max = 2000) String text,
         UUID documentId,
         String collateralType,
-        String collateralComment) {
+        String collateralComment,
+        @Positive Long contractAmount,
+        @Positive Integer contractTermMonths) {
 }

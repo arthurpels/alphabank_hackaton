@@ -21,6 +21,7 @@ import com.alphabank.backend.dto.response.ZoneThresholdsDto;
 import com.alphabank.backend.enrichment.dto.EgrulResponse;
 import com.alphabank.backend.enums.ApplicationAction;
 import com.alphabank.backend.enums.ApplicationStatus;
+import com.alphabank.backend.enums.DecidedBy;
 import com.alphabank.backend.enums.ProductCode;
 import com.alphabank.backend.repository.model.ApplicationRecord;
 import com.alphabank.backend.repository.model.CompanyRecord;
@@ -77,12 +78,13 @@ public class ApplicationDetailsMapper {
 
     public OfferDto toOffer(OfferRecord offer, ProductCode productCode, ForkSnapshotRecord fork, boolean requested) {
         return new OfferDto(offer.id(), productCode, offer.amount(), offer.termMonths(), offer.collateralType(),
-                offer.collateralComment(), toFork(fork), offer.proposedBy(), offer.status(), requested, false,
-                offer.comment(), offer.chosenAt());
+                offer.collateralComment(), toFork(fork), offer.proposedBy(), offer.status(), requested,
+                offer.proposedBy() == DecidedBy.UNDERWRITER, offer.comment(), offer.chosenAt());
     }
 
     public DecisionDto toDecision(DecisionRecord decision) {
-        return new DecisionDto(decision.id(), decision.type(), decision.decidedBy(), null, decision.rulesVersion(),
+        return new DecisionDto(decision.id(), decision.type(), decision.decidedBy(), decision.decidedByUserId(),
+                decision.rulesVersion(),
                 decision.override(), decision.comment(), decision.reasonSpotId(), decision.decidedAt());
     }
 
@@ -100,7 +102,7 @@ public class ApplicationDetailsMapper {
 
     private static SpotAnswerDto toAnswer(SpotAnswerRecord answer) {
         return new SpotAnswerDto(answer.id(), answer.optionCode(), answer.text(), answer.documentId(),
-                answer.verdict(), answer.reviewedBy(), answer.reviewComment(), answer.createdAt(),
+                answer.contractAmount(), answer.contractTermMonths(), answer.verdict(), answer.reviewedBy(), answer.reviewComment(), answer.createdAt(),
                 answer.reviewedAt());
     }
 

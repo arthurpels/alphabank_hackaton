@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import com.alphabank.backend.decision.AutoDecision;
 import com.alphabank.backend.decision.AutoDecisionRule;
 import com.alphabank.backend.decision.DecisionWriter;
+import com.alphabank.backend.decision.GridOfferWriter;
 import com.alphabank.backend.decision.OfferWriter;
 import com.alphabank.backend.decision.StopFactorSync;
 import com.alphabank.backend.enrichment.service.EnrichmentService;
@@ -18,17 +19,11 @@ import com.alphabank.backend.enums.DecisionType;
 import com.alphabank.backend.enums.OfferStatus;
 import com.alphabank.backend.enums.TransitionInitiator;
 import com.alphabank.backend.model.ForkCalculation;
-import com.alphabank.backend.repository.ProductRepository;
 import com.alphabank.backend.repository.SpotRepository;
 import com.alphabank.backend.repository.model.ApplicationRecord;
 import com.alphabank.backend.repository.model.ProductRecord;
 import com.alphabank.backend.repository.model.SpotRecord;
-import com.alphabank.backend.scoringclient.OfferGridClient;
-import com.alphabank.backend.scoringclient.ScoringClient;
-import com.alphabank.backend.scoringclient.dto.Offer;
-import com.alphabank.backend.scoringclient.dto.ScoreRequest;
 import com.alphabank.backend.scoringclient.dto.ScoreResponse;
-import com.alphabank.backend.scoringclient.enums.Collateral;
 import com.alphabank.backend.service.AutoCheckService;
 import com.alphabank.backend.service.ForkCalculationService;
 import com.alphabank.backend.service.StatusTransitionService;
@@ -40,10 +35,8 @@ public class AutoCheckServiceImpl implements AutoCheckService {
     private final EnrichmentService enrichmentService;
     private final StopFactorSync stopFactorSync;
     private final AutoDecisionRule decisionRule;
-    private final OfferGridClient offerGridClient;
-    private final ScoringClient scoringClient;
+    private final GridOfferWriter gridOfferWriter;
     private final SpotRepository spotRepository;
-    private final ProductRepository productRepository;
     private final OfferWriter offerWriter;
     private final DecisionWriter decisionWriter;
     private final StatusTransitionService statusTransitionService;
@@ -51,18 +44,15 @@ public class AutoCheckServiceImpl implements AutoCheckService {
 
     public AutoCheckServiceImpl(ForkCalculationService forkCalculationService, EnrichmentService enrichmentService,
                                 StopFactorSync stopFactorSync, AutoDecisionRule decisionRule,
-                                OfferGridClient offerGridClient, ScoringClient scoringClient,
-                                SpotRepository spotRepository, ProductRepository productRepository,
+                                GridOfferWriter gridOfferWriter, SpotRepository spotRepository,
                                 OfferWriter offerWriter, DecisionWriter decisionWriter,
                                 StatusTransitionService statusTransitionService, Clock clock) {
         this.forkCalculationService = forkCalculationService;
         this.enrichmentService = enrichmentService;
         this.stopFactorSync = stopFactorSync;
         this.decisionRule = decisionRule;
-        this.offerGridClient = offerGridClient;
-        this.scoringClient = scoringClient;
+        this.gridOfferWriter = gridOfferWriter;
         this.spotRepository = spotRepository;
-        this.productRepository = productRepository;
         this.offerWriter = offerWriter;
         this.decisionWriter = decisionWriter;
         this.statusTransitionService = statusTransitionService;
@@ -103,7 +93,7 @@ public class AutoCheckServiceImpl implements AutoCheckService {
 
     private ApplicationStatus counterOffer(ApplicationRecord application, ForkCalculation calculation,
                                            List<SpotRecord> spots) {
-        int saved = saveGrid(application, calculation.request(), OfferStatus.OFFERED);
+        int saved = gridOfferWriter.save(application.id(), calculation.request(), OfferStatus.OFFERED);
         if (saved == 0) {
             String reason = "Ни один вариант иных условий не проходит";
             UUID reasonSpotId = decisionRule.reasonSpotId(spots);
@@ -119,31 +109,8 @@ public class AutoCheckServiceImpl implements AutoCheckService {
 
     private ApplicationStatus underwriting(ApplicationRecord application, ForkCalculation calculation,
                                            String reason) {
-        saveGrid(application, calculation.request(), OfferStatus.CALCULATED);
+        gridOfferWriter.save(application.id(), calculation.request(), OfferStatus.CALCULATED);
         return moveTo(application, ApplicationStatus.UNDERWRITING, reason);
-    }
-
-    private int saveGrid(ApplicationRecord application, ScoreRequest request, OfferStatus status) {
-        List<Offer> offers = offerGridClient.grid(request).offers();
-        OffsetDateTime now = now();
-        for (int i = 0; i < offers.size(); i++) {
-            Offer offer = offers.get(i);
-            ProductRecord product = productRepository.findByCode(offer.productCode())
-                    .orElseThrow(() -> new IllegalStateException("Продукт " + offer.productCode() + " не найден"));
-            offerWriter.save(application.id(), product, offer.amount(), offer.termMonths(), offer.collateralType(),
-                    scoringClient.score(variant(request, offer)), status, now.plusNanos(i * 1_000L));
-        }
-        return offers.size();
-    }
-
-    private static ScoreRequest variant(ScoreRequest request, Offer offer) {
-        Collateral collateral = offer.collateralType() == null
-                ? Collateral.DECLINED : Collateral.valueOf(offer.collateralType());
-        return new ScoreRequest(request.asOf(), offer.productCode(), offer.amount(), offer.termMonths(),
-                request.egrulStatus(), request.registeredAt(), request.directorSince(), request.massAddress(),
-                request.creditScore(), request.delinq12m(), request.bkiCurrentOverdue(), request.taxDebt(),
-                request.unfiledReports(), request.monthlyRevenue(), request.stability(), request.purpose(),
-                collateral);
     }
 
     private ApplicationStatus moveTo(ApplicationRecord application, ApplicationStatus status, String reason) {

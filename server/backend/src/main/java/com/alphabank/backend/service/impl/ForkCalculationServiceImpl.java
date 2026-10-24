@@ -5,8 +5,10 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.springframework.stereotype.Service;
 
@@ -19,10 +21,12 @@ import com.alphabank.backend.model.ForkCalculation;
 import com.alphabank.backend.repository.ApplicationSourceRepository;
 import com.alphabank.backend.repository.ForkSnapshotRepository;
 import com.alphabank.backend.repository.OfferRepository;
+import com.alphabank.backend.repository.SpotAnswerRepository;
 import com.alphabank.backend.repository.SpotRepository;
 import com.alphabank.backend.repository.model.ApplicationRecord;
 import com.alphabank.backend.repository.model.ForkSnapshotRecord;
 import com.alphabank.backend.repository.model.ProductRecord;
+import com.alphabank.backend.repository.model.SpotAnswerRecord;
 import com.alphabank.backend.scoringclient.ScoringClient;
 import com.alphabank.backend.scoringclient.dto.Factor;
 import com.alphabank.backend.scoringclient.dto.ScoreRequest;
@@ -39,6 +43,7 @@ public class ForkCalculationServiceImpl implements ForkCalculationService {
     private final ScoringClient scoringClient;
     private final ForkSnapshotRepository forkSnapshotRepository;
     private final SpotRepository spotRepository;
+    private final SpotAnswerRepository spotAnswerRepository;
     private final OfferRepository offerRepository;
     private final Clock clock;
 
@@ -46,13 +51,15 @@ public class ForkCalculationServiceImpl implements ForkCalculationService {
                                       ApplicationSourceRepository applicationSourceRepository,
                                       FactorStateService factorStateService, ScoringClient scoringClient,
                                       ForkSnapshotRepository forkSnapshotRepository, SpotRepository spotRepository,
-                                      OfferRepository offerRepository, Clock clock) {
+                                      SpotAnswerRepository spotAnswerRepository, OfferRepository offerRepository,
+                                      Clock clock) {
         this.enrichmentService = enrichmentService;
         this.applicationSourceRepository = applicationSourceRepository;
         this.factorStateService = factorStateService;
         this.scoringClient = scoringClient;
         this.forkSnapshotRepository = forkSnapshotRepository;
         this.spotRepository = spotRepository;
+        this.spotAnswerRepository = spotAnswerRepository;
         this.offerRepository = offerRepository;
         this.clock = clock;
     }
@@ -64,11 +71,21 @@ public class ForkCalculationServiceImpl implements ForkCalculationService {
                 .filter(source -> RevenueSeriesServiceImpl.REVENUE_SOURCES.contains(source.sourceCode()))
                 .filter(source -> applicationSourceRepository.isConsentGiven(application.id(), source.sourceCode()))
                 .toList();
-        Long revenue = enrichmentService.calculateMonthlyRevenueKopecks(connected);
-        FactorStates states = factorStateService.resolve(application.id(), revenue != null);
+        Long sourceRevenue = enrichmentService.calculateMonthlyRevenueKopecks(connected);
+        Long contractRevenue = contractRevenue(spotAnswerRepository.findAcceptedContracts(application.id()));
+        Long revenue = Stream.of(sourceRevenue, contractRevenue).filter(Objects::nonNull).max(Long::compare)
+                .orElse(null);
+        FactorStates states = factorStateService.resolve(application.id(), revenue != null, sourceRevenue == null);
         ScoreRequest request = enrichmentService.createScoreRequest(enrichment, product.code(), application.amount(),
                 application.termMonths(), revenue, states.stability(), states.purpose(), states.collateral());
         return new ForkCalculation(enrichment, request, scoringClient.score(request));
+    }
+
+    public static Long contractRevenue(List<SpotAnswerRecord> contracts) {
+        return contracts.stream()
+                .map(contract -> contract.contractAmount() / contract.contractTermMonths())
+                .max(Long::compare)
+                .orElse(null);
     }
 
     @Override

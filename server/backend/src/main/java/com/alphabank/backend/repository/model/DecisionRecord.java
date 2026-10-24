@@ -12,6 +12,7 @@ public record DecisionRecord(
         DecisionType type,
         UUID offerId,
         DecidedBy decidedBy,
+        UUID decidedByUserId,
         String rulesVersion,
         boolean override,
         String comment,

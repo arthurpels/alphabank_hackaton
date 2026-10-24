@@ -45,13 +45,19 @@ public class SpotResolutionWriter {
                              String reason) {
         OffsetDateTime now = OffsetDateTime.now(clock);
         spotAnswerRepository.insert(new SpotAnswerRecord(UUID.randomUUID(), spot.id(), optionCode, text, documentId,
-                AnswerVerdict.ACCEPTED, SYSTEM, null, now, now));
+                null, null, AnswerVerdict.ACCEPTED, SYSTEM, null, now, now));
         close(spot, userId, reason);
     }
 
     public void sendToReview(SpotRecord spot, UUID userId, String optionCode, String text, UUID documentId) {
+        sendToReview(spot, userId, optionCode, text, documentId, null, null);
+    }
+
+    public void sendToReview(SpotRecord spot, UUID userId, String optionCode, String text, UUID documentId,
+                             Long contractAmount, Integer contractTermMonths) {
         spotAnswerRepository.insert(new SpotAnswerRecord(UUID.randomUUID(), spot.id(), optionCode, text, documentId,
-                AnswerVerdict.PENDING, null, null, OffsetDateTime.now(clock), null));
+                contractAmount, contractTermMonths, AnswerVerdict.PENDING, null, null, OffsetDateTime.now(clock),
+                null));
         spotRepository.updateStatus(spot.id(), SpotStatus.ON_REVIEW, null);
         auditService.record(spot.applicationId(), AuditEventType.SPOT_CLOSED, userId,
                 "Ответ передан на проверку специалисту",
@@ -61,14 +67,29 @@ public class SpotResolutionWriter {
     public void rejectAnswer(SpotRecord spot, UUID userId, String optionCode, String text, String comment) {
         OffsetDateTime now = OffsetDateTime.now(clock);
         spotAnswerRepository.insert(new SpotAnswerRecord(UUID.randomUUID(), spot.id(), optionCode, text, null,
-                AnswerVerdict.REJECTED, SYSTEM, comment, now, now));
+                null, null, AnswerVerdict.REJECTED, SYSTEM, comment, now, now));
         auditService.record(spot.applicationId(), AuditEventType.SPOT_REVIEWED, userId, comment,
                 Map.of("spotId", spot.id().toString(), "verdict", AnswerVerdict.REJECTED.name()));
     }
 
     public void create(SpotRecord spot, String reason) {
+        create(spot, null, reason);
+    }
+
+    public void create(SpotRecord spot, UUID userId, String reason) {
         spotRepository.insert(spot);
-        auditService.record(spot.applicationId(), AuditEventType.SPOT_CREATED, null, reason,
+        auditService.record(spot.applicationId(), AuditEventType.SPOT_CREATED, userId, reason,
                 Map.of("spotId", spot.id().toString()));
+    }
+
+    public void review(SpotRecord spot, SpotAnswerRecord answer, AnswerVerdict verdict, UUID userId,
+                       String comment) {
+        OffsetDateTime now = OffsetDateTime.now(clock);
+        spotAnswerRepository.review(answer.id(), verdict, userId.toString(), comment, now);
+        boolean accepted = verdict == AnswerVerdict.ACCEPTED;
+        spotRepository.updateStatus(spot.id(), accepted ? SpotStatus.CLOSED : SpotStatus.OPEN, accepted ? now : null);
+        auditService.record(spot.applicationId(), AuditEventType.SPOT_REVIEWED, userId,
+                accepted ? "Ответ принят" : comment,
+                Map.of("spotId", spot.id().toString(), "verdict", verdict.name()));
     }
 }

@@ -12,6 +12,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 
 import com.alphabank.backend.dto.response.AnswerOptionDto;
+import com.alphabank.backend.dto.response.SummaryItemDto;
+import com.alphabank.backend.dto.response.UnderwritingSummaryDto;
 import com.alphabank.backend.enrichment.client.MockNotFoundException;
 import com.alphabank.backend.enrichment.client.MocksClient;
 import com.alphabank.backend.enrichment.dto.AcquiringResponse;
@@ -25,6 +27,7 @@ import com.alphabank.backend.scoringclient.AnomalyClient;
 import com.alphabank.backend.scoringclient.OfferGridClient;
 import com.alphabank.backend.scoringclient.PurposeClient;
 import com.alphabank.backend.scoringclient.ScoringClient;
+import com.alphabank.backend.scoringclient.SummaryClient;
 import com.alphabank.backend.scoringclient.dto.AnomaliesResponse;
 import com.alphabank.backend.scoringclient.dto.Anomaly;
 import com.alphabank.backend.scoringclient.dto.Factor;
@@ -48,6 +51,7 @@ public class FakeExternalServicesConfig {
 
     public static final String COFFEE_INN = "7701234560";
     public static final String TECHSNAB_INN = "7725555556";
+    public static final String BUILDER_INN = "590234567822";
 
     private static final List<String> MONTHS = List.of("2025-10", "2025-11", "2025-12", "2026-01", "2026-02",
             "2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09");
@@ -76,13 +80,19 @@ public class FakeExternalServicesConfig {
                             new EgrulResponse.Director("Орлов Д. А.", LocalDate.of(2021, 2, 10), false),
                             new EgrulResponse.Address("г. Москва, Варшавское ш., 33", false), "46.69", 1);
                 }
+                if (BUILDER_INN.equals(inn)) {
+                    return new EgrulResponse("EGRUL", inn, "ИП Петров Сергей Николаевич", "IP", "ACTIVE",
+                            LocalDate.of(2024, 3, 1),
+                            new EgrulResponse.Director("Петров С. Н.", LocalDate.of(2024, 3, 1), false),
+                            new EgrulResponse.Address("г. Пермь, ул. Ленина, 40", false), "41.20", 1);
+                }
                 throw new MockNotFoundException("ИНН " + inn + " не найден в источнике");
             }
 
             @Override
             public BkiResponse bki(String inn) {
-                return new BkiResponse("BKI", inn, TECHSNAB_INN.equals(inn) ? 730 : 712, List.of(), 3,
-                        new BkiResponse.Delinquencies(0, 5, 0), 1);
+                int score = TECHSNAB_INN.equals(inn) ? 730 : BUILDER_INN.equals(inn) ? 655 : 712;
+                return new BkiResponse("BKI", inn, score, List.of(), 3, new BkiResponse.Delinquencies(0, 5, 0), 1);
             }
 
             @Override
@@ -160,6 +170,14 @@ public class FakeExternalServicesConfig {
 
     @Bean
     @Primary
+    public SummaryClient fakeSummaryClient() {
+        return request -> new UnderwritingSummaryDto("TEMPLATE", request.facts().stream()
+                .map(fact -> new SummaryItemDto(fact.label(), List.of(fact)))
+                .toList());
+    }
+
+    @Bean
+    @Primary
     public AnomalyClient fakeAnomalyClient() {
         return request -> {
             List<Anomaly> anomalies = new ArrayList<>();
@@ -211,6 +229,10 @@ public class FakeExternalServicesConfig {
         if (request.stability() == null || request.stability() == Stability.ANOMALY_OPEN) {
             hi += 2.5;
             factors.add(unknown(FactorCode.REVENUE_STABILITY, 0.0, 2.5));
+        } else if (request.stability() == Stability.DOCUMENT) {
+            lo += 1.0;
+            hi += 1.0;
+            factors.add(known(FactorCode.REVENUE_STABILITY, 1.0));
         } else {
             factors.add(known(FactorCode.REVENUE_STABILITY, 0.0));
         }

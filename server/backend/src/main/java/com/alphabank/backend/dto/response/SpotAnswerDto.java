@@ -10,6 +10,8 @@ public record SpotAnswerDto(
         String optionCode,
         String text,
         UUID documentId,
+        Long contractAmount,
+        Integer contractTermMonths,
         AnswerVerdict verdict,
         String reviewedBy,
         String reviewComment,

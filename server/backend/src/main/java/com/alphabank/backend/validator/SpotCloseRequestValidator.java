@@ -20,6 +20,9 @@ public class SpotCloseRequestValidator {
         if (missing != null) {
             throw ApiException.validation("Для способа " + request.method() + " нужно: " + missing);
         }
+        if ((request.contractAmount() == null) != (request.contractTermMonths() == null)) {
+            throw ApiException.validation("Сумма и срок договора передаются вместе: contractAmount и contractTermMonths");
+        }
     }
 
     private static boolean isBlank(String value) {
