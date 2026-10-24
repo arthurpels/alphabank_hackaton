@@ -33,7 +33,8 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/health", "/error", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html",
-                                ApiPaths.BASE + "/demo/users").permitAll()
+                                ApiPaths.BASE + "/demo/users", ApiPaths.BASE + "/demo/time",
+                                ApiPaths.BASE + "/demo/time/**").permitAll()
                         .requestMatchers(ApiPaths.BASE + "/underwriting/**").hasRole("UNDERWRITER")
                         .requestMatchers(HttpMethod.POST, ApiPaths.BASE + "/applications/*/decision")
                         .hasRole("UNDERWRITER")

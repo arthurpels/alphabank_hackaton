@@ -67,6 +67,61 @@ paths:
                 items:
                   $ref: '#/components/schemas/Me'
 
+  /demo/time:
+    get:
+      operationId: getDemoTime
+      tags: [demo]
+      summary: Текущее время демо
+      description: Время, по которому бэк считает сроки, журнал и вилки. Заголовок `X-Demo-User` не нужен.
+      security: []
+      responses:
+        '200':
+          description: время демо
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemoTime'
+
+  /demo/time/advance:
+    post:
+      operationId: advanceDemoTime
+      tags: [demo]
+      summary: Перемотать время демо вперёд
+      description: |
+        Служебная ручка для демо (T34): сдвигает время бэка на `days` дней и сразу проверяет просроченные
+        дозапросы — заявки в `INFO_REQUESTED` дольше 5 дней уходят в `CANCELLED` (переход 17).
+        Без перемотки проверку раз в минуту делает шедулер. Сдвиг живёт до перезапуска бэка или `reset`.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TimeAdvance'
+      responses:
+        '200':
+          description: время после сдвига и отменённые заявки
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemoTime'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /demo/time/reset:
+    post:
+      operationId: resetDemoTime
+      tags: [demo]
+      summary: Вернуть реальное время
+      security: []
+      responses:
+        '200':
+          description: время без сдвига
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemoTime'
+
   /me:
     get:
       operationId: getMe
@@ -377,7 +432,9 @@ paths:
       operationId: uploadDocument
       tags: [spots]
       summary: Загрузить документ
-      description: Реализация хранения — T22 (Б2). Полученный `id` передаётся в закрытие пятна способом `UPLOAD`.
+      description: |
+        Только клиент. PDF, JPEG или PNG, не больше 10 МБ. Полученный `id` передаётся в закрытие пятна
+        способом `UPLOAD`; скачать файл — `GET /applications/{applicationId}/documents/{documentId}`.
       requestBody:
         required: true
         content:
@@ -417,14 +474,25 @@ paths:
       operationId: downloadDocument
       tags: [spots]
       summary: Скачать документ
-      description: 'Файл отдаётся с Content-Disposition: attachment; доступен владельцу заявки и андеррайтеру (T22).'
+      description: Клиент — документ своей заявки, андеррайтер — любой. Файл отдаётся с исходным именем.
       responses:
         '200':
-          description: содержимое файла
+          description: файл
           content:
-            application/pdf: {}
-            image/jpeg: {}
-            image/png: {}
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
 
@@ -1569,6 +1637,33 @@ components:
           type: string
           format: uuid
           nullable: true
+
+    DemoTime:
+      type: object
+      required: [now, shiftedDays, cancelledApplicationIds]
+      properties:
+        now:
+          type: string
+          format: date-time
+        shiftedDays:
+          type: integer
+          description: на сколько дней время демо впереди реального
+        cancelledApplicationIds:
+          type: array
+          description: заявки, отменённые по таймауту дозапроса при этой перемотке; в остальных ответах пусто
+          items:
+            type: string
+            format: uuid
+
+    TimeAdvance:
+      type: object
+      required: [days]
+      properties:
+        days:
+          type: integer
+          minimum: 1
+          maximum: 30
+          example: 5
 
     Problem:
       type: object

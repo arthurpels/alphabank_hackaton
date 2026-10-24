@@ -90,7 +90,7 @@ stateDiagram-v2
 | 14 | `APPROVED` / `COUNTER_OFFER` | `SIGNING` | клиент | принял условия; в иных условиях — выбрал один из отмеченных вариантов | `POST /applications/{id}/accept` (с `offerId`) |
 | 15 | `SIGNING` | `ISSUED` | клиент, система | подписал → зачисление (оба шага смоделированы) | `POST /applications/{id}/sign` |
 | 16 | `DRAFT` / `COLLECTING` / `INFO_REQUESTED` / `APPROVED` / `COUNTER_OFFER` | `CANCELLED` | клиент | отменил или отказался | `POST /applications/{id}/cancel` |
-| 17 | `INFO_REQUESTED` | `CANCELLED` | система | нет ответа на дозапрос 5 дней | — |
+| 17 | `INFO_REQUESTED` | `CANCELLED` | система | нет ответа на дозапрос 5 дней | шедулер раз в минуту; для демо — `POST /demo/time/advance` |
 
 ## Правила
 

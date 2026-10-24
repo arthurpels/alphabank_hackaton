@@ -41,7 +41,8 @@ public class DemoUserAuthFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
-        return !path.startsWith(ApiPaths.BASE + "/") || path.equals(DEMO_USERS_PATH);
+        return !path.startsWith(ApiPaths.BASE + "/") || path.equals(DEMO_USERS_PATH)
+                || path.startsWith(ApiPaths.BASE + "/demo/time");
     }
 
     @Override

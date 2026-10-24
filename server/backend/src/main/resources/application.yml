@@ -37,3 +37,5 @@ app:
   external:
     retry-attempts: 3
     retry-backoff-ms: 200
+  info-request:
+    check-interval: PT1M

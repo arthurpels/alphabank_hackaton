@@ -29,6 +29,8 @@ public final class ApplicationTransitions {
 
     public static final Set<ApplicationStatus> FINAL = Set.of(REJECTED, ISSUED, CANCELLED);
 
+    public static final int INFO_REQUEST_DAYS = 5;
+
     public static final List<Transition> TRANSITIONS = List.of(
             new Transition(2, DRAFT, COLLECTING, CLIENT),
             new Transition(3, COLLECTING, COLLECTING, CLIENT),
