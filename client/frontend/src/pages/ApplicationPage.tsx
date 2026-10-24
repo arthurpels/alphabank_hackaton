@@ -108,7 +108,7 @@ export default function ApplicationPage() {
   }
 
   const { application, fork, spots } = data;
-  const goHome = () => navigate('/client');
+  const goHome = () => navigate('/client/home');
   const submitClose = async (spot: Spot, body: SpotCloseRequest, file?: File): Promise<string | null> => {
     try {
       let request = body;
@@ -234,7 +234,7 @@ export default function ApplicationPage() {
     COUNTER_OFFER: <CounterOfferBlock data={data} busy={busy} onAccept={accept} onCancel={cancel} />,
     REJECTED: <RejectedBlock data={data} onHome={goHome} />,
     SIGNING: <SigningBlock data={data} busy={busy} onSign={() => run('sign', () => api.signContract(application.id))} />,
-    ISSUED: <IssuedBlock contract={data.contract} />,
+    ISSUED: <IssuedBlock contract={data.contract} onHome={goHome} />,
     CANCELLED: <CancelledBlock onHome={goHome} />,
   };
 

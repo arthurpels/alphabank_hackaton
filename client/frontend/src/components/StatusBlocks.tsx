@@ -300,7 +300,7 @@ export function RejectedBlock({ data, onHome }: { data: ApplicationDetails; onHo
         </span>
       </div>
       <div className="block__actions">
-        <Button view="secondary" size={48} onClick={onHome}>К выбору компании</Button>
+        <Button view="secondary" size={48} onClick={onHome}>К моим заявкам</Button>
       </div>
     </section>
   );
@@ -396,8 +396,7 @@ export function SigningBlock(props: {
   );
 }
 
-export function IssuedBlock({ contract }: { contract: Contract | null }) {
-  if (!contract) return null;
+export function IssuedBlock({ contract, onHome }: { contract: Contract | null; onHome: () => void }) {  if (!contract) return null;
   return (
     <section className="block">
       <Hero
@@ -421,6 +420,9 @@ export function IssuedBlock({ contract }: { contract: Contract | null }) {
         <summary>График платежей ({contract.schedule.length})</summary>
         <Schedule contract={contract} />
       </details>
+      <div className="block__actions">
+        <Button view="secondary" size={48} onClick={onHome}>К моим заявкам</Button>
+      </div>
     </section>
   );
 }
@@ -430,7 +432,7 @@ export function CancelledBlock({ onHome }: { onHome: () => void }) {
     <section className="block">
       <Hero tone="neutral" icon={CrossCircleMIcon} title="Заявка отменена" text="Если передумаете, можно подать новую." />
       <div className="block__actions">
-        <Button view="secondary" size={48} onClick={onHome}>К выбору компании</Button>
+        <Button view="secondary" size={48} onClick={onHome}>К моим заявкам</Button>
       </div>
     </section>
   );
