@@ -30,3 +30,5 @@ app:
   mocks-url: ${MOCKS_URL:http://localhost:8002}
   documents-dir: ${DOCUMENTS_DIR:/data/documents}
   cors-allowed-origins: http://localhost:5173
+  info-request:
+    check-interval: PT1M

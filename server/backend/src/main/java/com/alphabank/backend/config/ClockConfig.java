@@ -5,11 +5,13 @@ import java.time.Clock;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import com.alphabank.backend.util.DemoClock;
+
 @Configuration
 public class ClockConfig {
 
     @Bean
-    public Clock clock() {
-        return Clock.systemDefaultZone();
+    public DemoClock clock() {
+        return new DemoClock(Clock.systemDefaultZone());
     }
 }
