@@ -3,6 +3,8 @@ package com.alphabank.backend.support;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.springframework.web.client.ResourceAccessException;
+
 import com.alphabank.backend.scoringclient.PurposeClient;
 import com.alphabank.backend.scoringclient.dto.LlmMeta;
 import com.alphabank.backend.scoringclient.dto.PurposeRequest;
@@ -33,6 +35,9 @@ public class CountingPurposeClient implements PurposeClient {
         }
         if (goal.contains("недоступн")) {
             return keywords(PurposeStatus.UNAVAILABLE, null, List.of());
+        }
+        if (goal.contains("таймаут")) {
+            throw new ResourceAccessException("Read timed out");
         }
         return new PurposeResponse(PurposeStatus.UNCLEAR, null, true, "LLM", List.of(), "Цель слишком общая", LLM);
     }

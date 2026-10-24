@@ -72,6 +72,9 @@ public class AnswerCloser implements SpotCloser {
         if (verdict.status() == PurposeStatus.NOT_APPLICABLE) {
             writer.acceptPurpose(context.spot(), context.user().id(), null, goal, verdict, resolved.reused(),
                     "Цель для этого продукта не учитывается — " + source);
+        } else if (verdict.status() == PurposeStatus.UNAVAILABLE) {
+            writer.sendPurposeToReview(context.spot(), context.user().id(), goal, verdict, resolved.reused(),
+                    "LLM недоступна — ответ передан на проверку специалисту");
         } else if (verdict.purpose() == null) {
             writer.rejectPurpose(context.spot(), context.user().id(), goal, verdict, resolved.reused(),
                     UNCLEAR_GOAL, UNCLEAR_GOAL + " — " + source);

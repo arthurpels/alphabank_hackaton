@@ -5,7 +5,10 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestClientException;
 
 import com.alphabank.backend.dto.response.LlmMetaDto;
 import com.alphabank.backend.dto.response.PurposeVerdictDto;
@@ -22,6 +25,8 @@ import com.alphabank.backend.scoringclient.enums.PurposeStatus;
 @Component
 public class PurposeVerdictResolver {
 
+    private static final Logger log = LoggerFactory.getLogger(PurposeVerdictResolver.class);
+
     private final PurposeClient purposeClient;
     private final SpotAnswerRepository spotAnswerRepository;
 
@@ -33,8 +38,17 @@ public class PurposeVerdictResolver {
     public ResolvedPurpose resolve(SpotRecord spot, ProductCode product, String goal) {
         return stored(spot, product, goal)
                 .map(verdict -> new ResolvedPurpose(verdict, true))
-                .orElseGet(() -> new ResolvedPurpose(
-                        toVerdict(product, purposeClient.classify(new PurposeRequest(product, goal))), false));
+                .orElseGet(() -> new ResolvedPurpose(classify(product, goal), false));
+    }
+
+    private PurposeVerdictDto classify(ProductCode product, String goal) {
+        try {
+            return toVerdict(product, purposeClient.classify(new PurposeRequest(product, goal)));
+        } catch (RestClientException e) {
+            log.warn("ML недоступна при разборе цели: {}", e.getMessage());
+            return toVerdict(product, new PurposeResponse(PurposeStatus.UNAVAILABLE, null, true, "KEYWORDS",
+                    List.of(), "ML временно недоступна", null));
+        }
     }
 
     private Optional<PurposeVerdictDto> stored(SpotRecord spot, ProductCode product, String goal) {

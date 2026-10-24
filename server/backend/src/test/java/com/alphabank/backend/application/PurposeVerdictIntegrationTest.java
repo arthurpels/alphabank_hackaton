@@ -130,13 +130,29 @@ class PurposeVerdictIntegrationTest {
     }
 
     @Test
-    void unavailableModelIsAskedAgain() throws Exception {
+    void unavailableModelSendsAnswerToReview() throws Exception {
         String id = evaluated();
-        answerPurpose(id, "модель недоступна")
-                .andExpect(jsonPath(PURPOSE + ".lastAnswer.purposeVerdict.status").value("UNAVAILABLE"));
-        answerPurpose(id, "модель недоступна");
 
-        assertThat(purposeClient.calls()).isEqualTo(2);
+        answerPurpose(id, "модель недоступна")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath(PURPOSE + ".status").value("ON_REVIEW"))
+                .andExpect(jsonPath(PURPOSE + ".lastAnswer.text").value("модель недоступна"))
+                .andExpect(jsonPath(PURPOSE + ".lastAnswer.verdict").value("PENDING"))
+                .andExpect(jsonPath(PURPOSE + ".lastAnswer.purposeVerdict.status").value("UNAVAILABLE"));
+
+        assertThat(purposeClient.calls()).isEqualTo(1);
+    }
+
+    @Test
+    void purposeTimeoutSendsAnswerToReview() throws Exception {
+        String id = evaluated();
+
+        answerPurpose(id, "таймаут модели")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath(PURPOSE + ".status").value("ON_REVIEW"))
+                .andExpect(jsonPath(PURPOSE + ".lastAnswer.text").value("таймаут модели"))
+                .andExpect(jsonPath(PURPOSE + ".lastAnswer.verdict").value("PENDING"))
+                .andExpect(jsonPath(PURPOSE + ".lastAnswer.purposeVerdict.status").value("UNAVAILABLE"));
     }
 
     @Test

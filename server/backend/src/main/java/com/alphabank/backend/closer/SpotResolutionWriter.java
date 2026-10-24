@@ -63,6 +63,15 @@ public class SpotResolutionWriter {
                 purposePayload(spot, verdict, reused, AnswerVerdict.REJECTED));
     }
 
+    public void sendPurposeToReview(SpotRecord spot, UUID userId, String goal, PurposeVerdictDto verdict,
+                                    boolean reused, String reason) {
+        spotAnswerRepository.insert(new SpotAnswerRecord(UUID.randomUUID(), spot.id(), null, goal, null,
+                null, null, AnswerVerdict.PENDING, null, null, OffsetDateTime.now(clock), null, verdict));
+        spotRepository.updateStatus(spot.id(), SpotStatus.ON_REVIEW, null);
+        auditService.record(spot.applicationId(), AuditEventType.SPOT_CLOSED, userId, reason,
+                purposePayload(spot, verdict, reused, AnswerVerdict.PENDING));
+    }
+
     private static Map<String, Object> purposePayload(SpotRecord spot, PurposeVerdictDto verdict, boolean reused,
                                                       AnswerVerdict answerVerdict) {
         Map<String, Object> payload = new LinkedHashMap<>();

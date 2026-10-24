@@ -38,5 +38,10 @@ app:
   external:
     retry-attempts: 3
     retry-backoff-ms: 200
+  llm:
+    connect-timeout-ms: 1500
+    timeout-ms: ${ML_LLM_TIMEOUT_MS:90000}
+    circuit-failures: ${ML_LLM_CIRCUIT_FAILURES:3}
+    circuit-open-ms: ${ML_LLM_CIRCUIT_OPEN_MS:30000}
   info-request:
     check-interval: PT1M
