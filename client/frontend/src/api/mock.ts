@@ -1,5 +1,6 @@
 import { coffeeShop } from '../mocks/coffeeShop';
 import { demoUsers } from '../mocks/demoUsers';
+import { products } from '../mocks/products';
 import type {
   ApplicationAction,
   ApplicationDetails,
@@ -7,6 +8,7 @@ import type {
   Contract,
   Offer,
 } from '../types';
+import { getCurrentUser } from './http';
 import type { Api } from './index';
 
 const STEP_MS = 1500;
@@ -196,23 +198,33 @@ const wait = <T>(v: T) => new Promise<T>((r) => setTimeout(() => r(structuredClo
 
 export const mockApi: Api = {
   listDemoUsers: (role) => wait(role ? demoUsers.filter((u) => u.role === role) : demoUsers),
-
+  getMe: () => wait(demoUsers.find((u) => u.id === getCurrentUser()) ?? demoUsers[0]),
+  listProducts: () => wait(products),
   getApplication: () => {
     checkPreset();
     advance();
     return wait(state);
   },
 
-  createApplication: () => {
+  createApplication: (body) => {
     frozen = false;
+    const product = products.find((p) => p.code === body.productCode);
     state = { ...structuredClone(coffeeShop), fork: null, spots: [] };
+    state.application = {
+      ...state.application,
+      product: { name: product?.name ?? state.application.product.name },
+      amount: body.amount,
+      termMonths: body.termMonths,
+    };
     setStatus('DRAFT');
     return wait(state);
   },
 
   evaluateApplication: () => {
     frozen = false;
+    const { product, amount, termMonths } = state.application;
     state = structuredClone(coffeeShop);
+    state.application = { ...state.application, product, amount, termMonths };
     setStatus('COLLECTING');
     return wait(state);
   },

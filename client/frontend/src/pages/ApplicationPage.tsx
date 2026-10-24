@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@alfalab/core-components/button';
 import { Status } from '@alfalab/core-components/status';
 import { Text } from '@alfalab/core-components/text';
@@ -22,7 +22,7 @@ import { STATUS_META } from '../statuses';
 import type { ApplicationDetails, ApplicationStatus, DecisionZone, Spot, SpotCloseRequest } from '../types';
 import '../App.css';
 
-const APPLICATION_ID = 'coffee-application';
+const FALLBACK_ID = 'coffee-application';
 const POLL_STATUSES: ApplicationStatus[] = ['SUBMITTED', 'AUTO_CHECK', 'UNDERWRITING', 'INFO_REQUESTED'];
 const POLL_MS = 3000;
 
@@ -63,6 +63,8 @@ function closeRequest(spot: Spot): SpotCloseRequest {
 
 export default function ApplicationPage() {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const applicationId = params.get('id') ?? FALLBACK_ID;
   const [data, setData] = useState<ApplicationDetails | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null); // 'submit', 'accept', 'sign', 'cancel', 'reset' или id пятна
@@ -81,23 +83,23 @@ export default function ApplicationPage() {
 
   useEffect(() => {
     api
-      .getApplication(APPLICATION_ID)
+      .getApplication(applicationId)
       .then(setData)
       .catch((e) => setError(errorText(e)));
-  }, []);
+  }, [applicationId]);
 
   const status = data?.application.status;
   useEffect(() => {
     if (!status || !POLL_STATUSES.includes(status)) return;
     const timer = setInterval(() => {
       api
-        .getApplication(APPLICATION_ID)
+        .getApplication(applicationId)
         .then(setData)
         .catch(() => {
         });
     }, POLL_MS);
     return () => clearInterval(timer);
-  }, [status]);
+  }, [status, applicationId]);
 
   if (!data) {
     return (

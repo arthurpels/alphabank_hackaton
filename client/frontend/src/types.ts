@@ -45,12 +45,31 @@ export interface ApplicationDetails {
   contract: Contract | null;
 }
 
+export interface Company {
+  id: string;
+  inn: string;
+  name: string;
+  legalForm: 'OOO' | 'IP';
+  address?: string | null;
+  directorFio?: string | null;
+  registeredAt?: string | null;
+  okvedMain?: string | null;
+}
+
 export interface DemoUser {
   id: string;
   fio: string;
   role: UserRole;
   personaTitle: string | null;
-  company: { name: string; inn: string } | null;
+  company: Company | null;
+}
+
+export interface Product {
+  code: ProductCode;
+  name: string;
+  minAmount: number;
+  maxAmount: number;
+  allowedTerms: number[];
 }
 
 export type ProductCode = 'WORKING_CAPITAL' | 'EQUIPMENT' | 'OVERDRAFT';
@@ -122,7 +141,7 @@ export interface Contract {
   offerId: string;
   amount: number;
   termMonths: number;
-  rate: number; // % годовых
+  rate: number;
   monthlyPayment: number;
   signedAt?: string | null;
   issuedAt?: string | null;

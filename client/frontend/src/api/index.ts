@@ -2,6 +2,7 @@ import type {
   ApplicationCreate,
   ApplicationDetails,
   DemoUser,
+  Product,
   SpotCloseRequest,
   UserRole,
 } from '../types';
@@ -12,6 +13,8 @@ export { ApiError, setCurrentUser, getCurrentUser } from './http';
 
 export interface Api {
   listDemoUsers(role?: UserRole): Promise<DemoUser[]>;
+  getMe(): Promise<DemoUser>;
+  listProducts(): Promise<Product[]>;
   getApplication(id: string): Promise<ApplicationDetails>;
   createApplication(body: ApplicationCreate): Promise<ApplicationDetails>;
   evaluateApplication(id: string): Promise<ApplicationDetails>;
@@ -24,6 +27,8 @@ export interface Api {
 
 const realApi: Api = {
   listDemoUsers: (role) => request('GET', `/demo/users${role ? `?role=${role}` : ''}`),
+  getMe: () => request('GET', '/me'),
+  listProducts: () => request('GET', '/products'),
   getApplication: (id) => request('GET', `/applications/${id}`),
   createApplication: (body) => request('POST', '/applications', body),
   evaluateApplication: (id) => request('POST', `/applications/${id}/evaluate`),

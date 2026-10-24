@@ -41,7 +41,7 @@ export default function ChooseClientPage() {
             className="tile"
             onClick={() => {
               setCurrentUser(u.id);
-              navigate('/client/application');
+              navigate('/client/new');
             }}
           >
             <span className="tile__text">
