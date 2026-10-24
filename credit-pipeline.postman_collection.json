@@ -1,0 +1,3334 @@
+{
+  "info": {
+    "_postman_id": "3f2f4e74-8af3-5314-9f56-9bf5249f5bd1",
+    "name": "Кредитный конвейер «Белые пятна»",
+    "description": "Запросы по тестовым сценариям из docs/test-scenarios.md: папка на каждый сценарий, запросы в порядке шагов. Перед прогоном: scripts/reset-demo. Окружение — local.postman_environment.json.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "let body = null;",
+          "try { body = pm.response.json(); } catch (e) { body = null; }",
+          "if (body && body.application && body.application.id) {",
+          "  pm.collectionVariables.set('appId', body.application.id);",
+          "  (body.spots || []).forEach(function (s) {",
+          "    if (s.scoringFactor) { pm.collectionVariables.set('spot_' + s.scoringFactor, s.id); }",
+          "    if (s.type === 'ANOMALY') { pm.collectionVariables.set('spot_anomaly', s.id); }",
+          "    if (s.type === 'DOCUMENT') { pm.collectionVariables.set('spot_document', s.id); }",
+          "    if (s.type === 'STOP_FACTOR') { pm.collectionVariables.set('spot_stop', s.id); }",
+          "  });",
+          "  (body.offers || []).forEach(function (o) {",
+          "    if (o.isRequested) { pm.collectionVariables.set('offer_requested', o.id); }",
+          "    pm.collectionVariables.set('offer_' + o.productCode + '_' + o.amount + '_' + o.termMonths, o.id);",
+          "  });",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "appId",
+      "value": ""
+    },
+    {
+      "key": "app_coffee",
+      "value": ""
+    },
+    {
+      "key": "documentId",
+      "value": ""
+    },
+    {
+      "key": "offer_builder",
+      "value": ""
+    },
+    {
+      "key": "offer_requested",
+      "value": ""
+    },
+    {
+      "key": "bki_first",
+      "value": ""
+    },
+    {
+      "key": "spot_debt_load",
+      "value": ""
+    },
+    {
+      "key": "spot_revenue_stability",
+      "value": ""
+    },
+    {
+      "key": "spot_purpose",
+      "value": ""
+    },
+    {
+      "key": "spot_collateral",
+      "value": ""
+    },
+    {
+      "key": "spot_anomaly",
+      "value": ""
+    },
+    {
+      "key": "spot_document",
+      "value": ""
+    },
+    {
+      "key": "spot_stop",
+      "value": ""
+    },
+    {
+      "key": "offer_WORKING_CAPITAL_120000000_36",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "00 · Справочники",
+      "item": [
+        {
+          "name": "Демо-пользователи",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/demo/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "demo",
+                "users"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('6 пользователей', function () { pm.expect(pm.response.json().length).to.eql(6); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Продукты",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_coffee}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('3 продукта', function () { pm.expect(pm.response.json().length).to.eql(3); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "TS-01 · ООО «Кофейня»: автоодобрение",
+      "item": [
+        {
+          "name": "Создать заявку",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_coffee}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productCode\": \"EQUIPMENT\",\n  \"amount\": 200000000,\n  \"termMonths\": 36,\n  \"goal\": \"2 кофемашины и витрина для второй точки\",\n  \"consents\": {\n    \"bki\": true,\n    \"personalData\": true\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+                  "pm.test('статус заявки DRAFT', function () { pm.expect(pm.response.json().application.status).to.eql('DRAFT'); });",
+                  "pm.collectionVariables.set('app_coffee', pm.response.json().application.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Рассчитать",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_coffee}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/evaluate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "evaluate"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('статус заявки COLLECTING', function () { pm.expect(pm.response.json().application.status).to.eql('COLLECTING'); });",
+                  "pm.test('вилка 17–26 %', function () { const f = pm.response.json().fork; pm.expect(f.rateFrom).to.eql(17); pm.expect(f.rateTo).to.eql(26); });",
+                  "pm.test('открытых пятен: 4', function () { const s = pm.response.json().spots.filter(x => x.status !== 'CLOSED'); pm.expect(s.length).to.eql(4); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Подключить ОФД",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_coffee}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/spots/{{spot_debt_load}}/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "spots",
+                "{{spot_debt_load}}",
+                "close"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"CONNECT_SOURCE\",\n  \"sourceCode\": \"OFD\",\n  \"consent\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('вилка 18–23.5 %', function () { const f = pm.response.json().fork; pm.expect(f.rateFrom).to.eql(18); pm.expect(f.rateTo).to.eql(23.5); });",
+                  "pm.test('появилось пятно про март', function () { pm.expect(pm.response.json().spots.some(s => s.type === 'ANOMALY' && s.status === 'OPEN')).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ответить про март: ремонт",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_coffee}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/spots/{{spot_anomaly}}/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "spots",
+                "{{spot_anomaly}}",
+                "close"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"ANSWER\",\n  \"optionCode\": \"RENOVATION\",\n  \"text\": \"Точка закрывалась на 2 недели\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('вилка 18–21 %', function () { const f = pm.response.json().fork; pm.expect(f.rateFrom).to.eql(18); pm.expect(f.rateTo).to.eql(21); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Описать цель",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_coffee}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/spots/{{spot_purpose}}/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "spots",
+                "{{spot_purpose}}",
+                "close"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"ANSWER\",\n  \"text\": \"2 кофемашины и витрина\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('вилка 18–19.5 %', function () { const f = pm.response.json().fork; pm.expect(f.rateFrom).to.eql(18); pm.expect(f.rateTo).to.eql(19.5); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Отправить заявку",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_coffee}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/submit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "submit"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('статус заявки APPROVED', function () { pm.expect(pm.response.json().application.status).to.eql('APPROVED'); });",
+                  "pm.test('решение принял SYSTEM', function () { pm.expect(pm.response.json().decision.decidedBy).to.eql('SYSTEM'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Принять условия",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_coffee}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/accept",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "accept"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"offerId\": \"{{offer_requested}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('статус заявки SIGNING', function () { pm.expect(pm.response.json().application.status).to.eql('SIGNING'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Подписать договор",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_coffee}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/sign",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "sign"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('статус заявки ISSUED', function () { pm.expect(pm.response.json().application.status).to.eql('ISSUED'); });",
+                  "pm.test('сумма договора 200000000', function () { pm.expect(pm.response.json().contract.amount).to.eql(200000000); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "История вилки",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_coffee}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/fork-history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "fork-history"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Сценарий TS-01 из test-scenarios.md."
+    },
+    {
+      "name": "TS-02 · ИП Петров: андеррайтер, дозапрос, иные условия",
+      "item": [
+        {
+          "name": "Создать заявку",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_builder}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productCode\": \"WORKING_CAPITAL\",\n  \"amount\": 300000000,\n  \"termMonths\": 12,\n  \"goal\": \"закупка материалов под договор подряда\",\n  \"consents\": {\n    \"bki\": true,\n    \"personalData\": true\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+                  "pm.test('статус заявки DRAFT', function () { pm.expect(pm.response.json().application.status).to.eql('DRAFT'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Рассчитать",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_builder}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/evaluate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "evaluate"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('статус заявки COLLECTING', function () { pm.expect(pm.response.json().application.status).to.eql('COLLECTING'); });",
+                  "pm.test('вилка 17–26 %', function () { const f = pm.response.json().fork; pm.expect(f.rateFrom).to.eql(17); pm.expect(f.rateTo).to.eql(26); });",
+                  "pm.test('открытых пятен: 4', function () { const s = pm.response.json().spots.filter(x => x.status !== 'CLOSED'); pm.expect(s.length).to.eql(4); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Подключить эквайринг (данных нет)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_builder}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/spots/{{spot_debt_load}}/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "spots",
+                "{{spot_debt_load}}",
+                "close"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"CONNECT_SOURCE\",\n  \"sourceCode\": \"ACQUIRING\",\n  \"consent\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 404', function () { pm.response.to.have.status(404); });",
+                  "pm.test('код ошибки NOT_FOUND', function () { pm.expect(pm.response.json().code).to.eql('NOT_FOUND'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Описать цель",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_builder}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/spots/{{spot_purpose}}/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "spots",
+                "{{spot_purpose}}",
+                "close"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"ANSWER\",\n  \"text\": \"закупка материалов под договор подряда\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('вилка 17–24.5 %', function () { const f = pm.response.json().fork; pm.expect(f.rateFrom).to.eql(17); pm.expect(f.rateTo).to.eql(24.5); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Отправить заявку",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_builder}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/submit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "submit"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('статус заявки UNDERWRITING', function () { pm.expect(pm.response.json().application.status).to.eql('UNDERWRITING'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[Андеррайтер] Очередь",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_underwriter}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/underwriting/queue",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "underwriting",
+                "queue"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('заявка в очереди', function () { pm.expect(pm.response.json().some(q => q.applicationId === pm.collectionVariables.get('appId'))).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[Андеррайтер] Карточка заявки",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_underwriter}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('вилка 17–24.5 %', function () { const f = pm.response.json().fork; pm.expect(f.rateFrom).to.eql(17); pm.expect(f.rateTo).to.eql(24.5); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[Андеррайтер] Сводка",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_underwriter}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/underwriting/applications/{{appId}}/summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "underwriting",
+                "applications",
+                "{{appId}}",
+                "summary"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[Андеррайтер] Добавить пятно: договор с генподрядчиком",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_underwriter}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/spots",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "spots"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"DOCUMENT\",\n  \"title\": \"Договор с генподрядчиком\",\n  \"clientHint\": \"Подтвердите будущие поступления. Нет договора — подойдёт акт сверки.\",\n  \"closeMethod\": \"UPLOAD\",\n  \"scoringFactor\": \"debt_load\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+                  "pm.test('статус заявки INFO_REQUESTED', function () { pm.expect(pm.response.json().application.status).to.eql('INFO_REQUESTED'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Загрузить договор",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_builder}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/documents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "documents"
+              ]
+            },
+            "description": "Выберите PDF-файл договора в поле file, если путь не найден.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "scripts/demo-files/builder_contract_gp.pdf"
+                },
+                {
+                  "key": "kind",
+                  "value": "CONTRACT_GP",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+                  "pm.collectionVariables.set('documentId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Закрыть пятно договором",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_builder}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/spots/{{spot_document}}/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "spots",
+                "{{spot_document}}",
+                "close"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"UPLOAD\",\n  \"documentId\": \"{{documentId}}\",\n  \"contractAmount\": 960000000,\n  \"contractTermMonths\": 12\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('статус заявки UNDERWRITING', function () { pm.expect(pm.response.json().application.status).to.eql('UNDERWRITING'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[Андеррайтер] Принять договор",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_underwriter}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/spots/{{spot_document}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "spots",
+                "{{spot_document}}",
+                "review"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"verdict\": \"ACCEPTED\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('вилка 21–22.5 %', function () { const f = pm.response.json().fork; pm.expect(f.rateFrom).to.eql(21); pm.expect(f.rateTo).to.eql(22.5); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[Андеррайтер] Проходящие варианты",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_underwriter}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/offers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "offers"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "const o = pm.response.json().find(x => x.productCode === 'WORKING_CAPITAL' && x.amount === 195000000 && x.termMonths === 36);",
+                  "pm.test('есть вариант 1 950 000 ₽ на 36 мес, 20,5 %', function () { pm.expect(o).to.not.be.undefined; pm.expect(o.fork.rateTo).to.eql(20.5); });",
+                  "if (o) { pm.collectionVariables.set('offer_builder', o.id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[Андеррайтер] Решение: иные условия",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_underwriter}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/decision",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "decision"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"ALTERNATIVE\",\n  \"offerIds\": [\n    \"{{offer_builder}}\"\n  ],\n  \"comment\": \"Сумма снижена под подтверждённую выручку\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('статус заявки COUNTER_OFFER', function () { pm.expect(pm.response.json().application.status).to.eql('COUNTER_OFFER'); });",
+                  "pm.test('решение принял UNDERWRITER', function () { pm.expect(pm.response.json().decision.decidedBy).to.eql('UNDERWRITER'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Принять условия",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_builder}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/accept",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "accept"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"offerId\": \"{{offer_builder}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('статус заявки SIGNING', function () { pm.expect(pm.response.json().application.status).to.eql('SIGNING'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Подписать договор",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_builder}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/sign",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "sign"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('статус заявки ISSUED', function () { pm.expect(pm.response.json().application.status).to.eql('ISSUED'); });",
+                  "pm.test('сумма договора 195000000', function () { pm.expect(pm.response.json().contract.amount).to.eql(195000000); });"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Сценарий TS-02. Запросы с пометкой [Андеррайтер] выполняются от имени андеррайтера."
+    },
+    {
+      "name": "TS-03 · ИП Кузнецова: иные условия от системы",
+      "item": [
+        {
+          "name": "Создать заявку",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_wb}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productCode\": \"WORKING_CAPITAL\",\n  \"amount\": 150000000,\n  \"termMonths\": 12,\n  \"goal\": \"закупка товара к сезону распродаж\",\n  \"consents\": {\n    \"bki\": true,\n    \"personalData\": true\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+                  "pm.test('статус заявки DRAFT', function () { pm.expect(pm.response.json().application.status).to.eql('DRAFT'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Рассчитать",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_wb}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/evaluate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "evaluate"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('статус заявки COLLECTING', function () { pm.expect(pm.response.json().application.status).to.eql('COLLECTING'); });",
+                  "pm.test('вилка 17–26 %', function () { const f = pm.response.json().fork; pm.expect(f.rateFrom).to.eql(17); pm.expect(f.rateTo).to.eql(26); });",
+                  "pm.test('открытых пятен: 4', function () { const s = pm.response.json().spots.filter(x => x.status !== 'CLOSED'); pm.expect(s.length).to.eql(4); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Подключить маркетплейс",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_wb}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/spots/{{spot_debt_load}}/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "spots",
+                "{{spot_debt_load}}",
+                "close"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"CONNECT_SOURCE\",\n  \"sourceCode\": \"MARKETPLACE\",\n  \"consent\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('вилка 20–23 %', function () { const f = pm.response.json().fork; pm.expect(f.rateFrom).to.eql(20); pm.expect(f.rateTo).to.eql(23); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Описать цель",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_wb}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/spots/{{spot_purpose}}/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "spots",
+                "{{spot_purpose}}",
+                "close"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"ANSWER\",\n  \"text\": \"закупка товара к сезону\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('вилка 20–21.5 %', function () { const f = pm.response.json().fork; pm.expect(f.rateFrom).to.eql(20); pm.expect(f.rateTo).to.eql(21.5); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Отправить заявку",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_wb}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/submit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "submit"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('статус заявки COUNTER_OFFER', function () { pm.expect(pm.response.json().application.status).to.eql('COUNTER_OFFER'); });",
+                  "pm.test('решение принял SYSTEM', function () { pm.expect(pm.response.json().decision.decidedBy).to.eql('SYSTEM'); });",
+                  "const offers = pm.response.json().offers.filter(o => o.status === 'OFFERED');",
+                  "pm.test('предложены оборотные 1 200 000 ₽ на 36 мес и овердрафт 120 000 ₽', function () {",
+                  "  pm.expect(offers.some(o => o.productCode === 'WORKING_CAPITAL' && o.amount === 120000000 && o.termMonths === 36)).to.be.true;",
+                  "  pm.expect(offers.some(o => o.productCode === 'OVERDRAFT' && o.amount === 12000000)).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Принять условия",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_wb}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/accept",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "accept"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"offerId\": \"{{offer_WORKING_CAPITAL_120000000_36}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('статус заявки SIGNING', function () { pm.expect(pm.response.json().application.status).to.eql('SIGNING'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Подписать договор",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_wb}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/sign",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "sign"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('статус заявки ISSUED', function () { pm.expect(pm.response.json().application.status).to.eql('ISSUED'); });",
+                  "pm.test('сумма договора 120000000', function () { pm.expect(pm.response.json().contract.amount).to.eql(120000000); });"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Сценарий TS-03."
+    },
+    {
+      "name": "TS-04 · ООО «Техснаб»: погашение долга и автоодобрение",
+      "item": [
+        {
+          "name": "Сбросить состояние моков",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{mocksUrl}}/mock/reset",
+              "host": [
+                "{{mocksUrl}}"
+              ],
+              "path": [
+                "mock",
+                "reset"
+              ]
+            },
+            "description": "Возвращает долг ФНС у ООО «Техснаб» после предыдущих прогонов."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Создать заявку",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_techsnab}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productCode\": \"WORKING_CAPITAL\",\n  \"amount\": 80000000,\n  \"termMonths\": 12,\n  \"goal\": \"закупка запчастей для перепродажи\",\n  \"consents\": {\n    \"bki\": true,\n    \"personalData\": true\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+                  "pm.test('статус заявки DRAFT', function () { pm.expect(pm.response.json().application.status).to.eql('DRAFT'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Рассчитать",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_techsnab}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/evaluate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "evaluate"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('статус заявки COLLECTING', function () { pm.expect(pm.response.json().application.status).to.eql('COLLECTING'); });",
+                  "pm.test('вилка 15–24 %', function () { const f = pm.response.json().fork; pm.expect(f.rateFrom).to.eql(15); pm.expect(f.rateTo).to.eql(24); });",
+                  "pm.test('открытых пятен: 5', function () { const s = pm.response.json().spots.filter(x => x.status !== 'CLOSED'); pm.expect(s.length).to.eql(5); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Подключить эквайринг",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_techsnab}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/spots/{{spot_debt_load}}/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "spots",
+                "{{spot_debt_load}}",
+                "close"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"CONNECT_SOURCE\",\n  \"sourceCode\": \"ACQUIRING\",\n  \"consent\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Описать цель",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_techsnab}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/spots/{{spot_purpose}}/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "spots",
+                "{{spot_purpose}}",
+                "close"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"ANSWER\",\n  \"text\": \"закупка запчастей для перепродажи\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('вилка 16–17.5 %', function () { const f = pm.response.json().fork; pm.expect(f.rateFrom).to.eql(16); pm.expect(f.rateTo).to.eql(17.5); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Погасить долг в ФНС",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_techsnab}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/spots/{{spot_stop}}/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "spots",
+                "{{spot_stop}}",
+                "close"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"PAY\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('вилка 16–17.5 %', function () { const f = pm.response.json().fork; pm.expect(f.rateFrom).to.eql(16); pm.expect(f.rateTo).to.eql(17.5); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Отправить заявку",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_techsnab}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/submit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "submit"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('статус заявки APPROVED', function () { pm.expect(pm.response.json().application.status).to.eql('APPROVED'); });",
+                  "pm.test('решение принял SYSTEM', function () { pm.expect(pm.response.json().decision.decidedBy).to.eql('SYSTEM'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Принять условия",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_techsnab}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/accept",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "accept"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"offerId\": \"{{offer_requested}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('статус заявки SIGNING', function () { pm.expect(pm.response.json().application.status).to.eql('SIGNING'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Подписать договор",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_techsnab}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/sign",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "sign"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('статус заявки ISSUED', function () { pm.expect(pm.response.json().application.status).to.eql('ISSUED'); });",
+                  "pm.test('сумма договора 80000000', function () { pm.expect(pm.response.json().contract.amount).to.eql(80000000); });"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Сценарий TS-04."
+    },
+    {
+      "name": "TS-05 · ООО «Техснаб»: подача без погашения",
+      "item": [
+        {
+          "name": "Сбросить состояние моков",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{mocksUrl}}/mock/reset",
+              "host": [
+                "{{mocksUrl}}"
+              ],
+              "path": [
+                "mock",
+                "reset"
+              ]
+            },
+            "description": "Возвращает долг ФНС у ООО «Техснаб» после предыдущих прогонов."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Создать заявку",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_techsnab}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productCode\": \"WORKING_CAPITAL\",\n  \"amount\": 80000000,\n  \"termMonths\": 12,\n  \"goal\": \"закупка запчастей для перепродажи\",\n  \"consents\": {\n    \"bki\": true,\n    \"personalData\": true\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+                  "pm.test('статус заявки DRAFT', function () { pm.expect(pm.response.json().application.status).to.eql('DRAFT'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Рассчитать",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_techsnab}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/evaluate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "evaluate"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('статус заявки COLLECTING', function () { pm.expect(pm.response.json().application.status).to.eql('COLLECTING'); });",
+                  "pm.test('вилка 15–24 %', function () { const f = pm.response.json().fork; pm.expect(f.rateFrom).to.eql(15); pm.expect(f.rateTo).to.eql(24); });",
+                  "pm.test('открытых пятен: 5', function () { const s = pm.response.json().spots.filter(x => x.status !== 'CLOSED'); pm.expect(s.length).to.eql(5); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Подключить эквайринг",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_techsnab}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/spots/{{spot_debt_load}}/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "spots",
+                "{{spot_debt_load}}",
+                "close"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"CONNECT_SOURCE\",\n  \"sourceCode\": \"ACQUIRING\",\n  \"consent\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Описать цель",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_techsnab}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/spots/{{spot_purpose}}/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "spots",
+                "{{spot_purpose}}",
+                "close"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"ANSWER\",\n  \"text\": \"закупка запчастей для перепродажи\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('вилка 16–17.5 %', function () { const f = pm.response.json().fork; pm.expect(f.rateFrom).to.eql(16); pm.expect(f.rateTo).to.eql(17.5); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Отправить заявку",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_techsnab}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/submit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "submit"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('статус заявки REJECTED', function () { pm.expect(pm.response.json().application.status).to.eql('REJECTED'); });",
+                  "pm.test('решение принял SYSTEM', function () { pm.expect(pm.response.json().decision.decidedBy).to.eql('SYSTEM'); });",
+                  "pm.test('причина — долг в ФНС', function () { pm.expect(pm.response.json().decision.reasonSpotId).to.eql(pm.collectionVariables.get('spot_stop')); });"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Сценарий TS-05."
+    },
+    {
+      "name": "TS-06 · ООО «Однодневка»: неустранимые стоп-факторы",
+      "item": [
+        {
+          "name": "Создать заявку",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_shell}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productCode\": \"WORKING_CAPITAL\",\n  \"amount\": 200000000,\n  \"termMonths\": 12,\n  \"goal\": \"пополнение оборотных средств\",\n  \"consents\": {\n    \"bki\": true,\n    \"personalData\": true\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+                  "pm.test('статус заявки DRAFT', function () { pm.expect(pm.response.json().application.status).to.eql('DRAFT'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Рассчитать",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_shell}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/evaluate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "evaluate"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('статус заявки COLLECTING', function () { pm.expect(pm.response.json().application.status).to.eql('COLLECTING'); });",
+                  "pm.test('открытых пятен: 2', function () { const s = pm.response.json().spots.filter(x => x.status !== 'CLOSED'); pm.expect(s.length).to.eql(2); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Отправить заявку",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_shell}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/submit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "submit"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('статус заявки REJECTED', function () { pm.expect(pm.response.json().application.status).to.eql('REJECTED'); });",
+                  "pm.test('решение принял SYSTEM', function () { pm.expect(pm.response.json().decision.decidedBy).to.eql('SYSTEM'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Сценарий TS-06."
+    },
+    {
+      "name": "TS-07 · Отмена заявки",
+      "item": [
+        {
+          "name": "Создать заявку",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_coffee}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productCode\": \"EQUIPMENT\",\n  \"amount\": 200000000,\n  \"termMonths\": 36,\n  \"goal\": \"2 кофемашины и витрина для второй точки\",\n  \"consents\": {\n    \"bki\": true,\n    \"personalData\": true\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+                  "pm.test('статус заявки DRAFT', function () { pm.expect(pm.response.json().application.status).to.eql('DRAFT'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Рассчитать",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_coffee}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/evaluate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "evaluate"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('статус заявки COLLECTING', function () { pm.expect(pm.response.json().application.status).to.eql('COLLECTING'); });",
+                  "pm.test('вилка 17–26 %', function () { const f = pm.response.json().fork; pm.expect(f.rateFrom).to.eql(17); pm.expect(f.rateTo).to.eql(26); });",
+                  "pm.test('открытых пятен: 4', function () { const s = pm.response.json().spots.filter(x => x.status !== 'CLOSED'); pm.expect(s.length).to.eql(4); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Отменить заявку",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_coffee}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "cancel"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('статус заявки CANCELLED', function () { pm.expect(pm.response.json().application.status).to.eql('CANCELLED'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Закрыть пятно отменённой заявки",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_coffee}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/spots/{{spot_purpose}}/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "spots",
+                "{{spot_purpose}}",
+                "close"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"ANSWER\",\n  \"text\": \"2 кофемашины и витрина\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 409', function () { pm.response.to.have.status(409); });",
+                  "pm.test('код ошибки INVALID_TRANSITION', function () { pm.expect(pm.response.json().code).to.eql('INVALID_TRANSITION'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Сценарий TS-07."
+    },
+    {
+      "name": "Негативные проверки API",
+      "item": [
+        {
+          "name": "N-01 · Без пользователя",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/applications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 401', function () { pm.response.to.have.status(401); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "N-02 · Чужая заявка",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_wb}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{app_coffee}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{app_coffee}}"
+              ]
+            },
+            "description": "Нужна заявка Кофейни из TS-01."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 403', function () { pm.response.to.have.status(403); });",
+                  "pm.test('код ошибки FORBIDDEN', function () { pm.expect(pm.response.json().code).to.eql('FORBIDDEN'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "N-03 · Сумма вне продукта",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_coffee}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productCode\": \"EQUIPMENT\",\n  \"amount\": 10000000,\n  \"termMonths\": 36,\n  \"goal\": \"кофемашина\",\n  \"consents\": {\n    \"bki\": true,\n    \"personalData\": true\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', function () { pm.response.to.have.status(400); });",
+                  "pm.test('код ошибки VALIDATION_ERROR', function () { pm.expect(pm.response.json().code).to.eql('VALIDATION_ERROR'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "N-04 · Срок не из списка",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_wb}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productCode\": \"WORKING_CAPITAL\",\n  \"amount\": 150000000,\n  \"termMonths\": 18,\n  \"goal\": \"закупка товара\",\n  \"consents\": {\n    \"bki\": true,\n    \"personalData\": true\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', function () { pm.response.to.have.status(400); });",
+                  "pm.test('код ошибки VALIDATION_ERROR', function () { pm.expect(pm.response.json().code).to.eql('VALIDATION_ERROR'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Создать заявку",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_wb}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productCode\": \"WORKING_CAPITAL\",\n  \"amount\": 150000000,\n  \"termMonths\": 12,\n  \"goal\": \"закупка товара\",\n  \"consents\": {\n    \"bki\": false,\n    \"personalData\": true\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+                  "pm.test('статус заявки DRAFT', function () { pm.expect(pm.response.json().application.status).to.eql('DRAFT'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "N-05 · Расчёт без согласия на БКИ",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_wb}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/evaluate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "evaluate"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', function () { pm.response.to.have.status(400); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "N-06 · Правка после подачи",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_coffee}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{app_coffee}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{app_coffee}}"
+              ]
+            },
+            "description": "Нужна заявка Кофейни из TS-01.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 150000000\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 409', function () { pm.response.to.have.status(409); });",
+                  "pm.test('код ошибки INVALID_TRANSITION', function () { pm.expect(pm.response.json().code).to.eql('INVALID_TRANSITION'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Создать заявку",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_builder}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productCode\": \"WORKING_CAPITAL\",\n  \"amount\": 300000000,\n  \"termMonths\": 12,\n  \"goal\": \"закупка материалов под договор подряда\",\n  \"consents\": {\n    \"bki\": true,\n    \"personalData\": true\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+                  "pm.test('статус заявки DRAFT', function () { pm.expect(pm.response.json().application.status).to.eql('DRAFT'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Рассчитать",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_builder}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/evaluate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "evaluate"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('статус заявки COLLECTING', function () { pm.expect(pm.response.json().application.status).to.eql('COLLECTING'); });",
+                  "pm.test('вилка 17–26 %', function () { const f = pm.response.json().fork; pm.expect(f.rateFrom).to.eql(17); pm.expect(f.rateTo).to.eql(26); });",
+                  "pm.test('открытых пятен: 4', function () { const s = pm.response.json().spots.filter(x => x.status !== 'CLOSED'); pm.expect(s.length).to.eql(4); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "N-07 · Принять условия в сборе данных",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_builder}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/accept",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "accept"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"offerId\": \"{{offer_builder}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 409', function () { pm.response.to.have.status(409); });",
+                  "pm.test('код ошибки INVALID_TRANSITION', function () { pm.expect(pm.response.json().code).to.eql('INVALID_TRANSITION'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "N-08 · Подключить не источник выручки",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_builder}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/spots/{{spot_debt_load}}/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "spots",
+                "{{spot_debt_load}}",
+                "close"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"CONNECT_SOURCE\",\n  \"sourceCode\": \"BKI\",\n  \"consent\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', function () { pm.response.to.have.status(400); });",
+                  "pm.test('код ошибки VALIDATION_ERROR', function () { pm.expect(pm.response.json().code).to.eql('VALIDATION_ERROR'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "N-10 · Решение от имени клиента",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_builder}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/decision",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "decision"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"REJECTED\",\n  \"comment\": \"тест\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 403', function () { pm.response.to.have.status(403); });",
+                  "pm.test('код ошибки FORBIDDEN', function () { pm.expect(pm.response.json().code).to.eql('FORBIDDEN'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Подготовка N-11: описать цель",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_builder}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/spots/{{spot_purpose}}/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "spots",
+                "{{spot_purpose}}",
+                "close"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"ANSWER\",\n  \"text\": \"закупка материалов под договор подряда\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('вилка 17–24.5 %', function () { const f = pm.response.json().fork; pm.expect(f.rateFrom).to.eql(17); pm.expect(f.rateTo).to.eql(24.5); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Отправить заявку",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_builder}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/submit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "submit"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('статус заявки UNDERWRITING', function () { pm.expect(pm.response.json().application.status).to.eql('UNDERWRITING'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "N-11 · Отказ андеррайтера без причины",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_underwriter}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/decision",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "decision"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"REJECTED\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', function () { pm.response.to.have.status(400); });",
+                  "pm.test('код ошибки VALIDATION_ERROR', function () { pm.expect(pm.response.json().code).to.eql('VALIDATION_ERROR'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "N-01…N-11 из test-scenarios.md. Запускать после TS-01 и TS-02. N-09 входит в TS-02."
+    },
+    {
+      "name": "Проверки моков",
+      "item": [
+        {
+          "name": "M-01 · ИНН с неверной контрольной суммой",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{mocksUrl}}/mock/egrul/v1/company?inn=7701234567",
+              "host": [
+                "{{mocksUrl}}"
+              ],
+              "path": [
+                "mock",
+                "egrul",
+                "v1",
+                "company"
+              ],
+              "query": [
+                {
+                  "key": "inn",
+                  "value": "7701234567"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 422', function () { pm.response.to.have.status(422); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "M-02 · ИНН неверной длины",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{mocksUrl}}/mock/egrul/v1/company?inn=77012345",
+              "host": [
+                "{{mocksUrl}}"
+              ],
+              "path": [
+                "mock",
+                "egrul",
+                "v1",
+                "company"
+              ],
+              "query": [
+                {
+                  "key": "inn",
+                  "value": "77012345"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 422', function () { pm.response.to.have.status(422); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "M-03 · ИНН не из демо-набора",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{mocksUrl}}/mock/egrul/v1/company?inn=7700000009",
+              "host": [
+                "{{mocksUrl}}"
+              ],
+              "path": [
+                "mock",
+                "egrul",
+                "v1",
+                "company"
+              ],
+              "query": [
+                {
+                  "key": "inn",
+                  "value": "7700000009"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 404', function () { pm.response.to.have.status(404); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "M-04 · Подключение без согласия",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{mocksUrl}}/mock/ofd/v1/connect",
+              "host": [
+                "{{mocksUrl}}"
+              ],
+              "path": [
+                "mock",
+                "ofd",
+                "v1",
+                "connect"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"inn\": \"7701234560\",\n  \"consent\": false\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 422', function () { pm.response.to.have.status(422); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "M-05 · Повторяемость ответа БКИ (1)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{mocksUrl}}/mock/bki/v1/report?inn=7701234560",
+              "host": [
+                "{{mocksUrl}}"
+              ],
+              "path": [
+                "mock",
+                "bki",
+                "v1",
+                "report"
+              ],
+              "query": [
+                {
+                  "key": "inn",
+                  "value": "7701234560"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.collectionVariables.set('bki_first', pm.response.text());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "M-05 · Повторяемость ответа БКИ (2)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{mocksUrl}}/mock/bki/v1/report?inn=7701234560",
+              "host": [
+                "{{mocksUrl}}"
+              ],
+              "path": [
+                "mock",
+                "bki",
+                "v1",
+                "report"
+              ],
+              "query": [
+                {
+                  "key": "inn",
+                  "value": "7701234560"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('ответ совпадает с первым', function () { pm.expect(pm.response.text()).to.eql(pm.collectionVariables.get('bki_first')); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "M-06 · Погасить долг",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{mocksUrl}}/mock/fns/v1/debts/pay",
+              "host": [
+                "{{mocksUrl}}"
+              ],
+              "path": [
+                "mock",
+                "fns",
+                "v1",
+                "debts",
+                "pay"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"inn\": \"7725555556\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "M-06 · Долг после погашения",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{mocksUrl}}/mock/fns/v1/debts?inn=7725555556",
+              "host": [
+                "{{mocksUrl}}"
+              ],
+              "path": [
+                "mock",
+                "fns",
+                "v1",
+                "debts"
+              ],
+              "query": [
+                {
+                  "key": "inn",
+                  "value": "7725555556"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('долг 0', function () { pm.expect(pm.response.json().tax_debt.amount).to.eql(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Сбросить состояние моков",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{mocksUrl}}/mock/reset",
+              "host": [
+                "{{mocksUrl}}"
+              ],
+              "path": [
+                "mock",
+                "reset"
+              ]
+            },
+            "description": "Возвращает долг ФНС у ООО «Техснаб» после предыдущих прогонов."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "M-06 · Долг после сброса",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{mocksUrl}}/mock/fns/v1/debts?inn=7725555556",
+              "host": [
+                "{{mocksUrl}}"
+              ],
+              "path": [
+                "mock",
+                "fns",
+                "v1",
+                "debts"
+              ],
+              "query": [
+                {
+                  "key": "inn",
+                  "value": "7725555556"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('долг 3 412 ₽', function () { pm.expect(pm.response.json().tax_debt.amount).to.eql(3412); });"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "M-01…M-06: запросы напрямую к сервису моков."
+    }
+  ]
+}
