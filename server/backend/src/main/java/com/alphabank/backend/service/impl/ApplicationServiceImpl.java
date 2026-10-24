@@ -4,10 +4,7 @@ import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,15 +40,14 @@ import com.alphabank.backend.repository.ApplicationSourceRepository;
 import com.alphabank.backend.repository.CompanyRepository;
 import com.alphabank.backend.repository.ForkSnapshotRepository;
 import com.alphabank.backend.repository.ProductRepository;
+import com.alphabank.backend.repository.SpotAnswerRepository;
 import com.alphabank.backend.repository.SpotRepository;
 import com.alphabank.backend.repository.model.ApplicationRecord;
 import com.alphabank.backend.repository.model.CompanyRecord;
-import com.alphabank.backend.repository.model.ForkSnapshotRecord;
 import com.alphabank.backend.repository.model.ProductRecord;
 import com.alphabank.backend.repository.model.SpotRecord;
-import com.alphabank.backend.scoringclient.dto.Factor;
-import com.alphabank.backend.scoringclient.dto.ScoreResponse;
 import com.alphabank.backend.security.CurrentUser;
+import com.alphabank.backend.service.ApplicationAccessService;
 import com.alphabank.backend.service.ApplicationService;
 import com.alphabank.backend.service.AuditService;
 import com.alphabank.backend.service.DemoUserService;
@@ -68,10 +64,12 @@ public class ApplicationServiceImpl implements ApplicationService {
     private final ProductRepository productRepository;
     private final CompanyRepository companyRepository;
     private final SpotRepository spotRepository;
+    private final SpotAnswerRepository spotAnswerRepository;
     private final ForkSnapshotRepository forkSnapshotRepository;
     private final ApplicationSourceRepository applicationSourceRepository;
     private final AppUserRepository appUserRepository;
     private final DemoUserService demoUserService;
+    private final ApplicationAccessService accessService;
     private final EnrichmentService enrichmentService;
     private final ForkCalculationService forkCalculationService;
     private final StatusTransitionService statusTransitionService;
@@ -83,10 +81,12 @@ public class ApplicationServiceImpl implements ApplicationService {
 
     public ApplicationServiceImpl(ApplicationRepository applicationRepository, ProductRepository productRepository,
                                   CompanyRepository companyRepository, SpotRepository spotRepository,
+                                  SpotAnswerRepository spotAnswerRepository,
                                   ForkSnapshotRepository forkSnapshotRepository,
                                   ApplicationSourceRepository applicationSourceRepository,
                                   AppUserRepository appUserRepository, DemoUserService demoUserService,
-                                  EnrichmentService enrichmentService, ForkCalculationService forkCalculationService,
+                                  ApplicationAccessService accessService, EnrichmentService enrichmentService,
+                                  ForkCalculationService forkCalculationService,
                                   StatusTransitionService statusTransitionService, AuditService auditService,
                                   ApplicationStateMachine stateMachine, ApplicationParamsValidator paramsValidator,
                                   ApplicationDetailsMapper mapper, Clock clock) {
@@ -94,10 +94,12 @@ public class ApplicationServiceImpl implements ApplicationService {
         this.productRepository = productRepository;
         this.companyRepository = companyRepository;
         this.spotRepository = spotRepository;
+        this.spotAnswerRepository = spotAnswerRepository;
         this.forkSnapshotRepository = forkSnapshotRepository;
         this.applicationSourceRepository = applicationSourceRepository;
         this.appUserRepository = appUserRepository;
         this.demoUserService = demoUserService;
+        this.accessService = accessService;
         this.enrichmentService = enrichmentService;
         this.forkCalculationService = forkCalculationService;
         this.statusTransitionService = statusTransitionService;
@@ -111,7 +113,7 @@ public class ApplicationServiceImpl implements ApplicationService {
     @Override
     public List<ApplicationSummaryDto> getApplications(CurrentUser user) {
         user.requireRole(UserRole.CLIENT);
-        return resolveCompanyId(user)
+        return accessService.resolveCompanyId(user)
                 .map(applicationRepository::findByCompanyId)
                 .orElse(List.of())
                 .stream()
@@ -146,13 +148,13 @@ public class ApplicationServiceImpl implements ApplicationService {
 
     @Override
     public ApplicationDetailsDto getApplication(CurrentUser user, UUID applicationId) {
-        return details(load(user, applicationId), user);
+        return details(accessService.load(user, applicationId), user);
     }
 
     @Override
     @Transactional
     public ApplicationDetailsDto update(CurrentUser user, UUID applicationId, ApplicationUpdateRequest request) {
-        ApplicationRecord application = load(user, applicationId);
+        ApplicationRecord application = accessService.load(user, applicationId);
         stateMachine.checkAction(application.status(), ApplicationAction.EDIT, user.role());
 
         ProductRecord product = request.productCode() != null
@@ -167,11 +169,10 @@ public class ApplicationServiceImpl implements ApplicationService {
         }
         applicationRepository.updateParameters(applicationId, product.id(), amount, term, goal);
 
-        ApplicationRecord updated = load(user, applicationId);
+        ApplicationRecord updated = accessService.load(user, applicationId);
         if (updated.status() == ApplicationStatus.COLLECTING) {
-            ForkCalculation calculation = forkCalculationService.calculate(updated, product, companyInn(updated));
-            refreshSpotPrices(applicationId, calculation.score());
-            saveFork(applicationId, calculation.score());
+            forkCalculationService.save(applicationId, forkCalculationService
+                    .calculate(updated, product, accessService.companyInn(updated)).score());
             statusTransitionService.apply(applicationId, ApplicationStatus.COLLECTING, TransitionInitiator.CLIENT,
                     user.id(), "Изменены параметры заявки");
         }
@@ -181,7 +182,7 @@ public class ApplicationServiceImpl implements ApplicationService {
     @Override
     @Transactional
     public ApplicationDetailsDto evaluate(CurrentUser user, UUID applicationId) {
-        ApplicationRecord application = load(user, applicationId);
+        ApplicationRecord application = accessService.load(user, applicationId);
         stateMachine.checkAction(application.status(), ApplicationAction.EVALUATE, user.role());
         if (!applicationSourceRepository.isConsentGiven(applicationId, SourceCode.BKI)) {
             throw ApiException.validation("Для расчёта нужно согласие на запрос в БКИ");
@@ -189,11 +190,11 @@ public class ApplicationServiceImpl implements ApplicationService {
 
         ProductRecord product = productById(application.productId());
         ForkCalculation calculation = forkCalculationService.calculate(application, product,
-                companyInn(application));
+                accessService.companyInn(application));
         enrichmentService.persistCompanySnapshot(calculation.enrichment().egrul());
 
         List<SpotDraft> drafts = calculation.enrichment().spots();
-        Map<String, Double> prices = spotPrices(calculation.score());
+        Map<String, Double> prices = ForkCalculationServiceImpl.spotPrices(calculation.score());
         OffsetDateTime now = OffsetDateTime.now(clock);
         for (int i = 0; i < drafts.size(); i++) {
             SpotDraft draft = drafts.get(i);
@@ -201,19 +202,20 @@ public class ApplicationServiceImpl implements ApplicationService {
                     : prices.getOrDefault(draft.scoringFactor(), draft.pricePp());
             spotRepository.insert(new SpotRecord(UUID.randomUUID(), applicationId, draft.type(), draft.title(),
                     draft.clientHint(), draft.scoringFactor(), price, draft.closeMethod(), SpotStatus.OPEN,
-                    DecidedBy.SYSTEM, draft.source(), draft.removable(), now.plusNanos(i * 1_000L), null));
+                    DecidedBy.SYSTEM, draft.source(), draft.removable(), List.of(), now.plusNanos(i * 1_000L),
+                    null));
         }
-        saveFork(applicationId, calculation.score());
+        forkCalculationService.save(applicationId, calculation.score());
         statusTransitionService.apply(applicationId, ApplicationStatus.COLLECTING, TransitionInitiator.CLIENT,
                 user.id(), "Рассчитать");
         auditService.record(applicationId, AuditEventType.SPOT_CREATED, null,
                 "Найдено пятен: " + drafts.size(), null);
-        return details(load(user, applicationId), user);
+        return details(accessService.load(user, applicationId), user);
     }
 
     @Override
     public List<ForkDto> getForkHistory(CurrentUser user, UUID applicationId) {
-        load(user, applicationId);
+        accessService.load(user, applicationId);
         return forkSnapshotRepository.findByApplicationId(applicationId).stream().map(mapper::toFork).toList();
     }
 
@@ -239,42 +241,19 @@ public class ApplicationServiceImpl implements ApplicationService {
 
     @Override
     public List<AuditEventDto> getHistory(CurrentUser user, UUID applicationId) {
-        load(user, applicationId);
+        accessService.load(user, applicationId);
         return auditService.getHistory(applicationId);
-    }
-
-    private ApplicationRecord load(CurrentUser user, UUID applicationId) {
-        ApplicationRecord application = applicationRepository.findById(applicationId)
-                .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "Заявка " + applicationId + " не найдена"));
-        if (!user.isUnderwriter()
-                && !resolveCompanyId(user).map(id -> id.equals(application.companyId())).orElse(false)) {
-            throw new ApiException(ErrorCode.FORBIDDEN, "Заявка принадлежит другой компании");
-        }
-        return application;
     }
 
     private ApplicationDetailsDto details(ApplicationRecord application, CurrentUser user) {
         CompanyRecord company = companyRepository.findById(application.companyId())
                 .orElseThrow(() -> new IllegalStateException("Компания заявки не найдена"));
+        List<SpotRecord> spots = spotRepository.findByApplicationId(application.id());
         return mapper.toDetails(application, company, productById(application.productId()),
                 applicationSourceRepository.isConsentGiven(application.id(), SourceCode.BKI),
-                forkSnapshotRepository.findLatest(application.id()).orElse(null),
-                spotRepository.findByApplicationId(application.id()),
+                forkSnapshotRepository.findLatest(application.id()).orElse(null), spots,
+                spotAnswerRepository.findLatestBySpotIds(spots.stream().map(SpotRecord::id).toList()),
                 stateMachine.availableActions(application.status(), user.role()));
-    }
-
-    private Optional<UUID> resolveCompanyId(CurrentUser user) {
-        return demoUserService.findById(user.id())
-                .map(MeDto::company)
-                .filter(Objects::nonNull)
-                .flatMap(company -> companyRepository.findByInn(company.inn()))
-                .map(CompanyRecord::id);
-    }
-
-    private String companyInn(ApplicationRecord application) {
-        return companyRepository.findById(application.companyId())
-                .map(CompanyRecord::inn)
-                .orElseThrow(() -> new IllegalStateException("Компания заявки не найдена"));
     }
 
     private ProductRecord productByCode(ProductCode code) {
@@ -285,26 +264,6 @@ public class ApplicationServiceImpl implements ApplicationService {
     private ProductRecord productById(UUID id) {
         return productRepository.findById(id)
                 .orElseThrow(() -> new IllegalStateException("Продукт заявки не найден"));
-    }
-
-    private void saveFork(UUID applicationId, ScoreResponse score) {
-        forkSnapshotRepository.insert(new ForkSnapshotRecord(UUID.randomUUID(), applicationId, score.rateFrom(),
-                score.rateTo(), score.thresholds().approveMax(), score.thresholds().rejectMin(),
-                score.rulesVersion(), OffsetDateTime.now(clock)));
-    }
-
-    private void refreshSpotPrices(UUID applicationId, ScoreResponse score) {
-        Map<String, Double> prices = spotPrices(score);
-        spotRepository.findByApplicationId(applicationId).stream()
-                .filter(spot -> spot.status() == SpotStatus.OPEN && spot.scoringFactor() != null)
-                .filter(spot -> prices.containsKey(spot.scoringFactor()))
-                .forEach(spot -> spotRepository.updatePrice(spot.id(), prices.get(spot.scoringFactor())));
-    }
-
-    private static Map<String, Double> spotPrices(ScoreResponse score) {
-        return score.factors().stream()
-                .filter(factor -> factor.spotPricePp() != null)
-                .collect(Collectors.toMap(factor -> factor.code().name().toLowerCase(), Factor::spotPricePp));
     }
 
     private static void requirePersonalDataConsent(ConsentsRequest consents) {

@@ -1,8 +1,10 @@
 package com.alphabank.backend.repository.model;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.UUID;
 
+import com.alphabank.backend.dto.response.AnswerOptionDto;
 import com.alphabank.backend.enums.CloseMethod;
 import com.alphabank.backend.enums.DecidedBy;
 import com.alphabank.backend.enums.SourceCode;
@@ -22,6 +24,7 @@ public record SpotRecord(
         DecidedBy addedBy,
         SourceCode source,
         Boolean removable,
+        List<AnswerOptionDto> answerOptions,
         OffsetDateTime createdAt,
         OffsetDateTime closedAt) {
 }

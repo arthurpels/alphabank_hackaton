@@ -87,13 +87,13 @@ class ApiSkeletonTest {
     }
 
     @Test
-    void closeSpotChecksFieldsForMethod() throws Exception {
+    void closeSpotOfUnknownApplicationIs404() throws Exception {
         mvc.perform(post(APP + "/spots/" + StubIds.COFFEE_APPLICATION_ID + "/close")
                         .header(DemoUserInterceptor.HEADER, CLIENT)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"method\":\"CONNECT_SOURCE\"}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
     }
 
     @Test

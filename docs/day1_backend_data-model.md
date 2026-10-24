@@ -81,6 +81,7 @@ erDiagram
         numeric price_pp "цена в п.п. (насколько сузится вилка)"
         string close_method "CONNECT_SOURCE | ANSWER | UPLOAD | PAY | ADD_COLLATERAL | null (неустранимый стоп-фактор)"
         boolean removable "только для STOP_FACTOR: можно ли устранить действием"
+        json answer_options "варианты ответа для ANSWER: [{code, label}]"
         string status "OPEN | ON_REVIEW | CLOSED"
         string added_by "SYSTEM | UNDERWRITER"
         string source "BKI | EGRUL | FNS | OFD | MARKETPLACE | ACQUIRING | REPUTATION | null"
@@ -91,6 +92,7 @@ erDiagram
     SPOT_ANSWER {
         uuid id PK
         uuid spot_id FK
+        string option_code "выбранный вариант ответа или итог проверки: MATCH / MISMATCH для цели, GUARANTEE / PLEDGE / DECLINED для обеспечения"
         string text "свободный ответ клиента"
         uuid document_id FK "может быть null"
         string verdict "PENDING | ACCEPTED | REJECTED"

@@ -1,6 +1,8 @@
 package com.alphabank.backend.mapper;
 
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 
@@ -11,6 +13,7 @@ import com.alphabank.backend.dto.response.CompanyDto;
 import com.alphabank.backend.dto.response.ConsentsDto;
 import com.alphabank.backend.dto.response.ForkDto;
 import com.alphabank.backend.dto.response.ProductDto;
+import com.alphabank.backend.dto.response.SpotAnswerDto;
 import com.alphabank.backend.dto.response.SpotDto;
 import com.alphabank.backend.dto.response.ZoneThresholdsDto;
 import com.alphabank.backend.enrichment.dto.EgrulResponse;
@@ -20,6 +23,7 @@ import com.alphabank.backend.repository.model.ApplicationRecord;
 import com.alphabank.backend.repository.model.CompanyRecord;
 import com.alphabank.backend.repository.model.ForkSnapshotRecord;
 import com.alphabank.backend.repository.model.ProductRecord;
+import com.alphabank.backend.repository.model.SpotAnswerRecord;
 import com.alphabank.backend.repository.model.SpotRecord;
 import com.alphabank.backend.util.ForkZoneResolver;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -38,7 +42,7 @@ public class ApplicationDetailsMapper {
 
     public ApplicationDetailsDto toDetails(ApplicationRecord application, CompanyRecord company, ProductRecord product,
                                            boolean bkiConsent, ForkSnapshotRecord fork, List<SpotRecord> spots,
-                                           List<ApplicationAction> actions) {
+                                           Map<UUID, SpotAnswerRecord> answers, List<ApplicationAction> actions) {
         ApplicationDto dto = new ApplicationDto(application.id(), application.status(), toCompany(company),
                 toProduct(product), application.amount(), application.termMonths(), application.goal(),
                 new ConsentsDto(bkiConsent, true), actions, application.createdAt(), application.submittedAt(),
@@ -46,7 +50,7 @@ public class ApplicationDetailsMapper {
                 application.status() == ApplicationStatus.INFO_REQUESTED && application.infoRequestedAt() != null
                         ? application.infoRequestedAt().plusDays(INFO_REQUEST_DAYS) : null);
         return new ApplicationDetailsDto(dto, fork == null ? null : toFork(fork),
-                spots.stream().map(this::toSpot).toList(), List.of(), null, null);
+                spots.stream().map(spot -> toSpot(spot, answers.get(spot.id()))).toList(), List.of(), null, null);
     }
 
     public ApplicationSummaryDto toSummary(ApplicationRecord application, ProductRecord product,
@@ -70,10 +74,17 @@ public class ApplicationDetailsMapper {
                 product.allowedTerms());
     }
 
-    public SpotDto toSpot(SpotRecord spot) {
+    public SpotDto toSpot(SpotRecord spot, SpotAnswerRecord answer) {
         return new SpotDto(spot.id(), spot.type(), spot.title(), spot.clientHint(), spot.scoringFactor(),
                 spot.pricePp() == null ? 0 : spot.pricePp(), spot.closeMethod(), spot.status(), spot.addedBy(),
-                spot.source(), spot.removable(), List.of(), null, spot.createdAt(), spot.closedAt());
+                spot.source(), spot.removable(), spot.answerOptions(), answer == null ? null : toAnswer(answer),
+                spot.createdAt(), spot.closedAt());
+    }
+
+    private static SpotAnswerDto toAnswer(SpotAnswerRecord answer) {
+        return new SpotAnswerDto(answer.id(), answer.optionCode(), answer.text(), answer.documentId(),
+                answer.verdict(), answer.reviewedBy(), answer.reviewComment(), answer.createdAt(),
+                answer.reviewedAt());
     }
 
     private CompanyDto toCompany(CompanyRecord company) {

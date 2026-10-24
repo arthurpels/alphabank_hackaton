@@ -2,40 +2,58 @@ package com.alphabank.backend.service.impl;
 
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
 import com.alphabank.backend.enrichment.dto.RevenueSourceData;
 import com.alphabank.backend.enrichment.model.EnrichmentResult;
 import com.alphabank.backend.enrichment.service.EnrichmentService;
-import com.alphabank.backend.enums.SourceCode;
+import com.alphabank.backend.enums.SpotStatus;
+import com.alphabank.backend.model.FactorStates;
 import com.alphabank.backend.model.ForkCalculation;
 import com.alphabank.backend.repository.ApplicationSourceRepository;
+import com.alphabank.backend.repository.ForkSnapshotRepository;
+import com.alphabank.backend.repository.OfferRepository;
+import com.alphabank.backend.repository.SpotRepository;
 import com.alphabank.backend.repository.model.ApplicationRecord;
+import com.alphabank.backend.repository.model.ForkSnapshotRecord;
 import com.alphabank.backend.repository.model.ProductRecord;
 import com.alphabank.backend.scoringclient.ScoringClient;
+import com.alphabank.backend.scoringclient.dto.Factor;
 import com.alphabank.backend.scoringclient.dto.ScoreRequest;
+import com.alphabank.backend.scoringclient.dto.ScoreResponse;
+import com.alphabank.backend.service.FactorStateService;
 import com.alphabank.backend.service.ForkCalculationService;
 
 @Service
 public class ForkCalculationServiceImpl implements ForkCalculationService {
 
-    private static final Set<SourceCode> REVENUE_SOURCES = Set.of(SourceCode.OFD, SourceCode.MARKETPLACE,
-            SourceCode.ACQUIRING);
-
     private final EnrichmentService enrichmentService;
     private final ApplicationSourceRepository applicationSourceRepository;
+    private final FactorStateService factorStateService;
     private final ScoringClient scoringClient;
+    private final ForkSnapshotRepository forkSnapshotRepository;
+    private final SpotRepository spotRepository;
+    private final OfferRepository offerRepository;
     private final Clock clock;
 
     public ForkCalculationServiceImpl(EnrichmentService enrichmentService,
                                       ApplicationSourceRepository applicationSourceRepository,
-                                      ScoringClient scoringClient, Clock clock) {
+                                      FactorStateService factorStateService, ScoringClient scoringClient,
+                                      ForkSnapshotRepository forkSnapshotRepository, SpotRepository spotRepository,
+                                      OfferRepository offerRepository, Clock clock) {
         this.enrichmentService = enrichmentService;
         this.applicationSourceRepository = applicationSourceRepository;
+        this.factorStateService = factorStateService;
         this.scoringClient = scoringClient;
+        this.forkSnapshotRepository = forkSnapshotRepository;
+        this.spotRepository = spotRepository;
+        this.offerRepository = offerRepository;
         this.clock = clock;
     }
 
@@ -43,12 +61,32 @@ public class ForkCalculationServiceImpl implements ForkCalculationService {
     public ForkCalculation calculate(ApplicationRecord application, ProductRecord product, String inn) {
         EnrichmentResult enrichment = enrichmentService.enrich(inn, true, LocalDate.now(clock));
         List<RevenueSourceData> connected = enrichment.availableRevenueSources().stream()
-                .filter(source -> REVENUE_SOURCES.contains(source.sourceCode()))
+                .filter(source -> RevenueSeriesServiceImpl.REVENUE_SOURCES.contains(source.sourceCode()))
                 .filter(source -> applicationSourceRepository.isConsentGiven(application.id(), source.sourceCode()))
                 .toList();
+        Long revenue = enrichmentService.calculateMonthlyRevenueKopecks(connected);
+        FactorStates states = factorStateService.resolve(application.id(), revenue != null);
         ScoreRequest request = enrichmentService.createScoreRequest(enrichment, product.code(), application.amount(),
-                application.termMonths(), enrichmentService.calculateMonthlyRevenueKopecks(connected),
-                null, null, null);
+                application.termMonths(), revenue, states.stability(), states.purpose(), states.collateral());
         return new ForkCalculation(enrichment, scoringClient.score(request));
+    }
+
+    @Override
+    public void save(UUID applicationId, ScoreResponse score) {
+        forkSnapshotRepository.insert(new ForkSnapshotRecord(UUID.randomUUID(), applicationId, score.rateFrom(),
+                score.rateTo(), score.thresholds().approveMax(), score.thresholds().rejectMin(),
+                score.rulesVersion(), OffsetDateTime.now(clock)));
+        Map<String, Double> prices = spotPrices(score);
+        spotRepository.findByApplicationId(applicationId).stream()
+                .filter(spot -> spot.status() != SpotStatus.CLOSED && spot.scoringFactor() != null)
+                .filter(spot -> prices.containsKey(spot.scoringFactor()))
+                .forEach(spot -> spotRepository.updatePrice(spot.id(), prices.get(spot.scoringFactor())));
+        offerRepository.expireActive(applicationId);
+    }
+
+    public static Map<String, Double> spotPrices(ScoreResponse score) {
+        return score.factors().stream()
+                .filter(factor -> factor.spotPricePp() != null)
+                .collect(Collectors.toMap(factor -> factor.code().name().toLowerCase(), Factor::spotPricePp));
     }
 }
