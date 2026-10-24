@@ -6,12 +6,14 @@ import { Text } from '@alfalab/core-components/text';
 import { Typography } from '@alfalab/core-components/typography';
 import { ApiError, USE_MOCKS, api } from '../api';
 import { ForkBar } from '../components/ForkBar';
+import { CloseSpotDialog } from '../components/CloseSpotDialog';
 import { SpotCard } from '../components/SpotCard';
 import {
   ApprovedBlock,
   CancelledBlock,
   CheckingBlock,
   CounterOfferBlock,
+  InfoRequestedBlock,
   IssuedBlock,
   RejectedBlock,
   SigningBlock,
@@ -21,8 +23,10 @@ import { FORK_SCALE } from '../constants';
 import { STATUS_META } from '../statuses';
 import type { ApplicationDetails, ApplicationStatus, DecisionZone, Spot, SpotCloseRequest } from '../types';
 import '../App.css';
+const DOCUMENT_KIND = 'CONTRACT_GP';
 
 const FALLBACK_ID = 'coffee-application';
+
 const POLL_STATUSES: ApplicationStatus[] = ['SUBMITTED', 'AUTO_CHECK', 'UNDERWRITING', 'INFO_REQUESTED'];
 const POLL_MS = 3000;
 
@@ -53,13 +57,6 @@ function errorText(e: unknown): string {
   }
   return 'Что-то пошло не так. Попробуйте ещё раз.';
 }
-function closeRequest(spot: Spot): SpotCloseRequest {
-  if (!spot.closeMethod) throw new Error('У пятна нет способа закрытия');
-  if (spot.closeMethod === 'CONNECT_SOURCE' && spot.source) {
-    return { method: 'CONNECT_SOURCE', sourceCode: spot.source, consent: true };
-  }
-  return { method: spot.closeMethod };
-}
 
 export default function ApplicationPage() {
   const navigate = useNavigate();
@@ -68,6 +65,7 @@ export default function ApplicationPage() {
   const [data, setData] = useState<ApplicationDetails | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null); // 'submit', 'accept', 'sign', 'cancel', 'reset' или id пятна
+  const [dialogSpot, setDialogSpot] = useState<Spot | null>(null); 
 
   const run = useCallback(async (key: string, call: () => Promise<ApplicationDetails>) => {
     setBusy(key);
@@ -111,13 +109,47 @@ export default function ApplicationPage() {
 
   const { application, fork, spots } = data;
   const goHome = () => navigate('/client');
+  const submitClose = async (spot: Spot, body: SpotCloseRequest, file?: File): Promise<string | null> => {
+    try {
+      let request = body;
+      if (file) {
+        const doc = await api.uploadDocument(application.id, file, DOCUMENT_KIND);
+        request = { ...body, documentId: doc.id };
+      }
+      setData(await api.closeSpot(application.id, spot.id, request));
+      setDialogSpot(null);
+      return null;
+    } catch (e) {
+      return errorText(e);
+    }
+  };
   const accept = (offerId: string) => run('accept', () => api.acceptOffer(application.id, offerId));
   const cancel = () => run('cancel', () => api.cancelApplication(application.id));
 
   const openSpots = spots.filter((s) => s.status !== 'CLOSED');
   const canCloseSpots = application.availableActions.includes('CLOSE_SPOT');
-  const exact = fork !== null && fork.rateFrom === fork.rateTo;
+  const exact = fork !== null && fork.rateFrom === fork.rateTo; // вилка сошлась в одну точку
   const notice = fork ? NOTICE[fork.zone] : null;
+
+  const spotsSection = (
+    <>
+      <section className="card__section">
+        <h2 className="spots__title">
+          {openSpots.length > 0
+            ? `Что банк о вас пока не знает: ${openSpots.length} ${spotsWord(openSpots.length)}`
+            : 'Все пятна закрыты'}
+        </h2>
+        {spots.map((s) => (
+          <SpotCard
+            key={s.id}
+            spot={s}
+            disabled={!canCloseSpots || busy !== null}
+            onClose={() => setDialogSpot(s)}
+          />
+        ))}
+      </section>
+    </>
+  );
 
   const collecting = (
     <>
@@ -155,22 +187,7 @@ export default function ApplicationPage() {
         </section>
       )}
 
-      <section className="card__section">
-        <h2 className="spots__title">
-          {openSpots.length > 0
-            ? `Что банк о вас пока не знает: ${openSpots.length} ${spotsWord(openSpots.length)}`
-            : 'Все пятна закрыты'}
-        </h2>
-        {spots.map((s) => (
-          <SpotCard
-            key={s.id}
-            spot={s}
-            busy={busy === s.id}
-            disabled={!canCloseSpots || busy !== null}
-            onClose={() => run(s.id, () => api.closeSpot(application.id, s.id, closeRequest(s)))}
-          />
-        ))}
-      </section>
+      {spotsSection}
 
       <footer className="card__footer">
         <Button
@@ -204,7 +221,12 @@ export default function ApplicationPage() {
       </section>
     ),
     COLLECTING: collecting,
-    INFO_REQUESTED: collecting,
+    INFO_REQUESTED: (
+      <>
+        <InfoRequestedBlock data={data} busy={busy === 'cancel'} onCancel={cancel} />
+        {spotsSection}
+      </>
+    ),
     SUBMITTED: <CheckingBlock status={application.status} />,
     AUTO_CHECK: <CheckingBlock status={application.status} />,
     UNDERWRITING: <SpecialistBlock data={data} />,
@@ -240,6 +262,14 @@ export default function ApplicationPage() {
       )}
 
       {body[application.status]}
+
+      {dialogSpot && (
+        <CloseSpotDialog
+          spot={dialogSpot}
+          onDismiss={() => setDialogSpot(null)}
+          onSubmit={(b, file) => submitClose(dialogSpot, b, file)}
+        />
+      )}
     </div>
   );
 }

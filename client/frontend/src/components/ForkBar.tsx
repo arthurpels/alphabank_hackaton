@@ -7,11 +7,12 @@ type Props = {
   scaleMax: number;
   approveMax: number;
   rejectMin: number;
+  marks?: { value: number; label: string }[];
 };
 
 const fmt = (v: number) => String(v).replace('.', ',');
 
-export function ForkBar({ from, to, scaleMin, scaleMax, approveMax, rejectMin }: Props) {
+export function ForkBar({ from, to, scaleMin, scaleMax, approveMax, rejectMin, marks }: Props) {
   const pct = (v: number) => ((v - scaleMin) / (scaleMax - scaleMin)) * 100;
 
   const exact = from === to;
@@ -44,6 +45,14 @@ export function ForkBar({ from, to, scaleMin, scaleMax, approveMax, rejectMin }:
         </div>
       </div>
 
+      {marks && marks.length > 0 && (
+        <div className="fork__marks">
+          {marks.map((m, i) => (
+            <span key={i} className="fork__mark" style={{ left: `${pct(m.value)}%` }} title={m.label} />
+          ))}
+        </div>
+      )}
+
       <div className="fork__row">
         {ticks.map((t, i) => (
           <span
@@ -60,6 +69,7 @@ export function ForkBar({ from, to, scaleMin, scaleMax, approveMax, rejectMin }:
         <span className="fork__legend-item fork__legend-item--good">одобрение</span>
         <span className="fork__legend-item fork__legend-item--mid">андеррайтер</span>
         <span className="fork__legend-item fork__legend-item--bad">отказ</span>
+        {marks && marks.length > 0 && <span className="fork__legend-item fork__legend-item--mark">варианты условий</span>}
       </div>
     </div>
   );
