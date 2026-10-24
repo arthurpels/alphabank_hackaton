@@ -1053,6 +1053,37 @@ paths:
                       facts: []
         '422':
           $ref: '#/components/responses/ValidationError'
+  /health/llm:
+    get:
+      operationId: llmHealth
+      tags:
+      - llm
+      summary: Состояние локальной LLM
+      description: '`disabled` — LLM выключена (`LLM_ENABLED=false`); `warming` — модель загружается в память после старта;
+        `ready` — модель на месте (digest совпал) и прогрета; `unavailable` — Ollama не отвечает, модели нет или digest не
+        совпал, прогрев повторяется каждые 10 секунд. `cachedVerdicts` — сколько ответов LLM запомнено (M02).'
+      responses:
+        '200':
+          description: состояние
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LlmHealth'
+              examples:
+                disabled:
+                  summary: LLM выключена
+                  value:
+                    status: disabled
+                    model: null
+                    digest: null
+                    cachedVerdicts: null
+                ready:
+                  summary: модель прогрета, 12 ответов запомнено
+                  value:
+                    status: ready
+                    model: qwen3:4b
+                    digest: 359d7dd4bcdab3d86b87d73ac27966f4dbb9f5efdfcc75d34a8764a09474fae7
+                    cachedVerdicts: 12
   /health:
     get:
       operationId: health
@@ -1707,4 +1738,27 @@ components:
           example: bba46b2556f0
         cached:
           type: boolean
-          description: ответ взят из кеша вердиктов (M02); до M02 всегда false
+          description: ответ взят из кеша вердиктов (M02). Первый ответ LLM на вход запоминается навсегда (ключ — модель,
+            digest, промпт, схема и параметры декодирования); повторный вызов отдаёт его без обращения к модели, в том числе
+            после перезапуска и при выключенной Ollama, если модель закреплена по digest
+    LlmHealth:
+      type: object
+      required:
+      - status
+      properties:
+        status:
+          type: string
+          enum:
+          - disabled
+          - warming
+          - ready
+          - unavailable
+        model:
+          type: string
+          nullable: true
+        digest:
+          type: string
+          nullable: true
+        cachedVerdicts:
+          type: integer
+          nullable: true

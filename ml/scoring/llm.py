@@ -15,6 +15,8 @@ SEED = 42
 MAX_TOKENS = 600
 CONTEXT_TOKENS = 4096
 MIN_DIGEST_PREFIX = 12
+KEEP_ALIVE = "24h"
+DEFAULT_CACHE_PATH = "/data/llm-cache/verdicts.sqlite"
 
 DECODING_OPTIONS = {
     "temperature": 0,
@@ -31,6 +33,7 @@ class LlmAnswer:
     content: dict[str, Any]
     model: str
     digest: str
+    cached: bool = False
 
 
 class LlmClient(Protocol):
@@ -45,6 +48,7 @@ class LlmSettings:
     timeout_seconds: float
     summary_enabled: bool = False
     model_digest: str | None = None
+    cache_path: str = DEFAULT_CACHE_PATH
 
     @classmethod
     def from_env(cls) -> "LlmSettings":
@@ -56,6 +60,7 @@ class LlmSettings:
             timeout_seconds=float(_env("LLM_TIMEOUT_SECONDS", "60")),
             summary_enabled=enabled and _flag("LLM_SUMMARY_ENABLED"),
             model_digest=_env("OLLAMA_MODEL_DIGEST", "").lower() or None,
+            cache_path=_env("LLM_CACHE_PATH", DEFAULT_CACHE_PATH),
         )
 
 
@@ -113,6 +118,17 @@ class OllamaClient:
             )
             return None
         return digest
+
+    def warm_up(self) -> bool:
+        try:
+            response = self._client.post(
+                "/api/generate", json={"model": self.settings.model, "prompt": "", "keep_alive": KEEP_ALIVE}
+            )
+            response.raise_for_status()
+        except httpx.HTTPError as exc:
+            logger.warning("Не удалось загрузить модель %s в память: %s", self.settings.model, exc)
+            return False
+        return True
 
     def chat_json(self, system: str, user: str, schema: dict[str, Any]) -> LlmAnswer | None:
         digest = self.model_digest()

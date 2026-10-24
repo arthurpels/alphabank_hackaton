@@ -80,5 +80,7 @@ class PurposeClassifier:
             generated_by="LLM",
             matched_keywords=matched,
             reason=reason,
-            llm=LlmMeta(model=answer.model, digest=answer.digest, prompt_version=self.prompt_version),
+            llm=LlmMeta(
+                model=answer.model, digest=answer.digest, prompt_version=self.prompt_version, cached=answer.cached
+            ),
         )

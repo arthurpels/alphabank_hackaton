@@ -1,13 +1,16 @@
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
 
 from scoring.engine import Engine
-from scoring.llm import LlmSettings, OllamaClient, load_prompts
+from scoring.llm import LlmClient, LlmSettings, OllamaClient, load_prompts
 from scoring.purpose import PurposeClassifier
 from scoring.schemas import (
     AnomaliesRequest,
     AnomaliesResponse,
+    LlmHealth,
     OfferGridResponse,
     PurposeRequest,
     PurposeResponse,
@@ -17,6 +20,8 @@ from scoring.schemas import (
     UnderwritingSummary,
 )
 from scoring.summary import Summarizer
+from scoring.verdicts import CachedLlm, open_cache
+from scoring.warmup import LlmWarmup
 
 BASE_DIR = Path(__file__).resolve().parent
 RULES_PATH = BASE_DIR / "scoring_rules.yaml"
@@ -24,17 +29,33 @@ PROMPTS_PATH = BASE_DIR / "llm.yaml"
 
 engine = Engine.from_yaml(RULES_PATH)
 llm_settings = LlmSettings.from_env()
-llm = OllamaClient(llm_settings) if llm_settings.enabled else None
+ollama = OllamaClient(llm_settings) if llm_settings.enabled else None
+verdict_cache = open_cache(llm_settings.cache_path) if ollama is not None else None
+llm: LlmClient | None = CachedLlm(ollama, verdict_cache) if ollama and verdict_cache else ollama
+warmup = LlmWarmup(ollama, verdict_cache)
 prompts = load_prompts(PROMPTS_PATH)
 purpose_classifier = PurposeClassifier(engine.purpose_keywords, llm, prompts)
 summarizer = Summarizer(llm if llm_settings.summary_enabled else None, prompts)
 
-app = FastAPI(title="ML Scoring Service")
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    warmup.start()
+    yield
+    warmup.stop()
+
+
+app = FastAPI(title="ML Scoring Service", lifespan=lifespan)
 
 
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/health/llm", response_model=LlmHealth, tags=["llm"])
+def llm_health() -> LlmHealth:
+    return warmup.health()
 
 
 @app.post("/score", response_model=ScoreResponse, tags=["scoring"])

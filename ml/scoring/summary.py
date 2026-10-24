@@ -110,7 +110,9 @@ class Summarizer:
                 items.append(SummaryItem(text=text, facts=refs))
         if not items:
             return None
-        return items, LlmMeta(model=answer.model, digest=answer.digest, prompt_version=self.prompt_version)
+        return items, LlmMeta(
+            model=answer.model, digest=answer.digest, prompt_version=self.prompt_version, cached=answer.cached
+        )
 
     def _template_items(self, request: SummaryRequest) -> list[SummaryItem]:
         items = [SummaryItem(text=self._fork_text(request), facts=[])]

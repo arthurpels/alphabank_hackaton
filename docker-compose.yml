@@ -81,8 +81,11 @@ services:
       OLLAMA_MODEL_DIGEST: ${OLLAMA_MODEL_DIGEST}
       LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS}
       LLM_SUMMARY_ENABLED: ${LLM_SUMMARY_ENABLED}
+      LLM_CACHE_PATH: ${LLM_CACHE_PATH}
     ports:
       - "${ML_PORT}:8001"
+    volumes:
+      - ml_llm_cache:/data/llm-cache
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8001/health')\" > /dev/null 2>&1 || exit 1"]
       interval: 10s
@@ -147,3 +150,4 @@ volumes:
   postgres_data:
   documents_data:
   ollama_data:
+  ml_llm_cache:

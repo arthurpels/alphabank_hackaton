@@ -215,6 +215,13 @@ class LlmMeta(CamelModel):
     cached: bool = False
 
 
+class LlmHealth(CamelModel):
+    status: Literal["disabled", "warming", "ready", "unavailable"]
+    model: str | None = None
+    digest: str | None = None
+    cached_verdicts: int | None = None
+
+
 class UnderwritingSummary(CamelModel):
     generated_by: Literal["LLM", "TEMPLATE"]
     items: list[SummaryItem]
