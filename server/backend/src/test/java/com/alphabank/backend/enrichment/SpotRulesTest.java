@@ -244,7 +244,7 @@ class SpotRulesTest {
     }
 
     @Test
-    void stopFactorsAndAnomaliesDetection() {
+    void stopFactorsDetection() {
         EgrulResponse egrul = new EgrulResponse(
                 "EGRUL", "7700000001", "ООО «Тест»", "OOO", "LIQUIDATING",
                 LocalDate.of(2026, 8, 1),
@@ -266,12 +266,38 @@ class SpotRulesTest {
 
         assertTrue(stopFactors.stream().anyMatch(s -> s.title().contains("Компания в статусе LIQUIDATING")));
         assertTrue(stopFactors.stream().anyMatch(s -> s.title().contains("Компания зарегистрирована менее 6 месяцев назад")));
-        assertTrue(stopFactors.stream().anyMatch(s -> s.title().contains("Есть текущая просрочка по кредитам")));
+        assertTrue(stopFactors.stream().anyMatch(s -> s.title().contains("Есть текущая просрочка по кредитам")
+                && s.type() == SpotType.STOP_FACTOR
+                && Boolean.FALSE.equals(s.removable())
+                && s.closeMethod() == null));
         assertTrue(stopFactors.stream().anyMatch(s -> s.title().contains("Долг в ФНС 10 000 ₽")));
+    }
 
-        List<SpotDraft> anomalies = SpotRules.evaluateAnomalies(egrul, bki);
-        assertEquals(2, anomalies.size());
-        assertTrue(anomalies.stream().anyMatch(s -> s.title().contains("Были просрочки за последние 12 месяцев")));
-        assertTrue(anomalies.stream().anyMatch(s -> s.title().contains("Частые запросы в банки")));
+    @Test
+    void bkiHistoryDoesNotCreateSpots() {
+        EgrulResponse egrul = new EgrulResponse(
+                "EGRUL", "7700000002", "ООО «Тест»", "OOO", "ACTIVE",
+                LocalDate.of(2019, 1, 1),
+                new EgrulResponse.Director("Тестов Т. Т.", LocalDate.of(2019, 1, 1), false),
+                new EgrulResponse.Address("г. Москва", false),
+                "10.00", 1);
+
+        BkiResponse bki = new BkiResponse(
+                "BKI", "7700000002", 550,
+                List.of(), 0,
+                new BkiResponse.Delinquencies(0, 15, 2), 7);
+
+        FnsResponse fns = new FnsResponse(
+                "FNS", "7700000002",
+                new FnsResponse.TaxDebt(0, "RUB", LocalDate.of(2026, 10, 15), null),
+                0, "USN");
+
+        List<RevenueSourceData> available = List.of(
+                new RevenueSourceData(SourceCode.ACQUIRING, 100000000L, null));
+
+        List<SpotDraft> spots = SpotRules.evaluateInitialSpots(egrul, bki, fns, available, AS_OF);
+
+        assertTrue(spots.stream().noneMatch(s -> s.type() == SpotType.ANOMALY));
+        assertTrue(spots.stream().noneMatch(s -> "credit_history".equals(s.scoringFactor())));
     }
 }
