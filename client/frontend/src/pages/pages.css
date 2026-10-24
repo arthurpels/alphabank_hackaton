@@ -129,3 +129,45 @@
 @media (max-width: 600px) {
   .app { flex-direction: column; align-items: flex-start; }
 }
+
+
+/* ===== кабинет андеррайтера ===== */
+.topbar--wide { max-width: 1000px; }
+
+/* красная шапка + белое тело  */
+.uw-wrap { max-width: 1000px; margin: 16px auto 24px; }
+.uw-hero {
+  display: flex; justify-content: space-between; align-items: center; gap: 16px;
+  padding: 28px 24px;
+  background: var(--color-light-bg-accent);
+  border-radius: 24px 24px 0 0;
+  color: #fff;
+}
+.uw-hero__title { margin: 0; font-size: 26px; line-height: 32px; font-weight: 600; }
+.uw-hero__sub { margin-top: 6px; font-size: 15px; line-height: 22px; opacity: .9; }
+.uw-hero__status { flex-shrink: 0; padding: 4px; border-radius: 20px; background: #fff; }
+.uw-body {
+  padding: 24px;
+  background: var(--color-light-bg-primary);
+  border-radius: 0 0 24px 24px;
+}
+.uw-body > :first-child { margin-top: 0; }
+@media (max-width: 600px) {
+  .uw-wrap { margin-top: 8px; }
+  .uw-hero { flex-direction: column; align-items: flex-start; padding: 20px 16px; }
+  .uw-hero__title { font-size: 22px; line-height: 28px; }
+  .uw-body { padding: 16px; }
+}
+
+/* очередь и таблицы */
+.queue-row { cursor: pointer; }
+.queue-company { font-weight: 600; }
+.queue-inn { white-space: nowrap; }
+.queue-inn, .queue-sub { font-size: 13px; line-height: 18px; color: var(--color-light-text-secondary); }
+.queue-main { white-space: nowrap; }
+.queue-table table { table-layout: fixed; width: 100%; }
+.queue-table th, .queue-table td { padding-left: 12px !important; padding-right: 12px !important; vertical-align: middle; text-align: center !important; }
+.queue-table th > div { justify-content: center !important; text-align: center !important; }
+.queue-num { text-align: center; }
+.queue-main { overflow: hidden; text-overflow: ellipsis; }
+.queue-status { display: flex; justify-content: center; }

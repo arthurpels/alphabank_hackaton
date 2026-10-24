@@ -6,6 +6,7 @@ import ClientHomePage from './pages/ClientHomePage';
 import NewApplicationPage from './pages/NewApplicationPage';
 import ApplicationPage from './pages/ApplicationPage';
 import UnderwriterPage from './pages/UnderwriterPage';
+import UnderwriterApplicationPage from './pages/UnderwriterApplicationPage';
 import './pages/pages.css';
 
 export default function App() {
@@ -15,7 +16,7 @@ export default function App() {
   return (
     <>
       {pathname !== '/' && (
-        <div className="topbar">
+        <div className={`topbar ${pathname.startsWith('/underwriter') ? 'topbar--wide' : ''}`}>
           <Button view="text" size={40} onClick={() => navigate('/')}>
             ← На главную
           </Button>
@@ -28,6 +29,7 @@ export default function App() {
         <Route path="/client/new" element={<NewApplicationPage />} />
         <Route path="/client/application" element={<ApplicationPage />} />
         <Route path="/underwriter" element={<UnderwriterPage />} />
+        <Route path="/underwriter/application" element={<UnderwriterApplicationPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>

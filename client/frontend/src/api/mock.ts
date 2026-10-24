@@ -9,6 +9,7 @@ import type {
   Offer,
 } from '../types';
 import { getCurrentUser } from './http';
+import { underwriterMock } from './mockUnderwriter';
 import type { Api } from './index';
 
 const STEP_MS = 1500;
@@ -223,8 +224,11 @@ export const mockApi: Api = {
       },
     ]);
   },
-  getApplication: () => {
-    checkPreset();
+  ...underwriterMock,
+
+    getApplication: (id) => {
+        if (underwriterMock.isBuilder(id)) return underwriterMock.getBuilder();
+        checkPreset();
     advance();
     return wait(state);
   },

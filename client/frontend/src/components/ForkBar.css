@@ -82,3 +82,11 @@
   .fork__tick,
   .fork__legend-item { font-size: 12px; }
 }
+
+/* отметки вариантов условий (режим андеррайтера) */
+.fork__marks { position: relative; height: 14px; margin-top: 4px; }
+.fork__mark {
+  position: absolute; top: 2px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%;
+  background: var(--color-light-bg-primary); border: 2px solid var(--color-light-text-primary);
+}
+.fork__legend-item--mark { --dot: var(--color-light-text-primary); }
