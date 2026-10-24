@@ -12,7 +12,8 @@ Codex и др.). Прочитай целиком перед первой зад�
 
 - Концепция — `docs/concept.md`
 - ТЗ — `docs/tz_credits.md`
-- Задачи и кто что делает — `docs/kanban.md` и доска на GitHub
+- Задачи и кто что делает — `docs/kanban.md` и доска на GitHub; ML-трек всей
+  командой и правила детерминизма — `docs/kanban2.md`
 - Статусы заявки — `docs/day1_backend_application-states.md`
 - Модель данных — `docs/day1_backend_data-model.md`
 - Моки источников — `docs/day1_backend_external-mocks.md`

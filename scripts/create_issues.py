@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Создаёт метки, вехи и задачи на GitHub из docs/kanban.md через gh CLI."""
+"""Создаёт метки, вехи и задачи на GitHub из docs/kanban.md (или другого файла доски) через gh CLI."""
 
 import argparse
 import json
@@ -15,19 +15,19 @@ ROLE_COLOR = "5319e7"
 PRIORITY_COLORS = {"P0": "b60205", "P1": "fbca04", "P2": "c5def5"}
 AREA_COLOR = "0e8a16"
 
-HEADER = re.compile(r"^### (T\d+) · (.+)$")
+HEADER = re.compile(r"^### ([TM]\d+) · (.+)$")
 META = re.compile(
     r"^\*\*Кто:\*\* (.+?) · \*\*Метки:\*\* (.+?) · "
     r"\*\*Веха:\*\* (.+?) · \*\*Зависит от:\*\* (.+)$"
 )
-TASK_REF = re.compile(r"\bT\d{2}\b")
+TASK_REF = re.compile(r"\b[TM]\d{2}\b")
 
 
-def parse(text):
+def parse(text, source="docs/kanban.md"):
     tasks, current = [], None
     for line in text.splitlines():
         if m := HEADER.match(line):
-            current = {"id": m[1], "title": m[2], "body": []}
+            current = {"id": m[1], "title": m[2], "body": [], "source": source}
             tasks.append(current)
         elif line.startswith("## ") or line == "---":
             current = None
@@ -52,7 +52,7 @@ def render_body(task, numbers):
     body = f"**Роль:** {task['role']} · **Зависит от:** {task['deps']}\n\n{task['body']}"
     if numbers:
         body = TASK_REF.sub(lambda m: f"#{numbers[m[0]]}" if m[0] in numbers else m[0], body)
-    return f"{body}\n\n_Источник: `docs/kanban.md`, {task['id']}_"
+    return f"{body}\n\n_Источник: `{task['source']}`, {task['id']}_"
 
 
 def gh(*args, dry_run):
@@ -71,9 +71,11 @@ def main():
     ap.add_argument("--assign", default="", help="роль=логин через запятую: lead=…,b1=…,b2=…,front=…,analyst=…")
     ap.add_argument("--project", help="название GitHub Project (доски), куда добавить задачи")
     ap.add_argument("--only", help="создать только эти задачи: T01,T02")
+    ap.add_argument("--file", type=Path, default=KANBAN, help="файл доски, по умолчанию docs/kanban.md")
     args = ap.parse_args()
 
-    tasks = parse(KANBAN.read_text(encoding="utf-8"))
+    kanban = args.file.resolve()
+    tasks = parse(kanban.read_text(encoding="utf-8"), kanban.relative_to(KANBAN.parent.parent).as_posix())
     if args.only:
         wanted = set(args.only.split(","))
         tasks = [t for t in tasks if t["id"] in wanted]

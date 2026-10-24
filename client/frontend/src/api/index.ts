@@ -73,6 +73,6 @@ const realApi: Api = {
   makeDecision: (id, body) => request('POST', `/applications/${id}/decision`, body),
 };
 
-export const USE_MOCKS = import.meta.env.VITE_USE_MOCKS !== 'false';
+export const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === 'true';
 
 export const api: Api = USE_MOCKS ? mockApi : realApi;

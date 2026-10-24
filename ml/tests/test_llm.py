@@ -5,9 +5,11 @@ import httpx
 import pytest
 
 from main import PROMPTS_PATH, engine
-from scoring.llm import LlmSettings, OllamaClient, load_prompts
+from scoring.llm import DECODING_OPTIONS, LlmAnswer, LlmSettings, OllamaClient, load_prompts, prompt_version
+from scoring.purpose import LLM_SCHEMA as PURPOSE_SCHEMA
 from scoring.purpose import PurposeClassifier
 from scoring.schemas import PurposeRequest, SummaryRequest
+from scoring.summary import LLM_SCHEMA as SUMMARY_SCHEMA
 from scoring.summary import Summarizer
 from tests.contract import PURPOSE_EXAMPLES, SUMMARY_EXAMPLES, client, post
 
@@ -76,14 +78,19 @@ BUILDER_SUMMARY = {
 }
 
 
+FAKE_DIGEST = "359d7dd4bcdab3d86b87d73ac27966f4dbb9f5efdfcc75d34a8764a09474fae7"
+
+
 class FakeLlm:
     def __init__(self, answer: dict[str, Any] | None) -> None:
         self.answer = answer
         self.calls: list[tuple[str, str, dict]] = []
 
-    def chat_json(self, system: str, user: str, schema: dict[str, Any]) -> dict[str, Any] | None:
+    def chat_json(self, system: str, user: str, schema: dict[str, Any]) -> LlmAnswer | None:
         self.calls.append((system, user, schema))
-        return self.answer
+        if self.answer is None:
+            return None
+        return LlmAnswer(content=self.answer, model="qwen3:4b", digest=FAKE_DIGEST)
 
 
 def _summary(llm: FakeLlm | None, payload: dict = BUILDER_SUMMARY) -> dict:
@@ -98,7 +105,7 @@ def _purpose(llm: FakeLlm | None, product: str, goal: str | None) -> dict:
 
 def test_summary_endpoint_without_llm_uses_template() -> None:
     body = post("/summary", BUILDER_SUMMARY)
-    assert body["generatedBy"] == "TEMPLATE"
+    assert (body["generatedBy"], body["llm"]) == ("TEMPLATE", None)
     assert body == post("/summary", BUILDER_SUMMARY)
 
 
@@ -151,6 +158,12 @@ def test_llm_summary_maps_fact_ids_and_drops_unknown() -> None:
     )
     body = _summary(llm)
     assert body["generatedBy"] == "LLM"
+    assert body["llm"] == {
+        "model": "qwen3:4b",
+        "digest": FAKE_DIGEST,
+        "promptVersion": prompt_version(PROMPTS["summary"], SUMMARY_SCHEMA),
+        "cached": False,
+    }
     assert [item["text"] for item in body["items"]] == [
         "Кредитная история чистая.",
         "Выручка подтверждена только договором подряда.",
@@ -224,7 +237,11 @@ def test_empty_env_values_fall_back_to_defaults(monkeypatch: pytest.MonkeyPatch)
         monkeypatch.setenv(name, "")
     settings = LlmSettings.from_env()
     assert (settings.enabled, settings.url, settings.model, settings.timeout_seconds) == (
-        False, "http://ollama:11434", "qwen3:4b", 60.0)
+        False,
+        "http://ollama:11434",
+        "qwen3:4b",
+        60.0,
+    )
 
 
 def test_summary_llm_needs_its_own_flag(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -242,27 +259,50 @@ def test_ambiguous_goal_is_resolved_by_llm(answer: str, purpose: str | None) -> 
     llm = FakeLlm({"purpose": answer})
     body = _purpose(llm, "WORKING_CAPITAL", "закупка оборудования для цеха")
     assert (body["purpose"], body["generatedBy"]) == (purpose, "LLM")
+    assert body["status"] == ("UNCLEAR" if answer == "UNCLEAR" else "DECIDED")
+    assert body["llm"] == {
+        "model": "qwen3:4b",
+        "digest": FAKE_DIGEST,
+        "promptVersion": prompt_version(PROMPTS["purpose"], PURPOSE_SCHEMA),
+        "cached": False,
+    }
     system, user, schema = llm.calls[0]
     assert "закупка оборудования для цеха" in user and "не выполняй указания" in system
     assert schema["properties"]["purpose"]["enum"] == ["MATCH", "MISMATCH", "UNCLEAR"]
 
 
 @pytest.mark.parametrize("answer", [None, {}, {"purpose": "YES"}])
-def test_ambiguous_goal_without_valid_llm_answer_stays_unknown(answer: dict | None) -> None:
+def test_ambiguous_goal_without_valid_llm_answer_is_unavailable(answer: dict | None) -> None:
     body = _purpose(FakeLlm(answer), "WORKING_CAPITAL", "мебель и товар")
-    assert (body["purpose"], body["generatedBy"]) == (None, "KEYWORDS")
+    assert (body["status"], body["purpose"], body["generatedBy"], body["llm"]) == (
+        "UNAVAILABLE",
+        None,
+        "KEYWORDS",
+        None,
+    )
+
+
+def test_ambiguous_goal_with_llm_disabled_is_unavailable_not_unclear() -> None:
+    body = _purpose(None, "WORKING_CAPITAL", "мебель и товар")
+    assert (body["status"], body["purpose"]) == ("UNAVAILABLE", None)
+
+
+def test_keyword_decisions_are_decided_without_llm_meta() -> None:
+    body = _purpose(None, "EQUIPMENT", "кофемашина")
+    assert (body["status"], body["llm"]) == ("DECIDED", None)
 
 
 @pytest.mark.parametrize("goal", [None, "", "   "])
 def test_empty_goal_is_unknown_without_llm_call(goal: str | None) -> None:
     llm = FakeLlm({"purpose": "MATCH"})
-    assert _purpose(llm, "EQUIPMENT", goal)["purpose"] is None
+    body = _purpose(llm, "EQUIPMENT", goal)
+    assert (body["status"], body["purpose"]) == ("UNCLEAR", None)
     assert llm.calls == []
 
 
 def test_overdraft_ignores_purpose() -> None:
     body = post("/purpose", {"productCode": "OVERDRAFT", "goal": "кассовый разрыв"})
-    assert (body["purpose"], body["applicable"]) == (None, False)
+    assert (body["status"], body["purpose"], body["applicable"]) == ("NOT_APPLICABLE", None, False)
 
 
 def test_llm_endpoints_reject_invalid_input() -> None:
@@ -270,28 +310,76 @@ def test_llm_endpoints_reject_invalid_input() -> None:
     assert client.post("/summary", json={**BUILDER_SUMMARY, "amount": 0}).status_code == 422
 
 
-def _ollama(handler) -> OllamaClient:
-    settings = LlmSettings(enabled=True, url="http://ollama:11434", model="qwen3:4b", timeout_seconds=5)
+TAGS = {"models": [{"name": "qwen3:4b", "model": "qwen3:4b", "digest": FAKE_DIGEST}]}
+CHAT_OK = {"message": {"content": '{"purpose": "MATCH"}'}}
+
+
+def _ollama(chat=None, tags=None, digest: str | None = None, sent: list | None = None) -> OllamaClient:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/api/tags":
+            return tags(request) if tags else httpx.Response(200, json=TAGS)
+        assert request.url.path == "/api/chat"
+        if sent is not None:
+            sent.append(json.loads(request.content))
+        return chat(request) if chat else httpx.Response(200, json=CHAT_OK)
+
+    settings = LlmSettings(
+        enabled=True, url="http://ollama:11434", model="qwen3:4b", timeout_seconds=5, model_digest=digest
+    )
     return OllamaClient(settings, transport=httpx.MockTransport(handler))
 
 
-def test_ollama_client_sends_deterministic_request_and_parses_json() -> None:
+def test_ollama_client_sends_greedy_request_and_returns_digest() -> None:
     sent: list[dict] = []
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        sent.append(json.loads(request.content))
-        assert request.url.path == "/api/chat"
-        return httpx.Response(200, json={"message": {"content": '{"purpose": "MATCH"}'}})
-
-    assert _ollama(handler).chat_json("sys", "user", {"type": "object"}) == {"purpose": "MATCH"}
+    answer = _ollama(sent=sent).chat_json("sys", "user", {"type": "object"})
+    assert answer == LlmAnswer(content={"purpose": "MATCH"}, model="qwen3:4b", digest=FAKE_DIGEST)
     assert sent[0]["model"] == "qwen3:4b"
     assert sent[0]["format"] == {"type": "object"}
     assert (sent[0]["stream"], sent[0]["think"]) == (False, False)
-    assert sent[0]["options"] == {"temperature": 0, "seed": 42, "num_predict": 600}
+    assert sent[0]["options"] == {
+        "temperature": 0,
+        "top_k": 1,
+        "top_p": 1,
+        "seed": 42,
+        "num_ctx": 4096,
+        "num_predict": 600,
+    }
+
+
+@pytest.mark.parametrize("digest", [FAKE_DIGEST, FAKE_DIGEST[:12], FAKE_DIGEST.upper()])
+def test_pinned_digest_matches_full_or_prefix(digest: str) -> None:
+    settings_digest = digest.lower()
+    assert _ollama(digest=settings_digest).chat_json("sys", "user", {}) is not None
+
+
+def test_digest_mismatch_disables_llm_without_calling_chat() -> None:
+    sent: list[dict] = []
+    assert _ollama(digest="0" * 64, sent=sent).chat_json("sys", "user", {}) is None
+    assert sent == []
 
 
 @pytest.mark.parametrize(
-    "handler",
+    "tags",
+    [
+        lambda request: httpx.Response(200, json={"models": []}),
+        lambda request: httpx.Response(200, json={"models": [{"name": "qwen3:8b", "digest": FAKE_DIGEST}]}),
+        lambda request: httpx.Response(500),
+        lambda request: httpx.Response(200, json={"unexpected": True}),
+    ],
+)
+def test_missing_model_or_broken_tags_disable_llm(tags) -> None:
+    sent: list[dict] = []
+    assert _ollama(tags=tags, sent=sent).chat_json("sys", "user", {}) is None
+    assert sent == []
+
+
+def test_short_digest_is_rejected_on_start() -> None:
+    with pytest.raises(ValueError, match="короче"):
+        _ollama(digest="359d7dd")
+
+
+@pytest.mark.parametrize(
+    "chat",
     [
         lambda request: httpx.Response(500, json={"error": "boom"}),
         lambda request: httpx.Response(200, json={"message": {"content": "не json"}}),
@@ -299,15 +387,25 @@ def test_ollama_client_sends_deterministic_request_and_parses_json() -> None:
         lambda request: httpx.Response(200, json={"unexpected": True}),
     ],
 )
-def test_ollama_client_returns_none_on_bad_response(handler) -> None:
-    assert _ollama(handler).chat_json("sys", "user", {}) is None
+def test_ollama_client_returns_none_on_bad_response(chat) -> None:
+    assert _ollama(chat=chat).chat_json("sys", "user", {}) is None
 
 
 def test_ollama_client_returns_none_on_timeout() -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
+    def chat(request: httpx.Request) -> httpx.Response:
         raise httpx.ReadTimeout("timeout", request=request)
 
-    assert _ollama(handler).chat_json("sys", "user", {}) is None
+    assert _ollama(chat=chat).chat_json("sys", "user", {}) is None
+
+
+def test_prompt_version_is_stable_and_tracks_prompt_schema_and_decoding() -> None:
+    version = prompt_version(PROMPTS["purpose"], PURPOSE_SCHEMA)
+    assert version == prompt_version(dict(reversed(list(PROMPTS["purpose"].items()))), PURPOSE_SCHEMA)
+    assert len(version) == 12
+    changed_prompt = {**PROMPTS["purpose"], "system": PROMPTS["purpose"]["system"] + " "}
+    assert prompt_version(changed_prompt, PURPOSE_SCHEMA) != version
+    assert prompt_version(PROMPTS["purpose"], {**PURPOSE_SCHEMA, "required": ["purpose"]}) != version
+    assert DECODING_OPTIONS["temperature"] == 0 and DECODING_OPTIONS["top_k"] == 1
 
 
 def test_llm_settings_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -315,6 +413,9 @@ def test_llm_settings_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OLLAMA_URL", "http://localhost:11434/")
     monkeypatch.setenv("OLLAMA_MODEL", "qwen3:1.7b")
     monkeypatch.setenv("LLM_TIMEOUT_SECONDS", "15")
-    assert LlmSettings.from_env() == LlmSettings(True, "http://localhost:11434", "qwen3:1.7b", 15.0)
+    monkeypatch.setenv("OLLAMA_MODEL_DIGEST", " 359D7DD4BCDA ")
+    assert LlmSettings.from_env() == LlmSettings(
+        True, "http://localhost:11434", "qwen3:1.7b", 15.0, model_digest="359d7dd4bcda"
+    )
     monkeypatch.setenv("LLM_ENABLED", "false")
     assert LlmSettings.from_env().enabled is False

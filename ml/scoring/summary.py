@@ -2,8 +2,16 @@ import json
 import re
 from typing import Any
 
-from scoring.llm import LlmClient
-from scoring.schemas import FactRef, SpotStatus, SummaryItem, SummaryRequest, SummarySpot, UnderwritingSummary
+from scoring.llm import LlmClient, prompt_version
+from scoring.schemas import (
+    FactRef,
+    LlmMeta,
+    SpotStatus,
+    SummaryItem,
+    SummaryRequest,
+    SummarySpot,
+    UnderwritingSummary,
+)
 
 MAX_ITEMS = 5
 MIN_ITEMS = 3
@@ -52,15 +60,17 @@ class Summarizer:
     def __init__(self, llm: LlmClient | None, prompts: dict[str, Any]) -> None:
         self.llm = llm
         self.prompts = prompts
+        self.prompt_version = prompt_version(prompts["summary"], LLM_SCHEMA)
 
     def summarize(self, request: SummaryRequest) -> UnderwritingSummary:
         if self.llm is not None and request.facts:
-            items = self._llm_items(request)
-            if items:
-                return UnderwritingSummary(generated_by="LLM", items=items)
+            result = self._llm_items(request)
+            if result is not None:
+                items, meta = result
+                return UnderwritingSummary(generated_by="LLM", items=items, llm=meta)
         return UnderwritingSummary(generated_by="TEMPLATE", items=self._template_items(request))
 
-    def _llm_items(self, request: SummaryRequest) -> list[SummaryItem] | None:
+    def _llm_items(self, request: SummaryRequest) -> tuple[list[SummaryItem], LlmMeta] | None:
         facts = {_fact_id(index): fact for index, fact in enumerate(request.facts)}
         data = {
             "product": request.product_code.value,
@@ -84,11 +94,11 @@ class Summarizer:
         prompts = self.prompts["summary"]
         user = prompts["user"].format(data=json.dumps(data, ensure_ascii=False, indent=2))
         answer = self.llm.chat_json(prompts["system"], user, LLM_SCHEMA)
-        if not answer or not isinstance(answer.get("items"), list):
+        if answer is None or not isinstance(answer.content.get("items"), list):
             return None
 
         items = []
-        for raw in answer["items"][:MAX_ITEMS]:
+        for raw in answer.content["items"][:MAX_ITEMS]:
             if not isinstance(raw, dict) or not isinstance(raw.get("text"), str):
                 continue
             text = re.sub(r"\s+", " ", raw["text"]).strip()
@@ -98,7 +108,9 @@ class Summarizer:
             ]
             if text and len(text) <= MAX_TEXT_LENGTH and refs:
                 items.append(SummaryItem(text=text, facts=refs))
-        return items or None
+        if not items:
+            return None
+        return items, LlmMeta(model=answer.model, digest=answer.digest, prompt_version=self.prompt_version)
 
     def _template_items(self, request: SummaryRequest) -> list[SummaryItem]:
         items = [SummaryItem(text=self._fork_text(request), facts=[])]

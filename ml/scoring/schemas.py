@@ -208,9 +208,17 @@ class SummaryItem(CamelModel):
     facts: list[FactRef]
 
 
+class LlmMeta(CamelModel):
+    model: str
+    digest: str
+    prompt_version: str
+    cached: bool = False
+
+
 class UnderwritingSummary(CamelModel):
     generated_by: Literal["LLM", "TEMPLATE"]
     items: list[SummaryItem]
+    llm: LlmMeta | None = None
 
 
 class PurposeRequest(CamelModel):
@@ -218,9 +226,18 @@ class PurposeRequest(CamelModel):
     goal: str | None = Field(default=None, max_length=1000)
 
 
+class PurposeStatus(str, Enum):
+    DECIDED = "DECIDED"
+    UNCLEAR = "UNCLEAR"
+    UNAVAILABLE = "UNAVAILABLE"
+    NOT_APPLICABLE = "NOT_APPLICABLE"
+
+
 class PurposeResponse(CamelModel):
+    status: PurposeStatus
     purpose: Purpose | None
     applicable: bool
     generated_by: Literal["KEYWORDS", "LLM"]
     matched_keywords: list[str]
     reason: str | None = None
+    llm: LlmMeta | None = None

@@ -894,8 +894,11 @@ paths:
       summary: Разбор цели кредита
       description: 'Соответствует ли цель со слов клиента продукту — значение для `/score.purpose`. Сначала словарь корней слов
         (`ml/scoring_rules.yaml`, `purpose_keywords`): признаки только запрошенного продукта — `MATCH`, только другого — `MISMATCH`.
-        Если словарь не решает (признаки обоих или ни одного) и LLM включена — спрашиваем LLM; иначе `purpose = null` и пятно
-        «На что нужны деньги» остаётся открытым. `generatedBy` показывает, кто решил, `reason` — объяснение LLM. Пустая цель — `null` без LLM. Для продуктов
+        Если словарь не решает (признаки обоих или ни одного) — спрашиваем LLM. `status` различает исходы: `DECIDED` —
+        цель определена; `UNCLEAR` — цель пустая или LLM ответила «нельзя понять» (просим клиента уточнить);
+        `UNAVAILABLE` — нужна LLM, но она выключена, не ответила, ответила не по формату или digest модели не совпал
+        (ответ клиента уходит андеррайтеру, отказывать клиенту нельзя); `NOT_APPLICABLE` — продукт цель не учитывает.
+        При ответе LLM в `llm` — модель, digest и версия промпта. `generatedBy` показывает, кто решил, `reason` — объяснение LLM. Пустая цель — `null` без LLM. Для продуктов
         без словаря (овердрафт) — `applicable = false`.'
       requestBody:
         required: true
@@ -930,6 +933,7 @@ paths:
                 coffee:
                   summary: ООО «Кофейня» — цель совпадает с продуктом
                   value:
+                    status: DECIDED
                     purpose: MATCH
                     applicable: true
                     generatedBy: KEYWORDS
@@ -937,18 +941,22 @@ paths:
                     - кофемашин
                     - витрин
                     reason: null
+                    llm: null
                 mismatch:
                   summary: Станок за счёт оборотного кредита — цель не совпадает
                   value:
+                    status: DECIDED
                     purpose: MISMATCH
                     applicable: true
                     generatedBy: KEYWORDS
                     matchedKeywords:
                     - станк
                     reason: null
+                    llm: null
                 ambiguous:
                   summary: Признаки обоих продуктов — без LLM цель не определена
                   value:
+                    status: UNAVAILABLE
                     purpose: null
                     applicable: true
                     generatedBy: KEYWORDS
@@ -956,6 +964,7 @@ paths:
                     - закуп
                     - оборудован
                     reason: null
+                    llm: null
         '422':
           $ref: '#/components/responses/ValidationError'
   /summary:
@@ -1028,6 +1037,7 @@ paths:
                   summary: ИП Петров на андеррайтинге — шаблонная сводка (LLM выключена)
                   value:
                     generatedBy: TEMPLATE
+                    llm: null
                     items:
                     - text: Вилка 17,0–24,5 % пересекает порог одобрения 21,0 % — решение зависит от открытых пятен.
                       facts: []
@@ -1504,6 +1514,7 @@ components:
     PurposeResponse:
       type: object
       required:
+      - status
       - purpose
       - applicable
       - generatedBy
@@ -1529,6 +1540,10 @@ components:
           nullable: true
           maxLength: 500
           description: краткое объяснение LLM, если решала она; `null` — решил словарь
+        status:
+          $ref: '#/components/schemas/PurposeStatus'
+        llm:
+          $ref: '#/components/schemas/LlmMeta'
     SpotType:
       type: string
       enum:
@@ -1657,3 +1672,39 @@ components:
           maxItems: 5
           items:
             $ref: '#/components/schemas/SummaryItem'
+        llm:
+          $ref: '#/components/schemas/LlmMeta'
+    PurposeStatus:
+      type: string
+      enum:
+      - DECIDED
+      - UNCLEAR
+      - UNAVAILABLE
+      - NOT_APPLICABLE
+      description: '`UNCLEAR` — ответ получен, но цель непонятна; `UNAVAILABLE` — ответа LLM нет: это не повод отказать
+        клиенту, ответ уходит на проверку андеррайтеру'
+    LlmMeta:
+      type: object
+      nullable: true
+      description: 'Версии, при которых получен ответ LLM, — для воспроизводимости. `null` — LLM не использовалась. Декодирование
+        жадное (temperature 0, top_k 1, seed 42, num_ctx 4096); модель сверяется по digest (`OLLAMA_MODEL_DIGEST`), при
+        расхождении LLM не используется.'
+      required:
+      - model
+      - digest
+      - promptVersion
+      - cached
+      properties:
+        model:
+          type: string
+          example: qwen3:4b
+        digest:
+          type: string
+          example: 359d7dd4bcdab3d86b87d73ac27966f4dbb9f5efdfcc75d34a8764a09474fae7
+        promptVersion:
+          type: string
+          description: первые 12 символов sha256 от промпта, схемы ответа и параметров декодирования
+          example: bba46b2556f0
+        cached:
+          type: boolean
+          description: ответ взят из кеша вердиктов (M02); до M02 всегда false
