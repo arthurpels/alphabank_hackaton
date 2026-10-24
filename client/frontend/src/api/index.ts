@@ -37,7 +37,7 @@ export interface Api {
   signContract(id: string): Promise<ApplicationDetails>;
   cancelApplication(id: string, reason?: string): Promise<ApplicationDetails>;
   // кабинет андеррайтера (T39)
-  getUnderwritingQueue(status?: ApplicationStatus): Promise<QueueItem[]>;
+  getUnderwritingQueue(statuses?: ApplicationStatus[]): Promise<QueueItem[]>;
   getUnderwritingSummary(id: string): Promise<UnderwritingSummary>;
   reviewSpot(id: string, spotId: string, body: SpotReviewRequest): Promise<ApplicationDetails>;
   addSpot(id: string, body: SpotCreate): Promise<ApplicationDetails>;
@@ -65,7 +65,8 @@ const realApi: Api = {
   acceptOffer: (id, offerId) => request('POST', `/applications/${id}/accept`, { offerId }),
   signContract: (id) => request('POST', `/applications/${id}/sign`),
   cancelApplication: (id, reason) => request('POST', `/applications/${id}/cancel`, reason ? { reason } : {}),
-  getUnderwritingQueue: (status) => request('GET', `/underwriting/queue${status ? `?status=${status}` : ''}`),
+  getUnderwritingQueue: (statuses) =>
+    request('GET', `/underwriting/queue${statuses?.length ? `?${statuses.map((s) => `status=${s}`).join('&')}` : ''}`),
   getUnderwritingSummary: (id) => request('GET', `/underwriting/applications/${id}/summary`),
   reviewSpot: (id, spotId, body) => request('POST', `/applications/${id}/spots/${spotId}/review`, body),
   addSpot: (id, body) => request('POST', `/applications/${id}/spots`, body),

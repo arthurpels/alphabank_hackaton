@@ -209,7 +209,7 @@
 | | |
 |---|---|
 | Получает | `GET /underwriting/queue`: `applicationId`, `companyName`, `inn`, `productCode`, `amount`, `termMonths`, `status`, `fork`, `openSpots`, `onReviewSpots`, `submittedAt` |
-| Показывает | таблица (`Table` + `Status`), вкладки «На рассмотрении» (`UNDERWRITING`) и «Ждём клиента» (`INFO_REQUESTED`) ⚠️ от себя |
+| Показывает | таблица (`Table` + `Status`), вкладки «Все в работе», «На рассмотрении» (`UNDERWRITING`), «Ждём клиента» (`INFO_REQUESTED`) ⚠️ от себя и «Завершённые» (`APPROVED`, `COUNTER_OFFER`, `REJECTED`, `SIGNING`, `ISSUED`, `CANCELLED`, новые сверху) |
 | Действие | открыть карточку |
 
 ### 3.2. Карточка заявки

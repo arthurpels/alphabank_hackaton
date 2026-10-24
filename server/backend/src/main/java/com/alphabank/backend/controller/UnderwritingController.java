@@ -41,7 +41,7 @@ public class UnderwritingController {
     @GetMapping("/underwriting/queue")
     @Operation(operationId = "getUnderwritingQueue", summary = "Очередь андеррайтера")
     public List<QueueItemDto> getUnderwritingQueue(CurrentUser user,
-                                                   @RequestParam(required = false) ApplicationStatus status) {
+                                                   @RequestParam(required = false) List<ApplicationStatus> status) {
         return underwritingService.getQueue(user, status);
     }
 

@@ -728,13 +728,22 @@ paths:
       operationId: getUnderwritingQueue
       tags: [underwriting]
       summary: Очередь андеррайтера
-      description: Заявки в `UNDERWRITING` и `INFO_REQUESTED`, старые сверху.
+      description: |
+        Без `status` — заявки в работе: `UNDERWRITING` и `INFO_REQUESTED`, старые сверху.
+        С `status` — заявки в перечисленных статусах (`?status=APPROVED&status=REJECTED`).
+        Вкладка «Завершённые» передаёт `APPROVED`, `COUNTER_OFFER`, `REJECTED`, `SIGNING`, `ISSUED`, `CANCELLED`:
+        если среди статусов есть хоть один не из работы, новые сверху.
+        В очереди только поданные заявки (`submittedAt` заполнен): отменённая до подачи сюда не попадает.
       parameters:
         - name: status
           in: query
           required: false
+          style: form
+          explode: true
           schema:
-            $ref: '#/components/schemas/ApplicationStatus'
+            type: array
+            items:
+              $ref: '#/components/schemas/ApplicationStatus'
       responses:
         '200':
           description: очередь

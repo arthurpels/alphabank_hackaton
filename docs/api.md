@@ -124,7 +124,9 @@ GET /api/v1/demo/users              # без заголовка; ?role=CLIENT|UN
 
 ### Кабинет андеррайтера (`/underwriting`, только `UNDERWRITER`)
 
-- `GET /underwriting/queue?status=…` — очередь заявок.
+- `GET /underwriting/queue?status=…` — очередь заявок. Без `status` — в работе (`UNDERWRITING`,
+  `INFO_REQUESTED`), старые сверху. `status` можно повторять: «Завершённые» —
+  `APPROVED`, `COUNTER_OFFER`, `REJECTED`, `SIGNING`, `ISSUED`, `CANCELLED`, новые сверху; только поданные заявки.
 - `GET /underwriting/applications/{id}/summary` — сводка фактов по заявке.
 - `POST /applications/{id}/decision { type, offerIds?, comment?, override? }` —
   решение: `APPROVED` / ветка «иные условия» через `ALTERNATIVE` / `REJECTED`.

@@ -14,10 +14,15 @@ import '../App.css';
 // Очередь андеррайтера (T39): GET /underwriting/queue
 const SECONDARY = 'var(--color-light-text-secondary)';
 
-const FILTERS: { code: ApplicationStatus | 'ALL'; label: string }[] = [
-  { code: 'ALL', label: 'Все' },
-  { code: 'UNDERWRITING', label: 'На рассмотрении' },
-  { code: 'INFO_REQUESTED', label: 'Ждём клиента' },
+type FilterCode = 'ACTIVE' | 'UNDERWRITING' | 'INFO_REQUESTED' | 'DONE';
+
+const DONE_STATUSES: ApplicationStatus[] = ['APPROVED', 'COUNTER_OFFER', 'REJECTED', 'SIGNING', 'ISSUED', 'CANCELLED'];
+
+const FILTERS: { code: FilterCode; label: string; statuses?: ApplicationStatus[] }[] = [
+  { code: 'ACTIVE', label: 'Все в работе' },
+  { code: 'UNDERWRITING', label: 'На рассмотрении', statuses: ['UNDERWRITING'] },
+  { code: 'INFO_REQUESTED', label: 'Ждём клиента', statuses: ['INFO_REQUESTED'] },
+  { code: 'DONE', label: 'Завершённые', statuses: DONE_STATUSES },
 ];
 
 function errorText(e: unknown): string {
@@ -34,14 +39,14 @@ const forkText = (i: QueueItem) =>
 
 export default function UnderwriterPage() {
   const navigate = useNavigate();
-  const [filter, setFilter] = useState<ApplicationStatus | 'ALL'>('ALL');
+  const [filter, setFilter] = useState<FilterCode>('ACTIVE');
   const [items, setItems] = useState<QueueItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
     loginAsUnderwriter()
-      .then(() => api.getUnderwritingQueue(filter === 'ALL' ? undefined : filter))
+      .then(() => api.getUnderwritingQueue(FILTERS.find((f) => f.code === filter)?.statuses))
       .then((list) => alive && setItems(list))
       .catch((e) => alive && setError(errorText(e)));
     return () => {
@@ -54,7 +59,11 @@ export default function UnderwriterPage() {
       <header className="uw-hero">
         <div>
           <h1 className="uw-hero__title">Очередь заявок</h1>
-          <div className="uw-hero__sub">Заявки на рассмотрении и в ожидании ответа клиента</div>
+          <div className="uw-hero__sub">
+            {filter === 'DONE'
+              ? 'Заявки, по которым уже есть решение: новые сверху'
+              : 'Заявки на рассмотрении и в ожидании ответа клиента'}
+          </div>
         </div>
       </header>
 
@@ -85,8 +94,12 @@ export default function UnderwriterPage() {
           {!error && !items && <Text tag="p" color={SECONDARY}>Загружаем…</Text>}
           {items && items.length === 0 && (
             <div className="empty">
-              <div className="empty__title">Очередь пуста</div>
-              <Text tag="div" color={SECONDARY}>Новые заявки появятся здесь, когда клиенты их отправят.</Text>
+              <div className="empty__title">{filter === 'DONE' ? 'Завершённых заявок пока нет' : 'Очередь пуста'}</div>
+              <Text tag="div" color={SECONDARY}>
+                {filter === 'DONE'
+                  ? 'Здесь появятся заявки после решения: одобренные, с иными условиями, отказы, выданные и отменённые.'
+                  : 'Новые заявки появятся здесь, когда клиенты их отправят.'}
+              </Text>
             </div>
           )}
           {items && items.length > 0 && (

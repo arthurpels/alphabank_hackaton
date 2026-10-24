@@ -2,6 +2,7 @@ package com.alphabank.backend.service.impl;
 
 import java.time.Clock;
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -82,9 +83,13 @@ public class UnderwritingServiceImpl implements UnderwritingService {
     }
 
     @Override
-    public List<QueueItemDto> getQueue(CurrentUser user, ApplicationStatus status) {
+    public List<QueueItemDto> getQueue(CurrentUser user, List<ApplicationStatus> statuses) {
         user.requireRole(UserRole.UNDERWRITER);
-        return applicationRepository.findByStatuses(status == null ? QUEUE : Set.of(status)).stream()
+        Set<ApplicationStatus> requested = statuses == null || statuses.isEmpty() ? QUEUE : Set.copyOf(statuses);
+        Comparator<ApplicationRecord> bySubmission = Comparator.comparing(ApplicationRecord::submittedAt);
+        return applicationRepository.findByStatuses(requested).stream()
+                .filter(application -> application.submittedAt() != null)
+                .sorted(QUEUE.containsAll(requested) ? bySubmission : bySubmission.reversed())
                 .map(this::toQueueItem)
                 .toList();
     }

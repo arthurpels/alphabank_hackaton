@@ -5,6 +5,7 @@ import { Status } from '@alfalab/core-components/status';
 import { Text } from '@alfalab/core-components/text';
 import { ApiError, api } from '../api';
 import { loginAsUnderwriter } from '../auth';
+import { DocumentPreview } from '../components/DocumentPreview';
 import { ForkBar } from '../components/ForkBar';
 import {
   AddSpotForm,
@@ -48,6 +49,7 @@ export default function UnderwriterApplicationPage() {
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [preview, setPreview] = useState<Blob | null>(null);
 
   const loadSummary = useCallback((applicationId: string) => {
     setSummaryError(null);
@@ -87,25 +89,10 @@ export default function UnderwriterApplicationPage() {
   }, [loadSummary]);
 
   const openDocument = (applicationId: string, documentId: string) => {
-    const tab = window.open('', '_blank');
     api
       .downloadDocument(applicationId, documentId)
-      .then((blob) => {
-        const url = URL.createObjectURL(blob);
-        if (tab) {
-          tab.location.href = url;
-          return;
-        }
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `document.${blob.type.split('/')[1] ?? 'pdf'}`;
-        link.click();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-      })
-      .catch((e) => {
-        tab?.close();
-        setError(errorText(e));
-      });
+      .then(setPreview)
+      .catch((e) => setError(errorText(e)));
   };
 
   if (!id) {
@@ -210,6 +197,7 @@ export default function UnderwriterApplicationPage() {
           <OffersTable offers={offers} selectable={false} selected={[]} onToggle={() => undefined} />
         </section>
       )}
+      {preview && <DocumentPreview blob={preview} onClose={() => setPreview(null)} />}
     </div>
     </div>
   );

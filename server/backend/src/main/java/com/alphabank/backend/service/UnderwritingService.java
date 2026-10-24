@@ -10,7 +10,7 @@ import com.alphabank.backend.security.CurrentUser;
 
 public interface UnderwritingService {
 
-    List<QueueItemDto> getQueue(CurrentUser user, ApplicationStatus status);
+    List<QueueItemDto> getQueue(CurrentUser user, List<ApplicationStatus> statuses);
 
     UnderwritingSummaryDto getSummary(CurrentUser user, UUID applicationId);
 }

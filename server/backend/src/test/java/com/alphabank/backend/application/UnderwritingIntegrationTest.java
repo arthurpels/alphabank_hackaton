@@ -214,6 +214,35 @@ class UnderwritingIntegrationTest {
     }
 
     @Test
+    void finishedTabListsDecidedApplicationsNewestFirst() throws Exception {
+        String approved = submitted(COFFEE, COFFEE_REQUEST);
+        decide(approved, "{\"type\":\"APPROVED\"}").andExpect(status().isOk());
+        String rejected = submitted(COFFEE, COFFEE_REQUEST);
+        String reason = JsonPath.read(mvc.perform(get(APPS + "/" + rejected).header(DemoUserAuthFilter.HEADER, COFFEE))
+                .andReturn().getResponse().getContentAsString(), "$.spots[3].id");
+        decide(rejected, "{\"type\":\"REJECTED\",\"reasonSpotId\":\"" + reason + "\",\"comment\":\"Нет\"}")
+                .andExpect(status().isOk());
+        String neverSubmitted = evaluated(COFFEE, COFFEE_REQUEST);
+        mvc.perform(post(APPS + "/" + neverSubmitted + "/cancel").header(DemoUserAuthFilter.HEADER, COFFEE)
+                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isOk());
+
+        String finished = mvc.perform(get(API + "/underwriting/queue")
+                        .param("status", "APPROVED", "COUNTER_OFFER", "REJECTED", "SIGNING", "ISSUED", "CANCELLED")
+                        .header(DemoUserAuthFilter.HEADER, UNDERWRITER))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        List<String> ids = JsonPath.read(finished, "$[*].applicationId");
+        assertThat(ids).contains(approved, rejected).doesNotContain(neverSubmitted);
+        assertThat(ids.indexOf(rejected)).isLessThan(ids.indexOf(approved));
+
+        String active = mvc.perform(get(API + "/underwriting/queue").header(DemoUserAuthFilter.HEADER, UNDERWRITER))
+                .andReturn().getResponse().getContentAsString();
+        List<String> activeIds = JsonPath.read(active, "$[*].applicationId");
+        assertThat(activeIds).doesNotContain(approved, rejected);
+    }
+
+    @Test
     void underwriterActionsAreGuarded() throws Exception {
         String collecting = evaluated(COFFEE, COFFEE_REQUEST);
         decide(collecting, "{\"type\":\"APPROVED\"}").andExpect(status().isConflict());

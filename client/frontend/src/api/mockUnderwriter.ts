@@ -137,10 +137,10 @@ export const underwriterMock = {
 
   getBuilder: () => wait(state),
 
-  getUnderwritingQueue: (status?: ApplicationStatus) => {
+  getUnderwritingQueue: (statuses?: ApplicationStatus[]) => {
     const st = state.application.status;
-    const inQueue = st === 'UNDERWRITING' || st === 'INFO_REQUESTED';
-    if (!inQueue || (status && status !== st)) return wait<QueueItem[]>([]);
+    const wanted: ApplicationStatus[] = statuses?.length ? statuses : ['UNDERWRITING', 'INFO_REQUESTED'];
+    if (!wanted.includes(st)) return wait<QueueItem[]>([]);
     const item: QueueItem = {
       applicationId: BUILDER_ID,
       companyName: state.application.company.name,
