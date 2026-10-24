@@ -1,0 +1,84 @@
+.fork {
+  --fork-color: var(--color-light-bg-accent);
+  margin: 20px 0;
+}
+
+.fork__row { position: relative; height: 22px; }
+.fork__row--top { height: 32px; }
+
+.fork__edge,
+.fork__tick {
+  position: absolute;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 14px;
+}
+.fork__tick--first { transform: none; }
+.fork__tick--last { transform: translateX(-100%); }
+.fork__tick { color: var(--color-light-text-secondary); }
+
+.fork__edge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--fork-color);
+  font-weight: 600;
+  line-height: 18px;
+  transition: left 0.5s ease;
+}
+.fork__edge::after {
+  content: '';
+  width: 2px;
+  height: 12px;
+  margin-top: 2px;
+  border-radius: 1px;
+  background: var(--fork-color);
+}
+
+.fork__bar { position: relative; height: 20px; }
+
+.fork__track {
+  position: absolute; top: 0; left: 0; right: 1px; height: 20px;
+  border-radius: 10px; overflow: hidden;
+}
+.fork__zone { position: absolute; top: 0; bottom: 0; }
+.fork__zone--good { background: var(--color-light-status-muted-alt-positive); }
+.fork__zone--mid { background: var(--color-light-status-muted-alt-attention); }
+.fork__zone--bad { background: var(--color-light-status-muted-alt-negative); }
+
+.fork__range {
+  position: absolute; top: 0; height: 20px; border-radius: 10px;
+  background: var(--fork-color);
+  z-index: 1;
+  transition: left 0.5s ease, width 0.5s ease;
+}
+
+.fork__legend {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px 28px;
+  margin-top: 12px;
+}
+.fork__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--color-light-text-secondary);
+}
+.fork__legend-item::before {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--dot);
+}
+.fork__legend-item--good { --dot: var(--color-light-status-positive); }
+.fork__legend-item--mid { --dot: var(--color-light-status-attention); }
+.fork__legend-item--bad { --dot: var(--color-light-status-negative); }
+
+@media (max-width: 600px) {
+  .fork__tick,
+  .fork__legend-item { font-size: 12px; }
+}

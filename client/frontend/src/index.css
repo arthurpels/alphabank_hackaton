@@ -1,0 +1,6 @@
+body {
+  margin: 0;
+  background: var(--color-light-base-bg-secondary);
+  color: var(--color-light-text-primary);
+  font-family: var(--font-family-system, system-ui, 'Segoe UI', Roboto, Arial, sans-serif);
+}

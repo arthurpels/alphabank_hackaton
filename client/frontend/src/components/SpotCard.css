@@ -1,0 +1,31 @@
+.spot {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px 16px;
+  align-items: center;
+  padding: 16px 20px;
+  margin-bottom: 8px;
+  border-radius: 20px;
+  background: var(--color-light-base-bg-secondary);
+}
+.spot__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 17px;
+}
+.spot__check {
+  flex-shrink: 0;
+  color: var(--color-light-status-positive);
+}
+.spot__desc { margin-top: 4px; }
+.spot__side { display: flex; align-items: center; gap: 12px; }
+.spot__price { color: var(--color-light-text-positive); font-size: 15px; white-space: nowrap; }
+.spot__review { color: var(--color-light-text-attention); font-size: 14px; max-width: 160px; }
+.spot--closed .spot__title { font-weight: 500; }
+
+@media (max-width: 600px) {
+  .spot { grid-template-columns: 1fr; }
+  .spot__side { justify-content: space-between; }
+}
