@@ -15,8 +15,9 @@ export interface Spot {
   title: string;
   clientHint: string;
   pricePp: number;
-  closeMethod: CloseMethod;
+  closeMethod: CloseMethod | null;
   status: SpotStatus;
+  removable?: boolean | null;
 }
 
 export interface Fork {

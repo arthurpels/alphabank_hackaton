@@ -33,8 +33,10 @@ export function SpotCard({ spot, onClose }: Props) {
 
       {!isClosed && (
         <div className="spot__side">
-          <span className="spot__price">до −{fmt(spot.pricePp)} п.п.</span>
-          {isReview ? (
+                    {spot.closeMethod && <span className="spot__price">до −{fmt(spot.pricePp)} п.п.</span>}
+          {!spot.closeMethod ? (
+            <span className="spot__review">Устранить нельзя</span>
+          ) : isReview ? (
             <span className="spot__review">Передано на проверку специалисту</span>
           ) : (
             <Button view="secondary" size={40} onClick={() => onClose(spot.id)}>
