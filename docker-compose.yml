@@ -71,6 +71,12 @@ services:
     build: ./ml
     container_name: ml
     restart: unless-stopped
+    environment:
+      LLM_ENABLED: ${LLM_ENABLED}
+      OLLAMA_URL: ${OLLAMA_URL}
+      OLLAMA_MODEL: ${OLLAMA_MODEL}
+      LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS}
+      LLM_SUMMARY_ENABLED: ${LLM_SUMMARY_ENABLED}
     ports:
       - "${ML_PORT}:8001"
     healthcheck:
@@ -97,9 +103,42 @@ services:
     networks:
       - app-network
 
+  ollama:
+    image: ollama/ollama:0.12.0
+    container_name: ollama
+    profiles: ["llm"]
+    restart: unless-stopped
+    environment:
+      OLLAMA_KEEP_ALIVE: 24h
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - app-network
+
+  ollama-pull:
+    image: ollama/ollama:0.12.0
+    container_name: ollama-pull
+    profiles: ["llm"]
+    restart: "no"
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: ${OLLAMA_URL}
+    entrypoint: ["ollama", "pull", "${OLLAMA_MODEL}"]
+    networks:
+      - app-network
+
 networks:
   app-network:
     driver: bridge
 
 volumes:
   postgres_data:
+  ollama_data:

@@ -40,3 +40,5 @@ docker-compose.override.yml
 
 # Рабочие заметки (см. AGENTS.md)
 .docs/
+.pytest_cache/
+.ruff_cache/

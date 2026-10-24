@@ -30,6 +30,8 @@ security: []
 tags:
 - name: scoring
   description: вилка, сетка иных условий, аномалии
+- name: llm
+  description: разбор цели и сводка андеррайтеру; без LLM — словарь и шаблон
 paths:
   /score:
     post:
@@ -754,7 +756,9 @@ paths:
       summary: Аномалии в помесячных рядах выручки
       description: Падение месяц к месяцу больше 30 % — `REVENUE_DROP`, рост больше чем в 3 раза — `REVENUE_SPIKE`. Каждая
         аномалия — готовое пятно `ANOMALY` по фактору `revenue_stability`. Пустой список — аномалий нет, бэкенд передаёт в
-        `/score` `stability = CLEAN`.
+        `/score` `stability = CLEAN`. Точки ряда сортируются по месяцу; сравниваются только соседние календарные месяцы
+        (через пропуск — нет), месяц с нулевой выручкой базой для сравнения не служит. Повтор месяца в ряду — 422. Пороги и
+        тексты — в `ml/scoring_rules.yaml`, раздел `anomalies`.
       requestBody:
         required: true
         content:
@@ -882,6 +886,163 @@ paths:
                     anomalies: []
         '422':
           $ref: '#/components/responses/ValidationError'
+  /purpose:
+    post:
+      operationId: classifyPurpose
+      tags:
+      - llm
+      summary: Разбор цели кредита
+      description: 'Соответствует ли цель со слов клиента продукту — значение для `/score.purpose`. Сначала словарь корней слов
+        (`ml/scoring_rules.yaml`, `purpose_keywords`): признаки только запрошенного продукта — `MATCH`, только другого — `MISMATCH`.
+        Если словарь не решает (признаки обоих или ни одного) и LLM включена — спрашиваем LLM; иначе `purpose = null` и пятно
+        «На что нужны деньги» остаётся открытым. `generatedBy` показывает, кто решил, `reason` — объяснение LLM. Пустая цель — `null` без LLM. Для продуктов
+        без словаря (овердрафт) — `applicable = false`.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PurposeRequest'
+            examples:
+              coffee:
+                summary: ООО «Кофейня» — цель совпадает с продуктом
+                value:
+                  productCode: EQUIPMENT
+                  goal: 2 кофемашины и витрина для второй точки
+              mismatch:
+                summary: Станок за счёт оборотного кредита — цель не совпадает
+                value:
+                  productCode: WORKING_CAPITAL
+                  goal: покупка станка с ЧПУ
+              ambiguous:
+                summary: Признаки обоих продуктов — без LLM цель не определена
+                value:
+                  productCode: WORKING_CAPITAL
+                  goal: закупка оборудования для цеха
+      responses:
+        '200':
+          description: результат разбора
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurposeResponse'
+              examples:
+                coffee:
+                  summary: ООО «Кофейня» — цель совпадает с продуктом
+                  value:
+                    purpose: MATCH
+                    applicable: true
+                    generatedBy: KEYWORDS
+                    matchedKeywords:
+                    - кофемашин
+                    - витрин
+                    reason: null
+                mismatch:
+                  summary: Станок за счёт оборотного кредита — цель не совпадает
+                  value:
+                    purpose: MISMATCH
+                    applicable: true
+                    generatedBy: KEYWORDS
+                    matchedKeywords:
+                    - станк
+                    reason: null
+                ambiguous:
+                  summary: Признаки обоих продуктов — без LLM цель не определена
+                  value:
+                    purpose: null
+                    applicable: true
+                    generatedBy: KEYWORDS
+                    matchedKeywords:
+                    - закуп
+                    - оборудован
+                    reason: null
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /summary:
+    post:
+      operationId: summarizeForUnderwriter
+      tags:
+      - llm
+      summary: Сводка для андеррайтера
+      description: '3–5 выводов для карточки андеррайтера; форма ответа совпадает с `UnderwritingSummary` публичного API (`GET
+        /underwriting/applications/{id}/summary`), бэкенд отдаёт её как есть. При `LLM_SUMMARY_ENABLED=true` (вместе с `LLM_ENABLED`) и
+        непустом `facts` выводы пишет LLM: у каждого должны быть ссылки на переданные факты, выводы без них и ссылки на чужие факты отбрасываются. LLM недоступна,
+        не уложилась в `LLM_TIMEOUT_SECONDS` или ответила не по формату — шаблон: вилка относительно порога, открытые пятна
+        по убыванию цены, факты без пятна по источникам (`generatedBy = TEMPLATE`). Решение LLM не предлагает.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SummaryRequest'
+            examples:
+              builder:
+                summary: ИП Петров на андеррайтинге — шаблонная сводка (LLM выключена)
+                value:
+                  productCode: WORKING_CAPITAL
+                  amount: 300000000
+                  termMonths: 12
+                  goal: закупка материалов под договор подряда на склад
+                  rateFrom: 17.0
+                  rateTo: 24.5
+                  approveMax: 21.0
+                  spots:
+                  - spotId: 5f0c3e2a-0000-4000-8000-000000000001
+                    type: NO_DATA
+                    title: Продажи не видны
+                    status: OPEN
+                    pricePp: 3.5
+                  - spotId: 5f0c3e2a-0000-4000-8000-000000000002
+                    type: DOCUMENT
+                    title: Договор с генподрядчиком
+                    status: ON_REVIEW
+                    pricePp: 3.5
+                    answer: Приложил договор на 9,6 млн
+                  - spotId: 5f0c3e2a-0000-4000-8000-000000000003
+                    type: COLLATERAL
+                    title: Залог или поручительство
+                    status: OPEN
+                    pricePp: 1.5
+                  - spotId: 5f0c3e2a-0000-4000-8000-000000000004
+                    type: NO_DATA
+                    title: Цель кредита
+                    status: CLOSED
+                    pricePp: 1.5
+                  facts:
+                  - source: BKI
+                    label: кредитный рейтинг 655, просрочек за 12 мес. нет
+                  - source: EGRUL
+                    label: ИП зарегистрирован 01.03.2024
+                  - source: DOCUMENT
+                    label: договор подряда на 9 600 000 ₽, 12 мес.
+                    spotId: 5f0c3e2a-0000-4000-8000-000000000002
+      responses:
+        '200':
+          description: сводка
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnderwritingSummary'
+              examples:
+                builder:
+                  summary: ИП Петров на андеррайтинге — шаблонная сводка (LLM выключена)
+                  value:
+                    generatedBy: TEMPLATE
+                    items:
+                    - text: Вилка 17,0–24,5 % пересекает порог одобрения 21,0 % — решение зависит от открытых пятен.
+                      facts: []
+                    - text: '«Договор с генподрядчиком» — ответ ждёт проверки, до 3,5 п.п. Ответ клиента: «Приложил договор
+                        на 9,6 млн».'
+                      facts:
+                      - source: DOCUMENT
+                        label: договор подряда на 9 600 000 ₽, 12 мес.
+                        spotId: 5f0c3e2a-0000-4000-8000-000000000002
+                    - text: «Продажи не видны» — не закрыто, до 3,5 п.п.
+                      facts: []
+                    - text: «Залог или поручительство» — не закрыто, до 1,5 п.п.
+                      facts: []
+        '422':
+          $ref: '#/components/responses/ValidationError'
   /health:
     get:
       operationId: health
@@ -999,9 +1160,11 @@ components:
         amount:
           type: integer
           format: int64
+          minimum: 1
           description: сумма, копейки
         termMonths:
           type: integer
+          minimum: 1
         egrulStatus:
           type: string
           description: ЕГРЮЛ `status`
@@ -1022,23 +1185,28 @@ components:
           description: БКИ `credit_score`
         delinq12m:
           type: integer
+          minimum: 0
           description: БКИ `delinquencies.last_12m`
         bkiCurrentOverdue:
           type: integer
+          minimum: 0
           description: БКИ `delinquencies.current`
         taxDebt:
           type: integer
           format: int64
+          minimum: 0
           description: ФНС `tax_debt.amount`, копейки
         unfiledReports:
           type: integer
+          minimum: 0
           description: ФНС `unfiled_reports`
         monthlyRevenue:
           type: integer
           format: int64
           nullable: true
+          minimum: 1
           description: 'среднемесячная подтверждённая выручка, копейки: ОФД `revenue`, маркетплейс `payout`, эквайринг `turnover`
-            или договор (сумма / срок); при нескольких источниках — максимум. `null` — выручка не подтверждена'
+            или договор (сумма / срок); при нескольких источниках — максимум. `null` — выручка не подтверждена, 0 не передаём'
         stability:
           $ref: '#/components/schemas/Stability'
         purpose:
@@ -1223,11 +1391,12 @@ components:
       properties:
         month:
           type: string
-          pattern: ^\d{4}-\d{2}$
+          pattern: ^\d{4}-(0[1-9]|1[0-2])$
           example: 2026-03
         value:
           type: integer
           format: int64
+          minimum: 0
           description: копейки
     Series:
       type: object
@@ -1282,8 +1451,8 @@ components:
           type: string
           pattern: ^\d{4}-\d{2}$
         changePct:
-          type: number
-          description: изменение к прошлому месяцу, %
+          type: integer
+          description: изменение к прошлому месяцу, %, округлено до целого (половина — от нуля)
         title:
           type: string
           description: заголовок пятна для клиента
@@ -1320,3 +1489,171 @@ components:
                 type: string
               type:
                 type: string
+    PurposeRequest:
+      type: object
+      required:
+      - productCode
+      properties:
+        productCode:
+          $ref: '#/components/schemas/ProductCode'
+        goal:
+          type: string
+          nullable: true
+          maxLength: 1000
+          description: цель со слов клиента
+    PurposeResponse:
+      type: object
+      required:
+      - purpose
+      - applicable
+      - generatedBy
+      - matchedKeywords
+      properties:
+        purpose:
+          $ref: '#/components/schemas/Purpose'
+        applicable:
+          type: boolean
+          description: false — продукт цель не учитывает (овердрафт)
+        generatedBy:
+          type: string
+          enum:
+          - KEYWORDS
+          - LLM
+        matchedKeywords:
+          type: array
+          items:
+            type: string
+          description: совпавшие корни слов — для объяснения
+        reason:
+          type: string
+          nullable: true
+          maxLength: 500
+          description: краткое объяснение LLM, если решала она; `null` — решил словарь
+    SpotType:
+      type: string
+      enum:
+      - NO_DATA
+      - ANOMALY
+      - DOCUMENT
+      - STOP_FACTOR
+      - COLLATERAL
+    SpotStatus:
+      type: string
+      enum:
+      - OPEN
+      - ON_REVIEW
+      - CLOSED
+    SummarySpot:
+      type: object
+      required:
+      - spotId
+      - type
+      - title
+      - status
+      properties:
+        spotId:
+          type: string
+          format: uuid
+        type:
+          $ref: '#/components/schemas/SpotType'
+        title:
+          type: string
+          maxLength: 300
+        status:
+          $ref: '#/components/schemas/SpotStatus'
+        pricePp:
+          type: number
+          nullable: true
+        answer:
+          type: string
+          nullable: true
+          maxLength: 2000
+          description: ответ клиента по пятну
+    SummaryRequest:
+      type: object
+      required:
+      - productCode
+      - amount
+      - termMonths
+      - rateFrom
+      - rateTo
+      - approveMax
+      properties:
+        productCode:
+          $ref: '#/components/schemas/ProductCode'
+        amount:
+          type: integer
+          format: int64
+          minimum: 1
+          description: копейки
+        termMonths:
+          type: integer
+          minimum: 1
+        goal:
+          type: string
+          nullable: true
+          maxLength: 1000
+        rateFrom:
+          type: number
+          description: из последнего `/score`
+        rateTo:
+          type: number
+        approveMax:
+          type: number
+        spots:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/SummarySpot'
+        facts:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/FactRef'
+          description: факты-источники в виде готовых подписей; `spotId` — к какому пятну относится
+    FactRef:
+      type: object
+      required:
+      - source
+      - label
+      properties:
+        source:
+          type: string
+          maxLength: 32
+          example: OFD
+        label:
+          type: string
+          maxLength: 300
+          example: выручка 2026-03 — 830 000 ₽
+        spotId:
+          type: string
+          format: uuid
+          nullable: true
+    SummaryItem:
+      type: object
+      required:
+      - text
+      - facts
+      properties:
+        text:
+          type: string
+        facts:
+          type: array
+          items:
+            $ref: '#/components/schemas/FactRef'
+    UnderwritingSummary:
+      type: object
+      required:
+      - generatedBy
+      - items
+      properties:
+        generatedBy:
+          type: string
+          enum:
+          - LLM
+          - TEMPLATE
+        items:
+          type: array
+          maxItems: 5
+          items:
+            $ref: '#/components/schemas/SummaryItem'

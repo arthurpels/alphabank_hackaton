@@ -30,3 +30,29 @@
 Смоделированные интеграции (требование ТЗ 04 — вместо реальных внешних систем):
 БКИ, ЕГРЮЛ/ЕГРИП, ФНС (+ `pay`), ОФД, маркетплейс (Wildberries), эквайринг.
 Данные — 5 синтетических персонажей из `docs/synthetic-data.md`.
+
+## Скоринг-сервис (`ml/`)
+
+Версии зафиксированы в `ml/requirements.txt` (полный lock, собран `uv pip compile --exclude-newer 2026-10-01` из `ml/requirements.in` — без релизов моложе трёх недель); инструменты разработки — в `ml/requirements-dev.txt`.
+
+| Компонент | Версия | Лицензия | Зачем |
+|---|---|---|---|
+| FastAPI | 0.115.2 | MIT | HTTP API сервиса (`/score`, `/offers/grid`, `/anomalies`, `/purpose`, `/summary`) |
+| Starlette (через FastAPI) | 0.40.0 | BSD-3-Clause | ASGI-основа FastAPI |
+| Pydantic, pydantic-core | 2.9.2, 2.23.4 | MIT | схемы и валидация запросов и ответов |
+| Uvicorn | 0.32.0 | BSD-3-Clause | ASGI-сервер |
+| PyYAML | 6.0.2 | MIT | чтение правил скоринга `ml/scoring_rules.yaml` и промптов `ml/llm.yaml` |
+| HTTPX, httpcore | 0.27.2, 1.0.9 | BSD-3-Clause | клиент к Ollama; тестовый клиент FastAPI |
+| certifi | 2026.7.22 | MPL-2.0 | корневые сертификаты для HTTPX |
+| pytest (разработка) | 8.3.3 | MIT | тесты движка |
+| Ruff (разработка) | 0.7.1 | MIT | линтер и форматтер |
+
+### Локальная LLM (профиль compose `llm`, опционально)
+
+Включается `LLM_ENABLED=true` и `docker compose --profile llm up`; без неё сервис работает на словаре и шаблонах. Модель с открытыми весами, запускается локально, внешних API нет (ограничения ТЗ 02 и 08).
+
+| Компонент | Версия | Лицензия | Зачем |
+|---|---|---|---|
+| Ollama (образ `ollama/ollama`) | 0.12.0 | MIT | локальный сервер LLM |
+| Qwen3 4B (`qwen3:4b`, Alibaba Qwen) | веса из реестра Ollama | Apache-2.0 | сводка андеррайтеру и разбор неоднозначной цели кредита |
+>>>>>>> origin/ml
