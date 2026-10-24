@@ -16,3 +16,17 @@
 | Spring JDBC (`spring-boot-starter-jdbc`) | 3.3.4 | Apache-2.0 | доступ к PostgreSQL (HikariCP) |
 | Flyway (`flyway-core`, `flyway-database-postgresql`) | 10.10.0 (BOM) | Apache-2.0 | миграции схемы БД при старте |
 | PostgreSQL JDBC Driver | 42.7.4 (BOM) | BSD-2-Clause | драйвер подключения к PostgreSQL |
+
+## Mocks (`mocks/`)
+
+Версии зафиксированы в `mocks/requirements.txt`.
+
+| Компонент | Версия | Лицензия | Зачем |
+|---|---|---|---|
+| FastAPI | 0.115.2 | MIT | HTTP-фреймворк сервиса моков |
+| uvicorn | 0.32.0 | BSD-3-Clause | ASGI-сервер |
+| pydantic (через FastAPI) | 2.9.2 | MIT | схемы запросов `connect` / `pay` |
+
+Смоделированные интеграции (требование ТЗ 04 — вместо реальных внешних систем):
+БКИ, ЕГРЮЛ/ЕГРИП, ФНС (+ `pay`), ОФД, маркетплейс (Wildberries), эквайринг.
+Данные — 5 синтетических персонажей из `docs/synthetic-data.md`.
