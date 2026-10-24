@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+SEED_FILE="server/backend/src/main/resources/db/migration/V6__seed_demo.sql"
+
+echo "==> Сброс данных postgres (справочники product и data_source сохраняются)"
+docker compose exec -T postgres sh -lc 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -c "TRUNCATE company CASCADE;"'
+
+echo "==> Повторный seed компаний и пользователей"
+docker compose exec -T postgres sh -lc 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1' < "$SEED_FILE"
+
+echo "==> Сброс состояния моков (долг ФНС и пр.)"
+docker compose exec -T mocks python -c \
+  "import urllib.request; urllib.request.urlopen(urllib.request.Request('http://localhost:8002/mock/reset', data=b''), timeout=10)"
+
+echo "==> Готово. Демо-пользователи:"
+docker compose exec -T postgres sh -lc 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -P pager=off -c \
+  "SELECT u.fio, u.role, c.name AS company FROM app_user u LEFT JOIN company c ON c.id = u.company_id ORDER BY u.role, u.fio;"'
