@@ -33,6 +33,7 @@ app:
   ml-url: ${ML_URL:http://localhost:8001}
   mocks-url: ${MOCKS_URL:http://localhost:8002}
   documents-dir: ${DOCUMENTS_DIR:/data/documents}
+  demo-date: ${DEMO_DATE:2026-10-23}
   cors-allowed-origins: http://localhost:5173
   external:
     retry-attempts: 3

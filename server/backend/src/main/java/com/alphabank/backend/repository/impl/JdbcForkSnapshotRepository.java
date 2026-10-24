@@ -2,6 +2,7 @@ package com.alphabank.backend.repository.impl;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -17,7 +18,7 @@ import com.alphabank.backend.repository.model.ForkSnapshotRecord;
 public class JdbcForkSnapshotRepository implements ForkSnapshotRepository {
 
     private static final String COLUMNS = """
-            SELECT id, application_id, rate_from, rate_to, approve_max, reject_min, rules_version, calculated_at
+            SELECT id, application_id, rate_from, rate_to, approve_max, reject_min, rules_version, as_of, calculated_at
             FROM fork_snapshot
             WHERE application_id = :applicationId
               AND id NOT IN (SELECT fork_snapshot_id FROM offer WHERE application_id = :applicationId)
@@ -34,9 +35,9 @@ public class JdbcForkSnapshotRepository implements ForkSnapshotRepository {
     public void insert(ForkSnapshotRecord snapshot) {
         jdbc.sql("""
                         INSERT INTO fork_snapshot (id, application_id, rate_from, rate_to, approve_max, reject_min,
-                                                   rules_version, calculated_at)
+                                                   rules_version, as_of, calculated_at)
                         VALUES (:id, :applicationId, :rateFrom, :rateTo, :approveMax, :rejectMin,
-                                :rulesVersion, :calculatedAt)
+                                :rulesVersion, :asOf, :calculatedAt)
                         """)
                 .param("id", snapshot.id())
                 .param("applicationId", snapshot.applicationId())
@@ -45,6 +46,7 @@ public class JdbcForkSnapshotRepository implements ForkSnapshotRepository {
                 .param("approveMax", snapshot.approveMax())
                 .param("rejectMin", snapshot.rejectMin())
                 .param("rulesVersion", snapshot.rulesVersion())
+                .param("asOf", snapshot.asOf())
                 .param("calculatedAt", snapshot.calculatedAt())
                 .update();
     }
@@ -66,7 +68,8 @@ public class JdbcForkSnapshotRepository implements ForkSnapshotRepository {
     @Override
     public Optional<ForkSnapshotRecord> findById(UUID id) {
         return jdbc.sql("""
-                        SELECT id, application_id, rate_from, rate_to, approve_max, reject_min, rules_version, calculated_at
+                        SELECT id, application_id, rate_from, rate_to, approve_max, reject_min, rules_version, as_of,
+                               calculated_at
                         FROM fork_snapshot
                         WHERE id = :id
                         """)
@@ -88,6 +91,7 @@ public class JdbcForkSnapshotRepository implements ForkSnapshotRepository {
                 approveNull ? null : approveMax,
                 rejectNull ? null : rejectMin,
                 rs.getString("rules_version"),
+                rs.getObject("as_of", LocalDate.class),
                 rs.getObject("calculated_at", OffsetDateTime.class));
     }
 }

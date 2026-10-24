@@ -42,6 +42,7 @@ public class GridOfferWriter {
         for (int i = 0; i < offers.size(); i++) {
             Offer offer = offers.get(i);
             offerWriter.save(applicationId, product(offer), offer.amount(), offer.termMonths(), offer.collateralType(),
+                    request.asOf(),
                     score(request, offer.productCode(), offer.amount(), offer.termMonths(), offer.collateralType()),
                     status, now.plusNanos(i * 1_000L));
         }

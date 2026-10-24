@@ -88,7 +88,7 @@ public class FakeExternalServicesConfig {
                 if (SHELL_INN.equals(inn)) {
                     return new EgrulResponse("EGRUL", inn, "ООО «Однодневка»", "OOO", "ACTIVE",
                             LocalDate.of(2025, 8, 1),
-                            new EgrulResponse.Director("Иванов И. И.", LocalDate.now().minusMonths(1), false),
+                            new EgrulResponse.Director("Иванов И. И.", LocalDate.of(2026, 9, 1), false),
                             new EgrulResponse.Address("г. Москва, ул. Тверская, 7", true), "46.90", 1);
                 }
                 throw new MockNotFoundException("ИНН " + inn + " не найден в источнике");

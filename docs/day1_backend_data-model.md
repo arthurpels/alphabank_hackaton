@@ -66,6 +66,7 @@ erDiagram
         int term_months
         string goal "цель, свободный текст"
         string status "см. application-states.md"
+        date as_of "фиксируется при первом расчёте; null в DRAFT"
         timestamp created_at
         timestamp submitted_at
         timestamp info_requested_at "для таймаута дозапроса"
@@ -113,6 +114,7 @@ erDiagram
         numeric approve_max "порог автоодобрения продукта на момент расчёта"
         numeric reject_min "порог отказа продукта на момент расчёта"
         string rules_version "версия YAML-правил, воспроизводимость"
+        date as_of "дата входа для скоринга; совпадает с APPLICATION.as_of"
         timestamp calculated_at
     }
 

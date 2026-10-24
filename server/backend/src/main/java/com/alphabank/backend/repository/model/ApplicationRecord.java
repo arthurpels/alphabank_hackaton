@@ -1,5 +1,6 @@
 package com.alphabank.backend.repository.model;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -14,6 +15,7 @@ public record ApplicationRecord(
         int termMonths,
         String goal,
         ApplicationStatus status,
+        LocalDate asOf,
         OffsetDateTime createdAt,
         OffsetDateTime submittedAt,
         OffsetDateTime infoRequestedAt) {

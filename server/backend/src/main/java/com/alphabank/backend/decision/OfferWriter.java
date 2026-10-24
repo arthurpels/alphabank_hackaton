@@ -1,5 +1,6 @@
 package com.alphabank.backend.decision;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.UUID;
@@ -32,17 +33,18 @@ public class OfferWriter {
     }
 
     public OfferRecord save(UUID applicationId, ProductRecord product, long amount, int termMonths,
-                            String collateralType, ScoreResponse fork, OfferStatus status, OffsetDateTime createdAt) {
-        return save(applicationId, product, amount, termMonths, collateralType, fork, DecidedBy.SYSTEM, null, status,
-                createdAt);
+                            String collateralType, LocalDate asOf, ScoreResponse fork, OfferStatus status,
+                            OffsetDateTime createdAt) {
+        return save(applicationId, product, amount, termMonths, collateralType, asOf, fork, DecidedBy.SYSTEM, null,
+                status, createdAt);
     }
 
     public OfferRecord save(UUID applicationId, ProductRecord product, long amount, int termMonths,
-                            String collateralType, ScoreResponse fork, DecidedBy proposedBy, String comment,
-                            OfferStatus status, OffsetDateTime createdAt) {
+                            String collateralType, LocalDate asOf, ScoreResponse fork, DecidedBy proposedBy,
+                            String comment, OfferStatus status, OffsetDateTime createdAt) {
         ForkSnapshotRecord snapshot = new ForkSnapshotRecord(UUID.randomUUID(), applicationId, fork.rateFrom(),
                 fork.rateTo(), fork.thresholds().approveMax(), fork.thresholds().rejectMin(), fork.rulesVersion(),
-                createdAt);
+                asOf, createdAt);
         forkSnapshotRepository.insert(snapshot);
         OfferRecord offer = new OfferRecord(UUID.randomUUID(), applicationId, product.id(), amount, termMonths,
                 collateralType, null, snapshot.id(), proposedBy, status, comment, createdAt, null);

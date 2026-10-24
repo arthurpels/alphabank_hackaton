@@ -101,7 +101,7 @@ public class SpotServiceImpl implements SpotService {
         closers.get(request.method()).close(new SpotCloseContext(application, product, inn, spot, request, user));
 
         ForkCalculation calculation = forkCalculationService.calculate(application, product, inn);
-        forkCalculationService.save(applicationId, calculation.score());
+        forkCalculationService.save(applicationId, calculation.request(), calculation.score());
         if (moveStatusAfterClose(application, user) == ApplicationStatus.UNDERWRITING) {
             gridOfferWriter.save(applicationId, calculation.request(), OfferStatus.CALCULATED);
         }

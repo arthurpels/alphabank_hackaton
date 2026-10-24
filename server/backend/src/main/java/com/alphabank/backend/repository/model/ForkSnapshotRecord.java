@@ -1,5 +1,6 @@
 package com.alphabank.backend.repository.model;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -11,5 +12,6 @@ public record ForkSnapshotRecord(
         Double approveMax,
         Double rejectMin,
         String rulesVersion,
+        LocalDate asOf,
         OffsetDateTime calculatedAt) {
 }

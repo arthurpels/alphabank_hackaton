@@ -65,7 +65,7 @@ public class AutoCheckServiceImpl implements AutoCheckService {
         enrichmentService.persistCompanySnapshot(calculation.enrichment().egrul());
         stopFactorSync.sync(application.id(), calculation.enrichment().spots());
         ScoreResponse score = calculation.score();
-        forkCalculationService.save(application.id(), score);
+        forkCalculationService.save(application.id(), calculation.request(), score);
         List<SpotRecord> spots = spotRepository.findByApplicationId(application.id());
         AutoDecision decision = decisionRule.decide(spots, score);
 
@@ -79,8 +79,8 @@ public class AutoCheckServiceImpl implements AutoCheckService {
 
     private ApplicationStatus approve(ApplicationRecord application, ProductRecord product, ScoreResponse score,
                                       String reason) {
-        offerWriter.save(application.id(), product, application.amount(), application.termMonths(), null, score,
-                OfferStatus.OFFERED, now());
+        offerWriter.save(application.id(), product, application.amount(), application.termMonths(), null,
+                application.asOf(), score, OfferStatus.OFFERED, now());
         decisionWriter.bySystem(application.id(), DecisionType.APPROVED, score.rulesVersion(), null, reason);
         return moveTo(application, ApplicationStatus.APPROVED, reason);
     }

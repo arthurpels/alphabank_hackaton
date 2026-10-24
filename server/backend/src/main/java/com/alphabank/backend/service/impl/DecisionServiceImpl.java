@@ -130,7 +130,7 @@ public class DecisionServiceImpl implements DecisionService {
         ForkCalculation calculation = forkCalculationService.calculate(application, product,
                 accessService.companyInn(application));
         return offerWriter.save(application.id(), product, application.amount(), application.termMonths(), null,
-                calculation.score(), OfferStatus.OFFERED, now());
+                calculation.request().asOf(), calculation.score(), OfferStatus.OFFERED, now());
     }
 
     private List<UUID> markOffers(ApplicationRecord application, DecisionRequest request, CurrentUser user) {
@@ -159,7 +159,8 @@ public class DecisionServiceImpl implements DecisionService {
         ForkCalculation calculation = forkCalculationService.calculate(application, product(application.productId()),
                 accessService.companyInn(application));
         OfferRecord offer = offerWriter.save(application.id(), product, manual.amount(), manual.termMonths(),
-                manual.collateralType(), gridOfferWriter.score(calculation.request(), manual.productCode(),
+                manual.collateralType(), calculation.request().asOf(),
+                gridOfferWriter.score(calculation.request(), manual.productCode(),
                         manual.amount(), manual.termMonths(), manual.collateralType()),
                 DecidedBy.UNDERWRITER, comment, OfferStatus.OFFERED, now());
         ProductRecord requested = product(application.productId());

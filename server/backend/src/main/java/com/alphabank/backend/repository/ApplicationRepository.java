@@ -1,5 +1,6 @@
 package com.alphabank.backend.repository;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -24,4 +25,6 @@ public interface ApplicationRepository {
     List<ApplicationRecord> findByStatuses(Set<ApplicationStatus> statuses);
 
     void updateParameters(UUID id, UUID productId, long amount, int termMonths, String goal);
+
+    void fixAsOf(UUID id, LocalDate asOf);
 }

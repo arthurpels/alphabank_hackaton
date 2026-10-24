@@ -143,7 +143,7 @@ public class ApplicationServiceImpl implements ApplicationService {
 
         ApplicationRecord application = new ApplicationRecord(UUID.randomUUID(), companyId, user.id(), product.id(),
                 request.amount(), request.termMonths(), request.goal(), ApplicationStatus.DRAFT,
-                OffsetDateTime.now(clock), null, null);
+                null, OffsetDateTime.now(clock), null, null);
         applicationRepository.insert(application);
         statusTransitionService.start(application.id(), user.id());
         enrichmentService.recordConsent(application.id(), SourceCode.BKI, request.consents().bki());
@@ -175,8 +175,9 @@ public class ApplicationServiceImpl implements ApplicationService {
 
         ApplicationRecord updated = accessService.load(user, applicationId);
         if (updated.status() == ApplicationStatus.COLLECTING) {
-            forkCalculationService.save(applicationId, forkCalculationService
-                    .calculate(updated, product, accessService.companyInn(updated)).score());
+            ForkCalculation calculation = forkCalculationService.calculate(updated, product,
+                    accessService.companyInn(updated));
+            forkCalculationService.save(applicationId, calculation.request(), calculation.score());
             statusTransitionService.apply(applicationId, ApplicationStatus.COLLECTING, TransitionInitiator.CLIENT,
                     user.id(), "Изменены параметры заявки");
         }
@@ -209,7 +210,7 @@ public class ApplicationServiceImpl implements ApplicationService {
                     DecidedBy.SYSTEM, draft.source(), draft.removable(), List.of(), now.plusNanos(i * 1_000L),
                     null));
         }
-        forkCalculationService.save(applicationId, calculation.score());
+        forkCalculationService.save(applicationId, calculation.request(), calculation.score());
         statusTransitionService.apply(applicationId, ApplicationStatus.COLLECTING, TransitionInitiator.CLIENT,
                 user.id(), "Рассчитать");
         auditService.record(applicationId, AuditEventType.SPOT_CREATED, null,

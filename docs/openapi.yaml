@@ -72,7 +72,7 @@ paths:
       operationId: getDemoTime
       tags: [demo]
       summary: Текущее время демо
-      description: Время, по которому бэк считает сроки, журнал и вилки. Заголовок `X-Demo-User` не нужен.
+      description: Время, по которому бэк считает сроки и журнал. Дата расчёта вилки фиксируется на заявке и от этого времени не зависит. Заголовок `X-Demo-User` не нужен.
       security: []
       responses:
         '200':
@@ -1152,7 +1152,7 @@ components:
 
     Fork:
       type: object
-      required: [id, rateFrom, rateTo, zone, thresholds, rulesVersion, calculatedAt]
+      required: [id, rateFrom, rateTo, zone, thresholds, rulesVersion, asOf, calculatedAt]
       properties:
         id:
           type: string
@@ -1172,6 +1172,11 @@ components:
         rulesVersion:
           type: string
           example: 2026-10-23.draft1
+        asOf:
+          type: string
+          format: date
+          description: дата, зафиксированная при первом расчёте заявки; не меняется при пересчётах и перемотке демо-времени
+          example: 2026-10-23
         calculatedAt:
           type: string
           format: date-time

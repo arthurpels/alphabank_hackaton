@@ -75,7 +75,7 @@ public class ApplicationDetailsMapper {
                 fork.rejectMin() == null ? 0 : fork.rejectMin());
         return new ForkDto(fork.id(), fork.rateFrom(), fork.rateTo(),
                 ForkZoneResolver.resolve(fork.rateFrom(), fork.rateTo(), thresholds), thresholds,
-                fork.rulesVersion(), fork.calculatedAt());
+                fork.rulesVersion(), fork.asOf(), fork.calculatedAt());
     }
 
     public OfferDto toOffer(OfferRecord offer, ProductCode productCode, ForkSnapshotRecord fork, boolean requested) {

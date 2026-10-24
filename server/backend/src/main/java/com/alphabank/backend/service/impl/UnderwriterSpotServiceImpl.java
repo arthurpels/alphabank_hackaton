@@ -130,7 +130,7 @@ public class UnderwriterSpotServiceImpl implements UnderwriterSpotService {
             closeRevenueSpots(applicationId, user.id());
         }
         ForkCalculation calculation = calculate(application);
-        forkCalculationService.save(applicationId, calculation.score());
+        forkCalculationService.save(applicationId, calculation.request(), calculation.score());
         gridOfferWriter.save(applicationId, calculation.request(), OfferStatus.CALCULATED);
         statusTransitionService.apply(applicationId, ApplicationStatus.UNDERWRITING, TransitionInitiator.UNDERWRITER,
                 user.id(), request.verdict() == AnswerVerdict.ACCEPTED
