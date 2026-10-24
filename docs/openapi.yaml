@@ -273,7 +273,11 @@ paths:
       operationId: acceptOffer
       tags: [applications]
       summary: Принять условия (APPROVED | COUNTER_OFFER → SIGNING)
-      description: Переход 14. Оффер → `CHOSEN`, остальные `OFFERED` → `DECLINED`. Формируется договор.
+      description: |
+        Переход 14. Только клиент. Выбрать можно оффер `OFFERED` этой заявки (чужой — `404`, другой статус — `400`).
+        Оффер → `CHOSEN`, остальные `OFFERED` → `DECLINED`; при иных условиях решение ссылается на выбранный оффер.
+        Формируется договор: ставка — правый край вилки выбранного оффера, аннуитетный график,
+        первый платёж через месяц после принятия; после выдачи график считается от даты выдачи.
       requestBody:
         required: true
         content:
@@ -289,6 +293,8 @@ paths:
                 $ref: '#/components/schemas/ApplicationDetails'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
@@ -301,7 +307,7 @@ paths:
       operationId: signContract
       tags: [applications]
       summary: Подписать договор (SIGNING → ISSUED, смоделировано)
-      description: Переход 15. Подписание и зачисление моделируются.
+      description: Переход 15. Только клиент. Подписание и зачисление моделируются одним шагом — `signedAt` = `issuedAt`, график от даты выдачи.
       responses:
         '200':
           description: деньги выданы, в договоре — график платежей
@@ -309,6 +315,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApplicationDetails'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
@@ -321,7 +329,7 @@ paths:
       operationId: cancelApplication
       tags: [applications]
       summary: Отменить заявку или отказаться от условий (→ CANCELLED)
-      description: Переход 16. Из `DRAFT`, `COLLECTING`, `INFO_REQUESTED`, `APPROVED`, `COUNTER_OFFER`.
+      description: Переход 16. Только клиент, из `DRAFT`, `COLLECTING`, `INFO_REQUESTED`, `APPROVED`, `COUNTER_OFFER`. Предложенные офферы (`OFFERED`) → `DECLINED`.
       requestBody:
         required: false
         content:
@@ -335,6 +343,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApplicationDetails'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
@@ -1390,10 +1400,12 @@ components:
           type: integer
         rate:
           type: number
+          description: правый край вилки выбранного оффера, % годовых
           example: 19.5
         monthlyPayment:
           type: integer
           format: int64
+          description: аннуитетный платёж, копейки
         signedAt:
           type: string
           format: date-time

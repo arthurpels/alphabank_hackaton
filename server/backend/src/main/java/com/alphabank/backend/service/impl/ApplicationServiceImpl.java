@@ -9,7 +9,6 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.alphabank.backend.dto.request.AcceptRequest;
 import com.alphabank.backend.dto.request.ApplicationCreateRequest;
 import com.alphabank.backend.dto.request.ApplicationUpdateRequest;
 import com.alphabank.backend.dto.request.CancelRequest;
@@ -39,6 +38,7 @@ import com.alphabank.backend.repository.ApplicationRepository;
 import com.alphabank.backend.repository.ApplicationSourceRepository;
 import com.alphabank.backend.repository.CompanyRepository;
 import com.alphabank.backend.repository.ForkSnapshotRepository;
+import com.alphabank.backend.repository.OfferRepository;
 import com.alphabank.backend.repository.ProductRepository;
 import com.alphabank.backend.repository.SpotRepository;
 import com.alphabank.backend.repository.model.ApplicationRecord;
@@ -55,7 +55,6 @@ import com.alphabank.backend.service.DemoUserService;
 import com.alphabank.backend.service.ForkCalculationService;
 import com.alphabank.backend.service.StatusTransitionService;
 import com.alphabank.backend.statemachine.ApplicationStateMachine;
-import com.alphabank.backend.stub.StubApplications;
 import com.alphabank.backend.validator.ApplicationParamsValidator;
 
 @Service
@@ -66,6 +65,7 @@ public class ApplicationServiceImpl implements ApplicationService {
     private final CompanyRepository companyRepository;
     private final SpotRepository spotRepository;
     private final ForkSnapshotRepository forkSnapshotRepository;
+    private final OfferRepository offerRepository;
     private final ApplicationSourceRepository applicationSourceRepository;
     private final AppUserRepository appUserRepository;
     private final DemoUserService demoUserService;
@@ -83,7 +83,7 @@ public class ApplicationServiceImpl implements ApplicationService {
 
     public ApplicationServiceImpl(ApplicationRepository applicationRepository, ProductRepository productRepository,
                                   CompanyRepository companyRepository, SpotRepository spotRepository,
-                                  ForkSnapshotRepository forkSnapshotRepository,
+                                  ForkSnapshotRepository forkSnapshotRepository, OfferRepository offerRepository,
                                   ApplicationSourceRepository applicationSourceRepository,
                                   AppUserRepository appUserRepository, DemoUserService demoUserService,
                                   ApplicationAccessService accessService, EnrichmentService enrichmentService,
@@ -97,6 +97,7 @@ public class ApplicationServiceImpl implements ApplicationService {
         this.companyRepository = companyRepository;
         this.spotRepository = spotRepository;
         this.forkSnapshotRepository = forkSnapshotRepository;
+        this.offerRepository = offerRepository;
         this.applicationSourceRepository = applicationSourceRepository;
         this.appUserRepository = appUserRepository;
         this.demoUserService = demoUserService;
@@ -239,18 +240,16 @@ public class ApplicationServiceImpl implements ApplicationService {
     }
 
     @Override
-    public ApplicationDetailsDto accept(CurrentUser user, UUID applicationId, AcceptRequest request) {
-        return clientAction(user, applicationId, ApplicationStatus.SIGNING);
-    }
-
-    @Override
-    public ApplicationDetailsDto sign(CurrentUser user, UUID applicationId) {
-        return clientAction(user, applicationId, ApplicationStatus.ISSUED);
-    }
-
-    @Override
+    @Transactional
     public ApplicationDetailsDto cancel(CurrentUser user, UUID applicationId, CancelRequest request) {
-        return clientAction(user, applicationId, ApplicationStatus.CANCELLED);
+        ApplicationRecord application = accessService.load(user, applicationId);
+        stateMachine.checkAction(application.status(), ApplicationAction.CANCEL, user.role());
+        offerRepository.declineOffered(applicationId);
+        String reason = request == null || request.reason() == null || request.reason().isBlank()
+                ? "Клиент отменил заявку" : request.reason();
+        statusTransitionService.apply(applicationId, ApplicationStatus.CANCELLED, TransitionInitiator.CLIENT,
+                user.id(), reason);
+        return details(accessService.load(user, applicationId), user);
     }
 
     @Override
@@ -277,11 +276,5 @@ public class ApplicationServiceImpl implements ApplicationService {
         if (!Boolean.TRUE.equals(consents.personalData())) {
             throw ApiException.validation("Без согласия на обработку персональных данных заявку не создать");
         }
-    }
-
-    private ApplicationDetailsDto clientAction(CurrentUser user, UUID applicationId, ApplicationStatus result) {
-        user.requireRole(UserRole.CLIENT);
-        return StubApplications.coffee(applicationId, result, user.role(),
-                stateMachine.availableActions(result, user.role()));
     }
 }

@@ -1,5 +1,6 @@
 package com.alphabank.backend.repository;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -13,6 +14,10 @@ public interface OfferRepository {
     void insert(OfferRecord offer);
 
     void updateStatus(UUID id, OfferStatus status);
+
+    void markChosen(UUID id, OffsetDateTime chosenAt);
+
+    int declineOffered(UUID applicationId);
 
     List<OfferRecord> findByApplicationId(UUID applicationId);
 }

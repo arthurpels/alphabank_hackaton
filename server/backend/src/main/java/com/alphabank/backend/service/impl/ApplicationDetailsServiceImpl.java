@@ -27,6 +27,7 @@ import com.alphabank.backend.repository.model.ProductRecord;
 import com.alphabank.backend.repository.model.SpotRecord;
 import com.alphabank.backend.security.CurrentUser;
 import com.alphabank.backend.service.ApplicationDetailsService;
+import com.alphabank.backend.service.ContractService;
 import com.alphabank.backend.statemachine.ApplicationStateMachine;
 
 @Service
@@ -44,6 +45,7 @@ public class ApplicationDetailsServiceImpl implements ApplicationDetailsService 
     private final SpotAnswerRepository spotAnswerRepository;
     private final OfferRepository offerRepository;
     private final DecisionRepository decisionRepository;
+    private final ContractService contractService;
     private final ApplicationStateMachine stateMachine;
     private final ApplicationDetailsMapper mapper;
 
@@ -51,8 +53,8 @@ public class ApplicationDetailsServiceImpl implements ApplicationDetailsService 
                                          ApplicationSourceRepository applicationSourceRepository,
                                          ForkSnapshotRepository forkSnapshotRepository, SpotRepository spotRepository,
                                          SpotAnswerRepository spotAnswerRepository, OfferRepository offerRepository,
-                                         DecisionRepository decisionRepository, ApplicationStateMachine stateMachine,
-                                         ApplicationDetailsMapper mapper) {
+                                         DecisionRepository decisionRepository, ContractService contractService,
+                                         ApplicationStateMachine stateMachine, ApplicationDetailsMapper mapper) {
         this.companyRepository = companyRepository;
         this.productRepository = productRepository;
         this.applicationSourceRepository = applicationSourceRepository;
@@ -61,6 +63,7 @@ public class ApplicationDetailsServiceImpl implements ApplicationDetailsService 
         this.spotAnswerRepository = spotAnswerRepository;
         this.offerRepository = offerRepository;
         this.decisionRepository = decisionRepository;
+        this.contractService = contractService;
         this.stateMachine = stateMachine;
         this.mapper = mapper;
     }
@@ -77,7 +80,7 @@ public class ApplicationDetailsServiceImpl implements ApplicationDetailsService 
                 applicationSourceRepository.isConsentGiven(application.id(), SourceCode.BKI),
                 forkSnapshotRepository.findLatest(application.id()).orElse(null), spots,
                 spotAnswerRepository.findLatestBySpotIds(spots.stream().map(SpotRecord::id).toList()),
-                offers(application, user), decision,
+                offers(application, user), decision, contractService.find(application),
                 stateMachine.availableActions(application.status(), user.role()));
     }
 

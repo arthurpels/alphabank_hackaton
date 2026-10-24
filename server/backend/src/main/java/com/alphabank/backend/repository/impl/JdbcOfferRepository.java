@@ -66,6 +66,24 @@ public class JdbcOfferRepository implements OfferRepository {
     }
 
     @Override
+    public void markChosen(UUID id, OffsetDateTime chosenAt) {
+        jdbc.sql("UPDATE offer SET status = 'CHOSEN', chosen_at = :chosenAt WHERE id = :id")
+                .param("chosenAt", chosenAt)
+                .param("id", id)
+                .update();
+    }
+
+    @Override
+    public int declineOffered(UUID applicationId) {
+        return jdbc.sql("""
+                        UPDATE offer SET status = 'DECLINED'
+                        WHERE application_id = :applicationId AND status = 'OFFERED'
+                        """)
+                .param("applicationId", applicationId)
+                .update();
+    }
+
+    @Override
     public List<OfferRecord> findByApplicationId(UUID applicationId) {
         return jdbc.sql("""
                         SELECT id, application_id, product_id, amount, term_months, collateral_type,

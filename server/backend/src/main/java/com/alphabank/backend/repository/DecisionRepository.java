@@ -10,4 +10,6 @@ public interface DecisionRepository {
     void insert(DecisionRecord decision);
 
     Optional<DecisionRecord> findByApplicationId(UUID applicationId);
+
+    void setOffer(UUID applicationId, UUID offerId);
 }

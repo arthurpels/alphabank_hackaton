@@ -11,6 +11,7 @@ import com.alphabank.backend.dto.response.ApplicationDto;
 import com.alphabank.backend.dto.response.ApplicationSummaryDto;
 import com.alphabank.backend.dto.response.CompanyDto;
 import com.alphabank.backend.dto.response.ConsentsDto;
+import com.alphabank.backend.dto.response.ContractDto;
 import com.alphabank.backend.dto.response.DecisionDto;
 import com.alphabank.backend.dto.response.ForkDto;
 import com.alphabank.backend.dto.response.OfferDto;
@@ -49,7 +50,8 @@ public class ApplicationDetailsMapper {
     public ApplicationDetailsDto toDetails(ApplicationRecord application, CompanyRecord company, ProductRecord product,
                                            boolean bkiConsent, ForkSnapshotRecord fork, List<SpotRecord> spots,
                                            Map<UUID, SpotAnswerRecord> answers, List<OfferDto> offers,
-                                           DecisionDto decision, List<ApplicationAction> actions) {
+                                           DecisionDto decision, ContractDto contract,
+                                           List<ApplicationAction> actions) {
         ApplicationDto dto = new ApplicationDto(application.id(), application.status(), toCompany(company),
                 toProduct(product), application.amount(), application.termMonths(), application.goal(),
                 new ConsentsDto(bkiConsent, true), actions, application.createdAt(), application.submittedAt(),
@@ -57,7 +59,8 @@ public class ApplicationDetailsMapper {
                 application.status() == ApplicationStatus.INFO_REQUESTED && application.infoRequestedAt() != null
                         ? application.infoRequestedAt().plusDays(INFO_REQUEST_DAYS) : null);
         return new ApplicationDetailsDto(dto, fork == null ? null : toFork(fork),
-                spots.stream().map(spot -> toSpot(spot, answers.get(spot.id()))).toList(), offers, decision, null);
+                spots.stream().map(spot -> toSpot(spot, answers.get(spot.id()))).toList(), offers, decision,
+                contract);
     }
 
     public ApplicationSummaryDto toSummary(ApplicationRecord application, ProductRecord product,
@@ -102,8 +105,8 @@ public class ApplicationDetailsMapper {
 
     private static SpotAnswerDto toAnswer(SpotAnswerRecord answer) {
         return new SpotAnswerDto(answer.id(), answer.optionCode(), answer.text(), answer.documentId(),
-                answer.contractAmount(), answer.contractTermMonths(), answer.verdict(), answer.reviewedBy(), answer.reviewComment(), answer.createdAt(),
-                answer.reviewedAt());
+                answer.contractAmount(), answer.contractTermMonths(), answer.verdict(), answer.reviewedBy(),
+                answer.reviewComment(), answer.createdAt(), answer.reviewedAt());
     }
 
     private CompanyDto toCompany(CompanyRecord company) {

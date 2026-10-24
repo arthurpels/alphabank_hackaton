@@ -44,6 +44,14 @@ public class JdbcDecisionRepository implements DecisionRepository {
     }
 
     @Override
+    public void setOffer(UUID applicationId, UUID offerId) {
+        jdbc.sql("UPDATE decision SET offer_id = :offerId WHERE application_id = :applicationId")
+                .param("offerId", offerId)
+                .param("applicationId", applicationId)
+                .update();
+    }
+
+    @Override
     public Optional<DecisionRecord> findByApplicationId(UUID applicationId) {
         return jdbc.sql("""
                         SELECT id, application_id, type, offer_id, decided_by, decided_by_user_id, rules_version,

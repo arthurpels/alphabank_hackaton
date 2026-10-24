@@ -24,6 +24,7 @@ import com.alphabank.backend.dto.response.AuditEventDto;
 import com.alphabank.backend.dto.response.ForkDto;
 import com.alphabank.backend.security.CurrentUser;
 import com.alphabank.backend.service.ApplicationService;
+import com.alphabank.backend.service.IssuanceService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -35,9 +36,11 @@ import jakarta.validation.Valid;
 public class ApplicationController {
 
     private final ApplicationService applicationService;
+    private final IssuanceService issuanceService;
 
-    public ApplicationController(ApplicationService applicationService) {
+    public ApplicationController(ApplicationService applicationService, IssuanceService issuanceService) {
         this.applicationService = applicationService;
+        this.issuanceService = issuanceService;
     }
 
     @GetMapping
@@ -89,13 +92,13 @@ public class ApplicationController {
     @Operation(operationId = "acceptOffer", summary = "Принять условия (APPROVED | COUNTER_OFFER → SIGNING)")
     public ApplicationDetailsDto acceptOffer(CurrentUser user, @PathVariable UUID applicationId,
                                              @Valid @RequestBody AcceptRequest request) {
-        return applicationService.accept(user, applicationId, request);
+        return issuanceService.accept(user, applicationId, request);
     }
 
     @PostMapping("/{applicationId}/sign")
     @Operation(operationId = "signContract", summary = "Подписать договор (SIGNING → ISSUED, смоделировано)")
     public ApplicationDetailsDto signContract(CurrentUser user, @PathVariable UUID applicationId) {
-        return applicationService.sign(user, applicationId);
+        return issuanceService.sign(user, applicationId);
     }
 
     @PostMapping("/{applicationId}/cancel")
