@@ -149,7 +149,9 @@ erDiagram
         uuid id PK
         uuid application_id FK
         string kind "например CONTRACT_GP, REPAIR_CONTRACT"
-        string file_path
+        string file_path "имя файла в хранилище backend (volume /data/documents)"
+        string original_name "имя файла от клиента, отдаётся при скачивании"
+        string content_type "application/pdf | image/jpeg | image/png"
         timestamp uploaded_at
     }
 

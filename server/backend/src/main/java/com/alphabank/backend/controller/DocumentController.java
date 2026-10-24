@@ -1,9 +1,14 @@
 package com.alphabank.backend.controller;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,6 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.alphabank.backend.config.ApiPaths;
 import com.alphabank.backend.dto.response.DocumentDto;
+import com.alphabank.backend.model.DocumentFile;
 import com.alphabank.backend.security.CurrentUser;
 import com.alphabank.backend.service.DocumentService;
 
@@ -30,6 +36,18 @@ public class DocumentController {
 
     public DocumentController(DocumentService documentService) {
         this.documentService = documentService;
+    }
+
+    @GetMapping("/{documentId}")
+    @Operation(operationId = "downloadDocument", summary = "Скачать документ")
+    public ResponseEntity<byte[]> download(CurrentUser user, @PathVariable UUID applicationId,
+                                           @PathVariable UUID documentId) {
+        DocumentFile file = documentService.download(user, applicationId, documentId);
+        String encodedName = URLEncoder.encode(file.document().fileName(), StandardCharsets.UTF_8);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(file.contentType()))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodedName)
+                .body(file.content());
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

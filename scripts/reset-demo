@@ -11,6 +11,9 @@ docker compose exec -T postgres sh -lc 'psql -U "$POSTGRES_USER" -d "$POSTGRES_D
 echo "==> Повторный seed компаний и пользователей"
 docker compose exec -T postgres sh -lc 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1' < "$SEED_FILE"
 
+echo "==> Очистка загруженных документов"
+docker compose exec -T backend sh -lc 'rm -f /data/documents/*'
+
 echo "==> Сброс состояния моков (долг ФНС и пр.)"
 docker compose exec -T mocks python -c \
   "import urllib.request; urllib.request.urlopen(urllib.request.Request('http://localhost:8002/mock/reset', data=b''), timeout=10)"
