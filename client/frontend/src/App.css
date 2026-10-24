@@ -50,3 +50,5 @@
   .card__footer { flex-direction: column; }
   .card__footer button { width: 100%; }
 }
+
+.checks-link { display: flex; justify-content: center; margin-top: 8px; }

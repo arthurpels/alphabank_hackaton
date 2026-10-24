@@ -101,7 +101,7 @@ export default function NewApplicationPage() {
         createdId.current = created.application.id;
       }
       await api.evaluateApplication(createdId.current);
-      navigate(`/client/application?id=${createdId.current}`);
+      navigate(`/client/check?id=${createdId.current}`);
     } catch (e) {
       setError(errorText(e));
       setBusy(false);
@@ -143,7 +143,8 @@ export default function NewApplicationPage() {
             ))}
         </dl>
         <p className="form__hint">
-          Данные берутся из выбранной компании, изменить их здесь нельзя.
+          Компания из вашего профиля в банке. После «Рассчитать» банк заново проверит её в ЕГРЮЛ, ФНС и БКИ
+          и покажет, что подтвердилось.
         </p>
       </section>
 

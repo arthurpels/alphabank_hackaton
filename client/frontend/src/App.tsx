@@ -5,6 +5,7 @@ import ChooseClientPage from './pages/ChooseClientPage';
 import ClientHomePage from './pages/ClientHomePage';
 import NewApplicationPage from './pages/NewApplicationPage';
 import ApplicationPage from './pages/ApplicationPage';
+import CheckPage from './pages/CheckPage';
 import UnderwriterPage from './pages/UnderwriterPage';
 import UnderwriterApplicationPage from './pages/UnderwriterApplicationPage';
 import './pages/pages.css';
@@ -27,6 +28,7 @@ export default function App() {
         <Route path="/client" element={<ChooseClientPage />} />
         <Route path="/client/home" element={<ClientHomePage />} />
         <Route path="/client/new" element={<NewApplicationPage />} />
+        <Route path="/client/check" element={<CheckPage />} />
         <Route path="/client/application" element={<ApplicationPage />} />
         <Route path="/underwriter" element={<UnderwriterPage />} />
         <Route path="/underwriter/application" element={<UnderwriterApplicationPage />} />

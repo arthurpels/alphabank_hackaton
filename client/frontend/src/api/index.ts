@@ -11,6 +11,7 @@ import type {
   UnderwritingSummary,
   DemoUser,
   Product,
+  SourceChecks,
   SpotCloseRequest,
   UserRole,
 } from '../types';
@@ -27,6 +28,7 @@ export interface Api {
   getApplication(id: string): Promise<ApplicationDetails>;
   createApplication(body: ApplicationCreate): Promise<ApplicationDetails>;
   evaluateApplication(id: string): Promise<ApplicationDetails>;
+  getChecks(id: string): Promise<SourceChecks>;
   closeSpot(id: string, spotId: string, body: SpotCloseRequest): Promise<ApplicationDetails>;
   uploadDocument(id: string, file: File, kind: string): Promise<Document>;
   downloadDocument(id: string, documentId: string): Promise<Blob>;
@@ -50,6 +52,7 @@ const realApi: Api = {
   getApplication: (id) => request('GET', `/applications/${id}`),
   createApplication: (body) => request('POST', '/applications', body),
   evaluateApplication: (id) => request('POST', `/applications/${id}/evaluate`),
+  getChecks: (id) => request('GET', `/applications/${id}/checks`),
   closeSpot: (id, spotId, body) => request('POST', `/applications/${id}/spots/${spotId}/close`, body),
   uploadDocument: (id, file, kind) => {
     const form = new FormData();

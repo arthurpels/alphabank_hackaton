@@ -22,9 +22,11 @@ import com.alphabank.backend.dto.response.ApplicationDetailsDto;
 import com.alphabank.backend.dto.response.ApplicationSummaryDto;
 import com.alphabank.backend.dto.response.AuditEventDto;
 import com.alphabank.backend.dto.response.ForkDto;
+import com.alphabank.backend.dto.response.SourceChecksDto;
 import com.alphabank.backend.security.CurrentUser;
 import com.alphabank.backend.service.ApplicationService;
 import com.alphabank.backend.service.IssuanceService;
+import com.alphabank.backend.service.SourceCheckService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -37,10 +39,13 @@ public class ApplicationController {
 
     private final ApplicationService applicationService;
     private final IssuanceService issuanceService;
+    private final SourceCheckService sourceCheckService;
 
-    public ApplicationController(ApplicationService applicationService, IssuanceService issuanceService) {
+    public ApplicationController(ApplicationService applicationService, IssuanceService issuanceService,
+                                 SourceCheckService sourceCheckService) {
         this.applicationService = applicationService;
         this.issuanceService = issuanceService;
+        this.sourceCheckService = sourceCheckService;
     }
 
     @GetMapping
@@ -74,6 +79,12 @@ public class ApplicationController {
     @Operation(operationId = "evaluateApplication", summary = "Рассчитать (DRAFT → COLLECTING)")
     public ApplicationDetailsDto evaluateApplication(CurrentUser user, @PathVariable UUID applicationId) {
         return applicationService.evaluate(user, applicationId);
+    }
+
+    @GetMapping("/{applicationId}/checks")
+    @Operation(operationId = "getApplicationChecks", summary = "Проверка компании в ЕГРЮЛ, ФНС и БКИ")
+    public SourceChecksDto getApplicationChecks(CurrentUser user, @PathVariable UUID applicationId) {
+        return sourceCheckService.check(user, applicationId);
     }
 
     @GetMapping("/{applicationId}/fork-history")

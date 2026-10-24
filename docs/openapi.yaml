@@ -264,6 +264,34 @@ paths:
         '503':
           $ref: '#/components/responses/SourceUnavailable'
 
+  /applications/{applicationId}/checks:
+    parameters:
+      - $ref: '#/components/parameters/ApplicationId'
+    get:
+      operationId: getApplicationChecks
+      tags: [applications]
+      summary: Проверка компании в ЕГРЮЛ, ФНС и БКИ
+      description: |
+        Бэкенд заново запрашивает реестры и возвращает по каждому источнику, что подтвердилось и где проблема.
+        Клиент видит это сразу после «Рассчитать» — экран «Проверяем данные компании». Доступно после расчёта:
+        в `DRAFT` — `409`. БКИ — только при согласии клиента. Статус источника: `OK` — проблем нет;
+        `WARNING` — есть устранимый стоп-фактор (долг в ФНС); `BLOCKED` — есть неустранимый стоп-фактор.
+      responses:
+        '200':
+          description: результаты проверки
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SourceChecks'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/SourceUnavailable'
+
   /applications/{applicationId}/fork-history:
     parameters:
       - $ref: '#/components/parameters/ApplicationId'
@@ -1664,6 +1692,44 @@ components:
           minimum: 1
           maximum: 30
           example: 5
+
+    CheckStatus:
+      type: string
+      enum: [OK, WARNING, BLOCKED]
+
+    SourceCheck:
+      type: object
+      required: [source, status, facts, problems]
+      properties:
+        source:
+          $ref: '#/components/schemas/SourceCode'
+        status:
+          $ref: '#/components/schemas/CheckStatus'
+        facts:
+          type: array
+          description: что подтвердил источник
+          items:
+            type: string
+          example: ['ООО «Кофейня», ИНН 7701234560', 'статус: действует', 'руководитель Смирнова А. В. с 15.04.2019']
+        problems:
+          type: array
+          description: заголовки стоп-факторов этого источника — те же, что у красных пятен
+          items:
+            type: string
+          example: [Долг в ФНС 3 412 ₽ — без погашения будет отказ]
+
+    SourceChecks:
+      type: object
+      required: [checkedAt, items]
+      properties:
+        checkedAt:
+          type: string
+          format: date-time
+        items:
+          type: array
+          description: ЕГРЮЛ, ФНС, БКИ — в этом порядке
+          items:
+            $ref: '#/components/schemas/SourceCheck'
 
     Problem:
       type: object

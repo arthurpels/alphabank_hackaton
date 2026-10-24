@@ -1,0 +1,30 @@
+.checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+
+.check {
+  display: flex;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--color-light-bg-secondary);
+  animation: check-in .3s ease-out;
+}
+.check--ok { --check-main: var(--color-light-status-positive); }
+.check--warning { --check-main: var(--color-light-status-attention); background: var(--color-light-status-muted-attention); }
+.check--blocked { --check-main: var(--color-light-status-negative); background: var(--color-light-status-muted-negative); }
+.check--pending { --check-main: var(--color-light-graphic-secondary); }
+
+.check__icon { flex: none; display: flex; width: 28px; height: 28px; align-items: center; justify-content: center; color: var(--check-main); }
+.check__icon svg { width: 28px; height: 28px; }
+.check__body { flex: 1; min-width: 0; }
+.check__title { font-size: 16px; line-height: 24px; font-weight: 600; }
+.check__facts, .check__problems { margin: 6px 0 0; padding: 0; list-style: none; font-size: 15px; line-height: 22px; }
+.check__facts { color: var(--color-light-text-secondary); }
+.check__problems { color: var(--color-light-text-negative); font-weight: 500; }
+
+.checks__time { margin-top: 12px; text-align: center; font-size: 14px; }
+.checks__actions { display: flex; justify-content: center; margin-top: 16px; }
+
+@keyframes check-in {
+  from { opacity: .4; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}

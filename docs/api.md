@@ -87,6 +87,9 @@ GET /api/v1/demo/users              # без заголовка; ?role=CLIENT|UN
 - `POST /applications/{id}/submit` — подать заявку. Дальше статусная машина:
   автоодобрение `→ APPROVED`, андеррайтер `→ UNDERWRITING`, иные условия
   `→ COUNTER_OFFER`, отказ `→ REJECTED` (всегда с причиной).
+- `GET /applications/{id}/checks` — проверка компании в ЕГРЮЛ, ФНС и БКИ прямо сейчас: по каждому
+  источнику `status` (`OK` / `WARNING` / `BLOCKED`), `facts` — что подтвердилось, `problems` — стоп-факторы.
+  Клиент видит это после «Рассчитать». В `DRAFT` — `409`.
 - `GET /applications/{id}/fork-history` — история вилки (видно, как сужалась).
 - `GET /applications/{id}/history` — журнал событий заявки.
 

@@ -266,7 +266,28 @@ export const mockApi: Api = {
     setStatus('COLLECTING');
     return wait(state);
   },
-    closeSpot: (_appId, spotId, body) => {
+  getChecks: () =>
+    wait({
+      checkedAt: nowIso(),
+      items: [
+        {
+          source: 'EGRUL' as const,
+          status: 'OK' as const,
+          facts: ['ООО «Кофейня», ИНН 7701234560', 'статус: действует', 'компания зарегистрирована 15.04.2019',
+            'руководитель Смирнова А. В. с 15.04.2019', 'адрес: г. Москва, ул. Покровка, 12'],
+          problems: [],
+        },
+        { source: 'FNS' as const, status: 'OK' as const, facts: ['долга перед ФНС нет', 'несданных отчётов нет'], problems: [] },
+        {
+          source: 'BKI' as const,
+          status: 'OK' as const,
+          facts: ['кредитный рейтинг 712, просрочек за 12 мес. нет', 'текущих просрочек нет'],
+          problems: [],
+        },
+      ],
+    }),
+
+  closeSpot: (_appId, spotId, body) => {
     const spot = state.spots.find((s) => s.id === spotId);
     if (!spot) return Promise.reject(new ApiError(404, 'NOT_FOUND', 'Пятно не найдено'));
     if (spot.status === 'CLOSED') return Promise.reject(new ApiError(409, 'INVALID_TRANSITION', 'Пятно уже закрыто'));

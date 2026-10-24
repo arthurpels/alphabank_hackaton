@@ -52,6 +52,7 @@ public class FakeExternalServicesConfig {
     public static final String COFFEE_INN = "7701234560";
     public static final String TECHSNAB_INN = "7725555556";
     public static final String BUILDER_INN = "590234567822";
+    public static final String SHELL_INN = "7719999994";
 
     private static final List<String> MONTHS = List.of("2025-10", "2025-11", "2025-12", "2026-01", "2026-02",
             "2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09");
@@ -85,6 +86,12 @@ public class FakeExternalServicesConfig {
                             LocalDate.of(2024, 3, 1),
                             new EgrulResponse.Director("Петров С. Н.", LocalDate.of(2024, 3, 1), false),
                             new EgrulResponse.Address("г. Пермь, ул. Ленина, 40", false), "41.20", 1);
+                }
+                if (SHELL_INN.equals(inn)) {
+                    return new EgrulResponse("EGRUL", inn, "ООО «Однодневка»", "OOO", "ACTIVE",
+                            LocalDate.of(2025, 8, 1),
+                            new EgrulResponse.Director("Иванов И. И.", LocalDate.now().minusMonths(1), false),
+                            new EgrulResponse.Address("г. Москва, ул. Тверская, 7", true), "46.90", 1);
                 }
                 throw new MockNotFoundException("ИНН " + inn + " не найден в источнике");
             }

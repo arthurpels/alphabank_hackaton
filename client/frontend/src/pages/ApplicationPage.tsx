@@ -73,8 +73,10 @@ export default function ApplicationPage() {
     setError(null);
     try {
       setData(await call());
+      return true;
     } catch (e) {
       setError(errorText(e));
+      return false;
     } finally {
       setBusy(null);
     }
@@ -196,6 +198,11 @@ export default function ApplicationPage() {
             rejectMin={fork.thresholds.rejectMin}
           />
           <div className={`notice notice--${notice.tone}`}>{notice.text}</div>
+          <div className="checks-link">
+            <Button view="text" size={32} onClick={() => navigate(`/client/check?id=${application.id}`)}>
+              Что банк проверил о компании
+            </Button>
+          </div>
         </section>
       ) : (
         <section className="card__section">
@@ -251,7 +258,11 @@ export default function ApplicationPage() {
             size={48}
             loading={busy === 'evaluate'}
             disabled={busy !== null}
-            onClick={() => run('evaluate', () => api.evaluateApplication(application.id))}
+            onClick={() =>
+              run('evaluate', () => api.evaluateApplication(application.id)).then(
+                (ok) => ok && navigate(`/client/check?id=${application.id}`),
+              )
+            }
           >
             Рассчитать
           </Button>

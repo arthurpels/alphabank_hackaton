@@ -245,6 +245,20 @@ export interface UnderwritingSummary {
   items: SummaryItem[];
 }
 
+export type CheckStatus = 'OK' | 'WARNING' | 'BLOCKED';
+
+export interface SourceCheck {
+  source: SourceCode;
+  status: CheckStatus;
+  facts: string[];
+  problems: string[];
+}
+
+export interface SourceChecks {
+  checkedAt: string;
+  items: SourceCheck[];
+}
+
 export interface Document {
   id: string;
   kind: string;
