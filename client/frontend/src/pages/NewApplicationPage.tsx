@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { forwardRef, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@alfalab/core-components/button';
 import { Checkbox } from '@alfalab/core-components/checkbox';
+import { Input, type InputProps } from '@alfalab/core-components/input';
 import { SliderInput } from '@alfalab/core-components/slider-input';
 import { Text } from '@alfalab/core-components/text';
 import { Textarea } from '@alfalab/core-components/textarea';
@@ -14,6 +15,17 @@ import '../App.css';
 const SECONDARY = 'var(--color-light-text-secondary)';
 const AMOUNT_STEP = 50000;
 const GOAL_MAX = 1000;
+
+const SpacedInput = forwardRef<HTMLInputElement, InputProps>(({ value, ...rest }, ref) => (
+  <Input
+    {...rest}
+    ref={ref}
+    value={String(value ?? '')
+      .replace(/\D/g, '')
+      .replace(/\B(?=(\d{3})+(?!\d))/g, ' ')}
+  />
+));
+SpacedInput.displayName = 'SpacedInput';
 
 function errorText(e: unknown): string {
   if (e instanceof ApiError) {
@@ -176,6 +188,7 @@ export default function NewApplicationPage() {
             block
             size={56}
             label="Сумма, ₽"
+            Input={SpacedInput}
             min={product ? product.minAmount / 100 : 0}
             max={product ? product.maxAmount / 100 : 0}
             step={AMOUNT_STEP}
