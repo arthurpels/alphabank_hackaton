@@ -27,6 +27,7 @@ const actionsFor = (status: ApplicationStatus): ApplicationAction[] => {
 
 let state: ApplicationDetails = structuredClone(coffeeShop);
 let enteredAt = Date.now();
+let createdAt: string | null = null;
 let frozen = false;
 
 function setStatus(status: ApplicationStatus, patch: Partial<ApplicationDetails> = {}) {
@@ -205,6 +206,23 @@ export const mockApi: Api = {
   listDemoUsers: (role) => wait(role ? demoUsers.filter((u) => u.role === role) : demoUsers),
   getMe: () => wait(demoUsers.find((u) => u.id === getCurrentUser()) ?? demoUsers[0]),
   listProducts: () => wait(products),
+  listApplications: () => {
+    checkPreset();
+    if (!createdAt && !frozen) return wait([]);
+    const { application } = state;
+    const code = products.find((p) => p.name === application.product.name)?.code ?? 'EQUIPMENT';
+    return wait([
+      {
+        id: application.id,
+        status: application.status,
+        productCode: code,
+        amount: application.amount,
+        termMonths: application.termMonths,
+        fork: state.fork,
+        createdAt: createdAt ?? nowIso(),
+      },
+    ]);
+  },
   getApplication: () => {
     checkPreset();
     advance();
@@ -222,6 +240,7 @@ export const mockApi: Api = {
       termMonths: body.termMonths,
     };
     setStatus('DRAFT');
+    createdAt = nowIso();
     return wait(state);
   },
 

@@ -65,6 +65,16 @@ export interface DemoUser {
   company: Company | null;
 }
 
+export interface ApplicationSummary {
+  id: string;
+  status: ApplicationStatus;
+  productCode: ProductCode;
+  amount: number;
+  termMonths: number;
+  fork?: Fork | null;
+  createdAt: string;
+}
+
 export interface Product {
   code: ProductCode;
   name: string;
