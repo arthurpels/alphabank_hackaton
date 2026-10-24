@@ -8,12 +8,14 @@ import './SpotCard.css';
 type Props = {
   spot: Spot;
   onClose: (id: string) => void;
+  busy?: boolean;
+  disabled?: boolean;
 };
 
 const fmt = (v: number) => String(v).replace('.', ',');
 const SECONDARY = 'var(--color-light-text-secondary)';
 
-export function SpotCard({ spot, onClose }: Props) {
+export function SpotCard({ spot, onClose, busy = false, disabled = false }: Props) {
   const isClosed = spot.status === 'CLOSED';
   const isReview = spot.status === 'ON_REVIEW';
 
@@ -39,7 +41,7 @@ export function SpotCard({ spot, onClose }: Props) {
           ) : isReview ? (
             <span className="spot__review">Передано на проверку специалисту</span>
           ) : (
-            <Button view="secondary" size={40} onClick={() => onClose(spot.id)}>
+              <Button view="secondary" size={40} loading={busy} disabled={disabled} onClick={() => onClose(spot.id)}>
               {CLOSE_METHOD_LABELS[spot.closeMethod]}
             </Button>
           )}

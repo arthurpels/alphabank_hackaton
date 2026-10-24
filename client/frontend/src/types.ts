@@ -17,6 +17,7 @@ export interface Spot {
   pricePp: number;
   closeMethod: CloseMethod | null;
   status: SpotStatus;
+  source?: SourceCode | null;
   removable?: boolean | null;
 }
 
