@@ -40,7 +40,6 @@ import com.alphabank.backend.repository.ApplicationSourceRepository;
 import com.alphabank.backend.repository.CompanyRepository;
 import com.alphabank.backend.repository.ForkSnapshotRepository;
 import com.alphabank.backend.repository.ProductRepository;
-import com.alphabank.backend.repository.SpotAnswerRepository;
 import com.alphabank.backend.repository.SpotRepository;
 import com.alphabank.backend.repository.model.ApplicationRecord;
 import com.alphabank.backend.repository.model.CompanyRecord;
@@ -48,8 +47,10 @@ import com.alphabank.backend.repository.model.ProductRecord;
 import com.alphabank.backend.repository.model.SpotRecord;
 import com.alphabank.backend.security.CurrentUser;
 import com.alphabank.backend.service.ApplicationAccessService;
+import com.alphabank.backend.service.ApplicationDetailsService;
 import com.alphabank.backend.service.ApplicationService;
 import com.alphabank.backend.service.AuditService;
+import com.alphabank.backend.service.AutoCheckService;
 import com.alphabank.backend.service.DemoUserService;
 import com.alphabank.backend.service.ForkCalculationService;
 import com.alphabank.backend.service.StatusTransitionService;
@@ -64,7 +65,6 @@ public class ApplicationServiceImpl implements ApplicationService {
     private final ProductRepository productRepository;
     private final CompanyRepository companyRepository;
     private final SpotRepository spotRepository;
-    private final SpotAnswerRepository spotAnswerRepository;
     private final ForkSnapshotRepository forkSnapshotRepository;
     private final ApplicationSourceRepository applicationSourceRepository;
     private final AppUserRepository appUserRepository;
@@ -72,6 +72,8 @@ public class ApplicationServiceImpl implements ApplicationService {
     private final ApplicationAccessService accessService;
     private final EnrichmentService enrichmentService;
     private final ForkCalculationService forkCalculationService;
+    private final AutoCheckService autoCheckService;
+    private final ApplicationDetailsService detailsService;
     private final StatusTransitionService statusTransitionService;
     private final AuditService auditService;
     private final ApplicationStateMachine stateMachine;
@@ -81,12 +83,12 @@ public class ApplicationServiceImpl implements ApplicationService {
 
     public ApplicationServiceImpl(ApplicationRepository applicationRepository, ProductRepository productRepository,
                                   CompanyRepository companyRepository, SpotRepository spotRepository,
-                                  SpotAnswerRepository spotAnswerRepository,
                                   ForkSnapshotRepository forkSnapshotRepository,
                                   ApplicationSourceRepository applicationSourceRepository,
                                   AppUserRepository appUserRepository, DemoUserService demoUserService,
                                   ApplicationAccessService accessService, EnrichmentService enrichmentService,
-                                  ForkCalculationService forkCalculationService,
+                                  ForkCalculationService forkCalculationService, AutoCheckService autoCheckService,
+                                  ApplicationDetailsService detailsService,
                                   StatusTransitionService statusTransitionService, AuditService auditService,
                                   ApplicationStateMachine stateMachine, ApplicationParamsValidator paramsValidator,
                                   ApplicationDetailsMapper mapper, Clock clock) {
@@ -94,7 +96,6 @@ public class ApplicationServiceImpl implements ApplicationService {
         this.productRepository = productRepository;
         this.companyRepository = companyRepository;
         this.spotRepository = spotRepository;
-        this.spotAnswerRepository = spotAnswerRepository;
         this.forkSnapshotRepository = forkSnapshotRepository;
         this.applicationSourceRepository = applicationSourceRepository;
         this.appUserRepository = appUserRepository;
@@ -102,6 +103,8 @@ public class ApplicationServiceImpl implements ApplicationService {
         this.accessService = accessService;
         this.enrichmentService = enrichmentService;
         this.forkCalculationService = forkCalculationService;
+        this.autoCheckService = autoCheckService;
+        this.detailsService = detailsService;
         this.statusTransitionService = statusTransitionService;
         this.auditService = auditService;
         this.stateMachine = stateMachine;
@@ -220,8 +223,19 @@ public class ApplicationServiceImpl implements ApplicationService {
     }
 
     @Override
+    @Transactional
     public ApplicationDetailsDto submit(CurrentUser user, UUID applicationId) {
-        return clientAction(user, applicationId, ApplicationStatus.APPROVED);
+        ApplicationRecord application = accessService.load(user, applicationId);
+        stateMachine.checkAction(application.status(), ApplicationAction.SUBMIT, user.role());
+
+        statusTransitionService.apply(applicationId, ApplicationStatus.SUBMITTED, TransitionInitiator.CLIENT,
+                user.id(), "Отправить заявку");
+        applicationRepository.markSubmitted(applicationId, OffsetDateTime.now(clock));
+        statusTransitionService.apply(applicationId, ApplicationStatus.AUTO_CHECK, TransitionInitiator.SYSTEM,
+                null, "Автопроверка");
+        autoCheckService.run(application, productById(application.productId()),
+                accessService.companyInn(application));
+        return details(accessService.load(user, applicationId), user);
     }
 
     @Override
@@ -246,14 +260,7 @@ public class ApplicationServiceImpl implements ApplicationService {
     }
 
     private ApplicationDetailsDto details(ApplicationRecord application, CurrentUser user) {
-        CompanyRecord company = companyRepository.findById(application.companyId())
-                .orElseThrow(() -> new IllegalStateException("Компания заявки не найдена"));
-        List<SpotRecord> spots = spotRepository.findByApplicationId(application.id());
-        return mapper.toDetails(application, company, productById(application.productId()),
-                applicationSourceRepository.isConsentGiven(application.id(), SourceCode.BKI),
-                forkSnapshotRepository.findLatest(application.id()).orElse(null), spots,
-                spotAnswerRepository.findLatestBySpotIds(spots.stream().map(SpotRecord::id).toList()),
-                stateMachine.availableActions(application.status(), user.role()));
+        return detailsService.build(application, user);
     }
 
     private ProductRecord productByCode(ProductCode code) {

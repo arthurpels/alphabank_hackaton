@@ -11,7 +11,9 @@ import com.alphabank.backend.dto.response.ApplicationDto;
 import com.alphabank.backend.dto.response.ApplicationSummaryDto;
 import com.alphabank.backend.dto.response.CompanyDto;
 import com.alphabank.backend.dto.response.ConsentsDto;
+import com.alphabank.backend.dto.response.DecisionDto;
 import com.alphabank.backend.dto.response.ForkDto;
+import com.alphabank.backend.dto.response.OfferDto;
 import com.alphabank.backend.dto.response.ProductDto;
 import com.alphabank.backend.dto.response.SpotAnswerDto;
 import com.alphabank.backend.dto.response.SpotDto;
@@ -19,9 +21,12 @@ import com.alphabank.backend.dto.response.ZoneThresholdsDto;
 import com.alphabank.backend.enrichment.dto.EgrulResponse;
 import com.alphabank.backend.enums.ApplicationAction;
 import com.alphabank.backend.enums.ApplicationStatus;
+import com.alphabank.backend.enums.ProductCode;
 import com.alphabank.backend.repository.model.ApplicationRecord;
 import com.alphabank.backend.repository.model.CompanyRecord;
+import com.alphabank.backend.repository.model.DecisionRecord;
 import com.alphabank.backend.repository.model.ForkSnapshotRecord;
+import com.alphabank.backend.repository.model.OfferRecord;
 import com.alphabank.backend.repository.model.ProductRecord;
 import com.alphabank.backend.repository.model.SpotAnswerRecord;
 import com.alphabank.backend.repository.model.SpotRecord;
@@ -42,7 +47,8 @@ public class ApplicationDetailsMapper {
 
     public ApplicationDetailsDto toDetails(ApplicationRecord application, CompanyRecord company, ProductRecord product,
                                            boolean bkiConsent, ForkSnapshotRecord fork, List<SpotRecord> spots,
-                                           Map<UUID, SpotAnswerRecord> answers, List<ApplicationAction> actions) {
+                                           Map<UUID, SpotAnswerRecord> answers, List<OfferDto> offers,
+                                           DecisionDto decision, List<ApplicationAction> actions) {
         ApplicationDto dto = new ApplicationDto(application.id(), application.status(), toCompany(company),
                 toProduct(product), application.amount(), application.termMonths(), application.goal(),
                 new ConsentsDto(bkiConsent, true), actions, application.createdAt(), application.submittedAt(),
@@ -50,7 +56,7 @@ public class ApplicationDetailsMapper {
                 application.status() == ApplicationStatus.INFO_REQUESTED && application.infoRequestedAt() != null
                         ? application.infoRequestedAt().plusDays(INFO_REQUEST_DAYS) : null);
         return new ApplicationDetailsDto(dto, fork == null ? null : toFork(fork),
-                spots.stream().map(spot -> toSpot(spot, answers.get(spot.id()))).toList(), List.of(), null, null);
+                spots.stream().map(spot -> toSpot(spot, answers.get(spot.id()))).toList(), offers, decision, null);
     }
 
     public ApplicationSummaryDto toSummary(ApplicationRecord application, ProductRecord product,
@@ -67,6 +73,17 @@ public class ApplicationDetailsMapper {
         return new ForkDto(fork.id(), fork.rateFrom(), fork.rateTo(),
                 ForkZoneResolver.resolve(fork.rateFrom(), fork.rateTo(), thresholds), thresholds,
                 fork.rulesVersion(), fork.calculatedAt());
+    }
+
+    public OfferDto toOffer(OfferRecord offer, ProductCode productCode, ForkSnapshotRecord fork, boolean requested) {
+        return new OfferDto(offer.id(), productCode, offer.amount(), offer.termMonths(), offer.collateralType(),
+                offer.collateralComment(), toFork(fork), offer.proposedBy(), offer.status(), requested, false,
+                offer.comment(), offer.chosenAt());
+    }
+
+    public DecisionDto toDecision(DecisionRecord decision) {
+        return new DecisionDto(decision.id(), decision.type(), decision.decidedBy(), null, decision.rulesVersion(),
+                decision.override(), decision.comment(), decision.reasonSpotId(), decision.decidedAt());
     }
 
     public ProductDto toProduct(ProductRecord product) {

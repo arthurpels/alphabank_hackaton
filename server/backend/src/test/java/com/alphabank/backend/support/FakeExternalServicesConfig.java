@@ -20,12 +20,16 @@ import com.alphabank.backend.enrichment.dto.EgrulResponse;
 import com.alphabank.backend.enrichment.dto.FnsResponse;
 import com.alphabank.backend.enrichment.dto.MarketplaceResponse;
 import com.alphabank.backend.enrichment.dto.OfdResponse;
+import com.alphabank.backend.enums.ProductCode;
 import com.alphabank.backend.scoringclient.AnomalyClient;
+import com.alphabank.backend.scoringclient.OfferGridClient;
 import com.alphabank.backend.scoringclient.PurposeClient;
 import com.alphabank.backend.scoringclient.ScoringClient;
 import com.alphabank.backend.scoringclient.dto.AnomaliesResponse;
 import com.alphabank.backend.scoringclient.dto.Anomaly;
 import com.alphabank.backend.scoringclient.dto.Factor;
+import com.alphabank.backend.scoringclient.dto.Offer;
+import com.alphabank.backend.scoringclient.dto.OfferGridResponse;
 import com.alphabank.backend.scoringclient.dto.Policy;
 import com.alphabank.backend.scoringclient.dto.PurposeResponse;
 import com.alphabank.backend.scoringclient.dto.ScoreRequest;
@@ -49,6 +53,8 @@ public class FakeExternalServicesConfig {
             "2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09");
     private static final List<Long> COFFEE_OFD = List.of(1410000L, 1380000L, 1560000L, 1450000L, 1520000L, 830000L,
             1490000L, 1470000L, 1430000L, 1400000L, 1460000L, 1480000L);
+
+    public static final long POLICY_MAX_AMOUNT = 500_000_000L;
 
     private final Set<String> paidInns = new HashSet<>();
 
@@ -145,6 +151,15 @@ public class FakeExternalServicesConfig {
 
     @Bean
     @Primary
+    public OfferGridClient fakeOfferGridClient() {
+        Policy passed = new Policy("PTI", 0.2, 0.3, true, true);
+        return request -> new OfferGridResponse("2026-10-23.draft1", List.of(
+                new Offer(request.productCode(), request.amount() * 6 / 10, 36, null, 19.0, 20.0, passed),
+                new Offer(ProductCode.OVERDRAFT, 12_000_000L, 12, null, 22.0, 22.0, passed)));
+    }
+
+    @Bean
+    @Primary
     public AnomalyClient fakeAnomalyClient() {
         return request -> {
             List<Anomaly> anomalies = new ArrayList<>();
@@ -220,8 +235,10 @@ public class FakeExternalServicesConfig {
         }
         List<StopFactor> stops = request.taxDebt() > 0
                 ? List.of(new StopFactor(StopFactorCode.TAX_DEBT, true, "PAY")) : List.of();
-        return new ScoreResponse("2026-10-23.draft1", request.productCode(), lo, hi, new Thresholds(20.0, 24.0),
-                factors, stops, new Policy(null, null, null, true, true), hi <= 20.0);
+        Thresholds thresholds = request.productCode() == ProductCode.OVERDRAFT
+                ? new Thresholds(22.0, 26.0) : new Thresholds(20.0, 24.0);
+        return new ScoreResponse("2026-10-23.draft1", request.productCode(), lo, hi, thresholds,
+                factors, stops, new Policy(null, null, null, true, request.amount() <= POLICY_MAX_AMOUNT), hi <= 20.0);
     }
 
     private static Factor known(FactorCode code, double value) {

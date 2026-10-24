@@ -20,6 +20,7 @@ public class JdbcForkSnapshotRepository implements ForkSnapshotRepository {
             SELECT id, application_id, rate_from, rate_to, approve_max, reject_min, rules_version, calculated_at
             FROM fork_snapshot
             WHERE application_id = :applicationId
+              AND id NOT IN (SELECT fork_snapshot_id FROM offer WHERE application_id = :applicationId)
             ORDER BY calculated_at, id
             """;
 
@@ -60,6 +61,18 @@ public class JdbcForkSnapshotRepository implements ForkSnapshotRepository {
                 .param("applicationId", applicationId)
                 .query((rs, rowNum) -> map(rs))
                 .list();
+    }
+
+    @Override
+    public Optional<ForkSnapshotRecord> findById(UUID id) {
+        return jdbc.sql("""
+                        SELECT id, application_id, rate_from, rate_to, approve_max, reject_min, rules_version, calculated_at
+                        FROM fork_snapshot
+                        WHERE id = :id
+                        """)
+                .param("id", id)
+                .query((rs, rowNum) -> map(rs))
+                .optional();
     }
 
     private static ForkSnapshotRecord map(ResultSet rs) throws SQLException {

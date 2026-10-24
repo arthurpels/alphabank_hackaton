@@ -66,6 +66,14 @@ public class JdbcApplicationRepository implements ApplicationRepository {
     }
 
     @Override
+    public void markSubmitted(UUID id, OffsetDateTime submittedAt) {
+        jdbc.sql("UPDATE application SET submitted_at = :submittedAt WHERE id = :id")
+                .param("submittedAt", submittedAt)
+                .param("id", id)
+                .update();
+    }
+
+    @Override
     public void updateParameters(UUID id, UUID productId, long amount, int termMonths, String goal) {
         jdbc.sql("""
                         UPDATE application

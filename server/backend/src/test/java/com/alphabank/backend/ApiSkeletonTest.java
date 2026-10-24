@@ -69,11 +69,10 @@ class ApiSkeletonTest {
     }
 
     @Test
-    void submitReturnsFinalStatus() throws Exception {
+    void submitOfUnknownApplicationIs404() throws Exception {
         mvc.perform(post(APP + "/submit").header(DemoUserInterceptor.HEADER, CLIENT))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.application.status").value("APPROVED"))
-                .andExpect(jsonPath("$.offers[0].isRequested").value(true));
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
     }
 
     @Test
@@ -112,10 +111,9 @@ class ApiSkeletonTest {
     }
 
     @Test
-    void underwriterSeesCalculatedOffers() throws Exception {
+    void offersOfUnknownApplicationIs404() throws Exception {
         mvc.perform(get(APP + "/offers").header(DemoUserInterceptor.HEADER, UNDERWRITER))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].status").value("CALCULATED"));
+                .andExpect(status().isNotFound());
     }
 
     @Test

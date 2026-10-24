@@ -13,4 +13,6 @@ public interface ForkSnapshotRepository {
     Optional<ForkSnapshotRecord> findLatest(UUID applicationId);
 
     List<ForkSnapshotRecord> findByApplicationId(UUID applicationId);
+
+    Optional<ForkSnapshotRecord> findById(UUID id);
 }

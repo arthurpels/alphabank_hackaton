@@ -68,7 +68,7 @@ public class ForkCalculationServiceImpl implements ForkCalculationService {
         FactorStates states = factorStateService.resolve(application.id(), revenue != null);
         ScoreRequest request = enrichmentService.createScoreRequest(enrichment, product.code(), application.amount(),
                 application.termMonths(), revenue, states.stability(), states.purpose(), states.collateral());
-        return new ForkCalculation(enrichment, scoringClient.score(request));
+        return new ForkCalculation(enrichment, request, scoringClient.score(request));
     }
 
     @Override
