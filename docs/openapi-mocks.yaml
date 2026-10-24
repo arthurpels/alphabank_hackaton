@@ -1,0 +1,883 @@
+openapi: 3.0.3
+info:
+  title: Моки внешних источников mocks/ — контракт
+  version: 0.1.0
+  description: 'Формализация `docs/day1_backend_external-mocks.md` (T09). Эти эндпоинты реализует
+    сервис `mocks/` и вызывает только бэкенд; наружу из продукта они не торчат.
+
+    - Идентификатор запроса — ИНН (10 цифр для ООО, 12 для ИП). ИНН проверяется по контрольной
+    сумме: кривой ИНН → `422`, валидный, но не заведённый → `404`; источник, не заведённый
+    для ИНН, тоже → `404`.
+
+    - Моки детерминированные: один ИНН → один и тот же ответ. Данные пяти компаний-персонажей
+    зашиты по ИНН (см. `docs/synthetic-data.md`, раздел 1 — единственное место с данными).
+
+    - Деньги в ответах моков — в рублях (в отличие от бэкенда, где копейки).
+
+    - Ряды `months` — последние полные месяцы до даты демо (октябрь 2025 – сентябрь 2026);
+    параметр `months` отдаёт последние N.
+
+    - `POST /mock/fns/v1/debts/pay` обнуляет долг до `POST /mock/reset` (используется
+    `scripts/reset-demo` и сценарий «Техснаб погасил долг»).
+
+    - Репутационный мок в MVP не заведён (решение T04/T47); кода `REPUTATION` в `DATA_SOURCE`
+    бэкенда это не отменяет.'
+servers:
+- url: http://mocks:8002
+  description: внутри docker compose
+- url: http://localhost:8002
+  description: с хоста
+security: []
+tags:
+- name: egrul
+  description: ЕГРЮЛ / ЕГРИП — регистрационные данные компании
+- name: bki
+  description: бюро кредитных историй — кредитный скоринг и просрочки
+- name: fns
+  description: ФНС — долги по налогам и сценарий погашения
+- name: ofd
+  description: онлайн-касса — кассовая выручка
+- name: marketplace
+  description: Wildberries — продажи и выплаты продавца
+- name: acquiring
+  description: эквайринг — безналичные обороты
+- name: demo
+  description: служебные ручки демо
+paths:
+  /mock/egrul/v1/company:
+    get:
+      operationId: egrulCompany
+      tags:
+      - egrul
+      summary: Карточка компании из реестра
+      parameters:
+      - name: inn
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: ^(\d{10}|\d{12})$
+        description: ИНН (10 цифр для ООО, 12 для ИП)
+        example: '7701234560'
+      responses:
+        '200':
+          description: Карточка компании
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EgrulCompany'
+              examples:
+                shell:
+                  summary: ООО «Однодневка» — персонаж автоотказа
+                  value:
+                    source: EGRUL
+                    inn: '7719999994'
+                    name: ООО «Однодневка»
+                    legal_form: OOO
+                    status: ACTIVE
+                    registered_at: '2025-08-01'
+                    director:
+                      fio: Иванов И. И.
+                      appointed_at: '2026-09-15'
+                      is_mass: false
+                    address:
+                      value: г. Москва, ул. Примерная, 1
+                      is_mass: true
+                    okved_main: '46.90'
+                    founders_count: 1
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/InvalidInn'
+  /mock/bki/v1/report:
+    get:
+      operationId: bkiReport
+      tags:
+      - bki
+      summary: Кредитный отчёт
+      parameters:
+      - name: inn
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: ^(\d{10}|\d{12})$
+        example: '7701234560'
+      responses:
+        '200':
+          description: Кредитный отчёт
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BkiReport'
+              examples:
+                coffee:
+                  summary: ООО «Кофейня»
+                  value:
+                    source: BKI
+                    inn: '7701234560'
+                    credit_score: 712
+                    open_credits:
+                    - type: OVERDRAFT
+                      bank: АО «Банк»
+                      limit: 300000
+                      debt: 0
+                      opened_at: '2024-03-11'
+                    closed_credits: 3
+                    delinquencies:
+                      current: 0
+                      max_days_ever: 5
+                      last_12m: 0
+                    inquiries_6m: 1
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/InvalidInn'
+  /mock/fns/v1/debts:
+    get:
+      operationId: fnsDebts
+      tags:
+      - fns
+      summary: Задолженность по налогам
+      description: После `POST /mock/fns/v1/debts/pay` до `POST /mock/reset` возвращает
+        `tax_debt.amount = 0` и заполненный `paid_at`.
+      parameters:
+      - name: inn
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: ^(\d{10}|\d{12})$
+        example: '7725555556'
+      responses:
+        '200':
+          description: Долг по налогам
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FnsDebts'
+              examples:
+                techsnab:
+                  summary: ООО «Техснаб» — долг 3 412 ₽ (устранимый стоп-фактор)
+                  value:
+                    source: FNS
+                    inn: '7725555556'
+                    tax_debt:
+                      amount: 3412
+                      currency: RUB
+                      as_of: '2026-10-15'
+                    unfiled_reports: 0
+                    tax_system: OSN
+                paid:
+                  summary: Тот же ИНН после pay
+                  value:
+                    source: FNS
+                    inn: '7725555556'
+                    tax_debt:
+                      amount: 0
+                      currency: RUB
+                      as_of: '2026-10-15'
+                      paid_at: '2026-10-24'
+                    unfiled_reports: 0
+                    tax_system: OSN
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/InvalidInn'
+  /mock/fns/v1/debts/pay:
+    post:
+      operationId: fnsPay
+      tags:
+      - fns
+      summary: Погасить долг (тестовый сценарий)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InnRequest'
+            example:
+              inn: '7725555556'
+      responses:
+        '200':
+          description: Долг погашен до ближайшего `/mock/reset`
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - source
+                - inn
+                - paid
+                properties:
+                  source:
+                    type: string
+                    example: FNS
+                  inn:
+                    type: string
+                    example: '7725555556'
+                  paid:
+                    type: boolean
+                    example: true
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/InvalidInn'
+  /mock/ofd/v1/connect:
+    post:
+      operationId: ofdConnect
+      tags:
+      - ofd
+      summary: Подключить онлайн-кассу (по согласию клиента)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConnectRequest'
+            example:
+              inn: '7701234560'
+              consent: true
+      responses:
+        '200':
+          $ref: '#/components/responses/Connected'
+        '401':
+          description: Не передано согласие
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                detail: 'Требуется согласие клиента (consent: true)'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/InvalidInn'
+  /mock/ofd/v1/revenue:
+    get:
+      operationId: ofdRevenue
+      tags:
+      - ofd
+      summary: Кассовая выручка по месяцам
+      parameters:
+      - name: inn
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: ^(\d{10}|\d{12})$
+        example: '7701234560'
+      - name: months
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 12
+          default: 12
+      responses:
+        '200':
+          description: Ряд кассовой выручки (последние N месяцев)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OfdRevenue'
+              examples:
+                coffee:
+                  summary: ООО «Кофейня» — падение в марте (аномалия «был ремонт»)
+                  value:
+                    source: OFD
+                    inn: '7701234560'
+                    months:
+                    - month: '2025-10'
+                      revenue: 1410000
+                    - month: '2025-11'
+                      revenue: 1380000
+                    - month: '2025-12'
+                      revenue: 1560000
+                    - month: '2026-01'
+                      revenue: 1450000
+                    - month: '2026-02'
+                      revenue: 1520000
+                    - month: '2026-03'
+                      revenue: 830000
+                    - month: '2026-04'
+                      revenue: 1490000
+                    - month: '2026-05'
+                      revenue: 1470000
+                    - month: '2026-06'
+                      revenue: 1430000
+                    - month: '2026-07'
+                      revenue: 1400000
+                    - month: '2026-08'
+                      revenue: 1460000
+                    - month: '2026-09'
+                      revenue: 1480000
+                    share_of_total_revenue: 0.7
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/InvalidInn'
+  /mock/marketplace/v1/connect:
+    post:
+      operationId: marketplaceConnect
+      tags:
+      - marketplace
+      summary: Подключить личный кабинет продавца
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConnectRequest'
+            example:
+              inn: '590987654351'
+              api_key: demo
+      responses:
+        '200':
+          $ref: '#/components/responses/Connected'
+        '401':
+          description: Неверный api_key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                detail: Неверный api_key
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/InvalidInn'
+  /mock/marketplace/v1/sales:
+    get:
+      operationId: marketplaceSales
+      tags:
+      - marketplace
+      summary: Продажи и выплаты по месяцам
+      description: Для скоринга берётся `payout` (к выдаче), а не `gmv`.
+      parameters:
+      - name: inn
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: ^(\d{10}|\d{12})$
+        example: '590987654351'
+      - name: months
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 6
+          default: 6
+      responses:
+        '200':
+          description: Продажи продавца (последние N месяцев)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarketplaceSales'
+              examples:
+                wb:
+                  summary: ИП Кузнецова — продавец на WB
+                  value:
+                    source: MARKETPLACE
+                    inn: '590987654351'
+                    months:
+                    - month: '2026-04'
+                      gmv: 480000
+                      payout: 360000
+                      returns_pct: 11
+                    - month: '2026-05'
+                      gmv: 510000
+                      payout: 380000
+                      returns_pct: 12
+                    - month: '2026-06'
+                      gmv: 500000
+                      payout: 375000
+                      returns_pct: 11
+                    - month: '2026-07'
+                      gmv: 520000
+                      payout: 390000
+                      returns_pct: 13
+                    - month: '2026-08'
+                      gmv: 620000
+                      payout: 465000
+                      returns_pct: 12
+                    - month: '2026-09'
+                      gmv: 570000
+                      payout: 430000
+                      returns_pct: 14
+                    rating: 4.6
+                    store_age_months: 14
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/InvalidInn'
+  /mock/acquiring/v1/connect:
+    post:
+      operationId: acquiringConnect
+      tags:
+      - acquiring
+      summary: Подключить эквайринг (по согласию клиента)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConnectRequest'
+            example:
+              inn: '7701234560'
+              consent: true
+      responses:
+        '200':
+          $ref: '#/components/responses/Connected'
+        '401':
+          description: Не передано согласие
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                detail: 'Требуется согласие клиента (consent: true)'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/InvalidInn'
+  /mock/acquiring/v1/turnover:
+    get:
+      operationId: acquiringTurnover
+      tags:
+      - acquiring
+      summary: Обороты по эквайрингу по месяцам
+      parameters:
+      - name: inn
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: ^(\d{10}|\d{12})$
+        example: '7701234560'
+      - name: months
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 12
+          default: 12
+      responses:
+        '200':
+          description: Обороты эквайринга (последние N месяцев)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcquiringTurnover'
+              examples:
+                coffee:
+                  summary: ООО «Кофейня» — марте обороты тоже просели (ремонт)
+                  value:
+                    source: ACQUIRING
+                    inn: '7701234560'
+                    months:
+                    - month: '2025-10'
+                      turnover: 940000
+                      tx_count: 4055
+                    - month: '2025-11'
+                      turnover: 920000
+                      tx_count: 3968
+                    - month: '2025-12'
+                      turnover: 1050000
+                      tx_count: 4486
+                    - month: '2026-01'
+                      turnover: 970000
+                      tx_count: 4170
+                    - month: '2026-02'
+                      turnover: 1020000
+                      tx_count: 4371
+                    - month: '2026-03'
+                      turnover: 560000
+                      tx_count: 2387
+                    - month: '2026-04'
+                      turnover: 1000000
+                      tx_count: 4285
+                    - month: '2026-05'
+                      turnover: 980000
+                      tx_count: 4227
+                    - month: '2026-06'
+                      turnover: 960000
+                      tx_count: 4112
+                    - month: '2026-07'
+                      turnover: 940000
+                      tx_count: 4026
+                    - month: '2026-08'
+                      turnover: 980000
+                      tx_count: 4198
+                    - month: '2026-09'
+                      turnover: 990000
+                      tx_count: 4256
+                    avg_ticket: 233
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/InvalidInn'
+  /mock/reset:
+    post:
+      operationId: reset
+      tags:
+      - demo
+      summary: Вернуть моки в исходное состояние
+      description: Сбрасывает состояние `pay` (долг ФНС Техснаба снова 3 412 ₽).
+        Вызывается `scripts/reset-demo`.
+      responses:
+        '200':
+          description: Состояние сброшено
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - status
+                properties:
+                  status:
+                    type: string
+                    example: reset
+components:
+  responses:
+    NotFound:
+      description: ИНН не найден в источнике или источник не заведён для ИНН
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            unknownInn:
+              value:
+                detail: ИНН 590111122233 не найден в источнике
+            sourceNotRegistered:
+              value:
+                detail: Источник OFD не заведён для ИНН 590234567822
+    InvalidInn:
+      description: ИНН не проходит проверку контрольной суммы
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            detail: ИНН 7701234567 не проходит проверку контрольной суммы
+    Connected:
+      description: Источник подключён
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+            - source
+            - inn
+            - connected
+            properties:
+              source:
+                type: string
+                example: OFD
+              inn:
+                type: string
+                example: '7701234560'
+              connected:
+                type: boolean
+                example: true
+  schemas:
+    Error:
+      type: object
+      required:
+      - detail
+      properties:
+        detail:
+          type: string
+    InnRequest:
+      type: object
+      required:
+      - inn
+      properties:
+        inn:
+          type: string
+          pattern: ^(\d{10}|\d{12})$
+    ConnectRequest:
+      type: object
+      required:
+      - inn
+      properties:
+        inn:
+          type: string
+          pattern: ^(\d{10}|\d{12})$
+        consent:
+          type: boolean
+          description: Согласие клиента; обязательно `true` для ОФД и эквайринга
+        api_key:
+          type: string
+          description: Для маркетплейса; мок принимает только `demo`
+    EgrulCompany:
+      type: object
+      required:
+      - source
+      - inn
+      - name
+      - legal_form
+      - status
+      - registered_at
+      - director
+      - address
+      - okved_main
+      - founders_count
+      properties:
+        source:
+          type: string
+          example: EGRUL
+        inn:
+          type: string
+        name:
+          type: string
+        legal_form:
+          type: string
+          enum:
+          - OOO
+          - IP
+        status:
+          type: string
+          description: ACTIVE или иной статус (≠ ACTIVE — неустранимый стоп-фактор)
+          example: ACTIVE
+        registered_at:
+          type: string
+          format: date
+        director:
+          type: object
+          required:
+          - fio
+          - appointed_at
+          - is_mass
+          properties:
+            fio:
+              type: string
+            appointed_at:
+              type: string
+              format: date
+              description: назначение < 3 мес. назад — неустранимый стоп-фактор NEW_DIRECTOR
+            is_mass:
+              type: boolean
+        address:
+          type: object
+          required:
+          - value
+          - is_mass
+          properties:
+            value:
+              type: string
+            is_mass:
+              type: boolean
+              description: массовый адрес — неустранимый стоп-фактор MASS_ADDRESS
+        okved_main:
+          type: string
+        founders_count:
+          type: integer
+    BkiReport:
+      type: object
+      required:
+      - source
+      - inn
+      - credit_score
+      - open_credits
+      - closed_credits
+      - delinquencies
+      - inquiries_6m
+      properties:
+        source:
+          type: string
+          example: BKI
+        inn:
+          type: string
+        credit_score:
+          type: integer
+        open_credits:
+          type: array
+          items:
+            type: object
+            required:
+            - type
+            - bank
+            - limit
+            - debt
+            - opened_at
+            properties:
+              type:
+                type: string
+                description: OVERDRAFT | LOAN | CREDIT_CARD | …
+              bank:
+                type: string
+              limit:
+                type: integer
+                description: рубли
+              debt:
+                type: integer
+                description: текущий остаток, рубли
+              opened_at:
+                type: string
+                format: date
+        closed_credits:
+          type: integer
+        delinquencies:
+          type: object
+          required:
+          - current
+          - max_days_ever
+          - last_12m
+          properties:
+            current:
+              type: integer
+              description: текущая просрочка; > 0 — неустранимый стоп-фактор BKI_OVERDUE
+            max_days_ever:
+              type: integer
+            last_12m:
+              type: integer
+              description: максимум дней просрочки за 12 мес.; вклад фактора credit_history
+        inquiries_6m:
+          type: integer
+          description: справочное поле; в скоринге не участвует
+    FnsDebts:
+      type: object
+      required:
+      - source
+      - inn
+      - tax_debt
+      - unfiled_reports
+      - tax_system
+      properties:
+        source:
+          type: string
+          example: FNS
+        inn:
+          type: string
+        tax_debt:
+          type: object
+          required:
+          - amount
+          - currency
+          - as_of
+          properties:
+            amount:
+              type: integer
+              description: рубли; > 0 — устранимый стоп-фактор TAX_DEBT (закрытие PAY)
+            currency:
+              type: string
+              example: RUB
+            as_of:
+              type: string
+              format: date
+            paid_at:
+              type: string
+              format: date
+              description: заполняется после pay до reset
+        unfiled_reports:
+          type: integer
+        tax_system:
+          type: string
+          description: USN | OSN
+    OfdRevenue:
+      type: object
+      required:
+      - source
+      - inn
+      - months
+      - share_of_total_revenue
+      properties:
+        source:
+          type: string
+          example: OFD
+        inn:
+          type: string
+        months:
+          type: array
+          items:
+            type: object
+            required:
+            - month
+            - revenue
+            properties:
+              month:
+                type: string
+                example: '2026-03'
+              revenue:
+                type: integer
+                description: рубли
+        share_of_total_revenue:
+          type: number
+          description: доля кассы в выручке бизнеса, 0–1
+    MarketplaceSales:
+      type: object
+      required:
+      - source
+      - inn
+      - months
+      - rating
+      - store_age_months
+      properties:
+        source:
+          type: string
+          example: MARKETPLACE
+        inn:
+          type: string
+        months:
+          type: array
+          items:
+            type: object
+            required:
+            - month
+            - gmv
+            - payout
+            - returns_pct
+            properties:
+              month:
+                type: string
+                example: '2026-09'
+              gmv:
+                type: integer
+                description: рубли
+              payout:
+                type: integer
+                description: выплаты продавцу, рубли; их берёт скоринг
+              returns_pct:
+                type: integer
+                description: доля возвратов, %
+        rating:
+          type: number
+        store_age_months:
+          type: integer
+    AcquiringTurnover:
+      type: object
+      required:
+      - source
+      - inn
+      - months
+      - avg_ticket
+      properties:
+        source:
+          type: string
+          example: ACQUIRING
+        inn:
+          type: string
+        months:
+          type: array
+          items:
+            type: object
+            required:
+            - month
+            - turnover
+            - tx_count
+            properties:
+              month:
+                type: string
+                example: '2026-03'
+              turnover:
+                type: integer
+                description: рубли
+              tx_count:
+                type: integer
+        avg_ticket:
+          type: integer
+          description: средний чек, рубли
