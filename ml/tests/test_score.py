@@ -59,6 +59,11 @@ def test_persona_outcomes_follow_scoring_model() -> None:
     assert not any(stop["removable"] for stop in shell["stopFactors"])
 
 
+def test_bki_overdue_is_not_removable() -> None:
+    body = _post(_request("fns", taxDebt=0, bkiCurrentOverdue=1))
+    assert body["stopFactors"] == [{"code": "BKI_OVERDUE", "removable": False, "closeMethod": None}]
+
+
 def test_closing_spots_narrows_fork() -> None:
     start = _post(_request("coffeeStart"))
     finish = _post(_request("coffee"))

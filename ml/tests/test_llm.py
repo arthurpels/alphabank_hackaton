@@ -219,6 +219,14 @@ def test_keywords_answer_has_no_reason() -> None:
     assert _purpose(None, "EQUIPMENT", "кофемашина")["reason"] is None
 
 
+def test_empty_env_values_fall_back_to_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+    for name in ("LLM_ENABLED", "OLLAMA_URL", "OLLAMA_MODEL", "LLM_TIMEOUT_SECONDS", "LLM_SUMMARY_ENABLED"):
+        monkeypatch.setenv(name, "")
+    settings = LlmSettings.from_env()
+    assert (settings.enabled, settings.url, settings.model, settings.timeout_seconds) == (
+        False, "http://ollama:11434", "qwen3:4b", 60.0)
+
+
 def test_summary_llm_needs_its_own_flag(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LLM_ENABLED", "true")
     monkeypatch.delenv("LLM_SUMMARY_ENABLED", raising=False)

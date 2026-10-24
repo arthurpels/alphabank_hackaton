@@ -41,7 +41,7 @@ class Engine:
         if c.get("tax_debt", 0) > 0:
             out.append(("TAX_DEBT", True))
         if c.get("bki_current_overdue", 0) > 0:
-            out.append(("BKI_OVERDUE", True))
+            out.append(("BKI_OVERDUE", False))
         return out
 
     # --- факторы ------------------------------------------------------------

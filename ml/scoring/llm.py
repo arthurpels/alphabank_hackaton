@@ -31,15 +31,19 @@ class LlmSettings:
         enabled = _flag("LLM_ENABLED")
         return cls(
             enabled=enabled,
-            url=os.getenv("OLLAMA_URL", "http://ollama:11434").rstrip("/"),
-            model=os.getenv("OLLAMA_MODEL", "qwen3:4b"),
-            timeout_seconds=float(os.getenv("LLM_TIMEOUT_SECONDS", "60")),
+            url=_env("OLLAMA_URL", "http://ollama:11434").rstrip("/"),
+            model=_env("OLLAMA_MODEL", "qwen3:4b"),
+            timeout_seconds=float(_env("LLM_TIMEOUT_SECONDS", "60")),
             summary_enabled=enabled and _flag("LLM_SUMMARY_ENABLED"),
         )
 
 
+def _env(name: str, default: str) -> str:
+    return os.getenv(name, "").strip() or default
+
+
 def _flag(name: str) -> bool:
-    return os.getenv(name, "false").strip().lower() in {"1", "true", "yes"}
+    return _env(name, "false").lower() in {"1", "true", "yes"}
 
 
 def load_prompts(path: Path) -> dict[str, Any]:

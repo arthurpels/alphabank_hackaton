@@ -1,4 +1,4 @@
-# Правила скоринга «Белые пятна» — черновик для согласования с Лидом (T06 → T10/T24).
+# Правила скоринга «Белые пятна» (T06); их читает движок ml/scoring/engine.py (T24).
 # Все вклады — в процентных пунктах (п.п.) к базовой ставке продукта.
 # Минус — ставка ниже (лучше), плюс — выше (хуже).
 rules_version: "2026-10-23.draft1"
@@ -95,7 +95,7 @@ factors:
       - {if: "guarantee_or_pledge", value: -1.5}
       - {else: 0.0}        # клиент явно отказался
 
-  # reputation: кандидат (мок «Репутация»), вклад только ≤ 0: unknown [-0.5, 0.0]
+  # reputation: вне MVP, мок не заводим (domain-research.md); если вернём — вклад только ≤ 0: unknown [-0.5, 0.0]
 
 stop_factors:
   - {code: LIQUIDATION,    if: "egrul.status != 'ACTIVE'",            removable: false}
@@ -103,7 +103,7 @@ stop_factors:
   - {code: NEW_DIRECTOR,   if: "director_months < 3",                  removable: false}
   - {code: MASS_ADDRESS,   if: "egrul.address.is_mass",                removable: false}
   - {code: TAX_DEBT,       if: "fns.tax_debt.amount > 0",              removable: true, close: PAY}
-  - {code: BKI_OVERDUE,    if: "bki.delinquencies.current > 0",        removable: true, close: PAY}
+  - {code: BKI_OVERDUE,    if: "bki.delinquencies.current > 0",        removable: false}
 
 offer_grid:
   amount_cuts: [0.20, 0.35, 0.50]
@@ -111,7 +111,7 @@ offer_grid:
   limit_step_rub: 10000                  # лимит овердрафта округляется вниз до 10 000 ₽
   terms: [requested, max_allowed]
   collateral: [none, guarantee]          # с обеспечением — только если без него ничего не прошло
-  other_products: [OVERDRAFT]            # не привязан к цели; кредит на оборудование — только при цели «оборудование»
+  other_products: [OVERDRAFT]            # не привязан к цели; кредит на оборудование целевой — другим продуктом не предлагаем
   pick: "по каждому продукту — наибольшая проходящая сумма; без обеспечения важнее"
   passes: "политика продукта выполнена и правый край ≤ approve_max"
 
