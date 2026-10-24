@@ -6,7 +6,8 @@ import { Typography } from '@alfalab/core-components/typography';
 import { ForkBar } from '../components/ForkBar';
 import { SpotCard } from '../components/SpotCard';
 import { coffeeShop } from '../mocks/coffeeShop';
-import { STATUS_LABELS, FORK_SCALE } from '../constants';
+import { FORK_SCALE } from '../constants';
+import { STATUS_META } from '../statuses';
 import '../App.css';
 
 const round = (v: number) => Math.round(v * 10) / 10;
@@ -62,8 +63,8 @@ export default function ApplicationPage() {
             {application.termMonths} мес.
           </Text>
         </div>
-        <Status color="blue" size={32} shape="rounded" uppercase={false}>
-          {STATUS_LABELS[application.status]}
+        <Status color={STATUS_META[application.status].color} size={32} shape="rounded" uppercase={false}>
+          {STATUS_META[application.status].label}
         </Status>
       </header>
 

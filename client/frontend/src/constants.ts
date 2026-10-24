@@ -1,19 +1,4 @@
-import type { ApplicationStatus, CloseMethod } from './types';
-
-export const STATUS_LABELS: Record<ApplicationStatus, string> = {
-  DRAFT: 'Черновик',
-  COLLECTING: 'Сбор данных',
-  SUBMITTED: 'Подана',
-  AUTO_CHECK: 'Автопроверка',
-  UNDERWRITING: 'Андеррайтинг',
-  INFO_REQUESTED: 'Дозапрос',
-  APPROVED: 'Одобрено',
-  COUNTER_OFFER: 'Иные условия',
-  REJECTED: 'Отказ',
-  SIGNING: 'Оформление',
-  ISSUED: 'Выдано',
-  CANCELLED: 'Отменена',
-};
+import type { CloseMethod } from './types';
 
 export const CLOSE_METHOD_LABELS: Record<CloseMethod, string> = {
   CONNECT_SOURCE: 'Подключить',
