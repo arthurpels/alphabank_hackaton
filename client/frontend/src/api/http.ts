@@ -45,7 +45,7 @@ export function getCurrentUser(): string | null {
   }
 }
 
-export async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+async function send(method: string, path: string, body?: unknown): Promise<Response> {
   const headers: Record<string, string> = { Accept: 'application/json' };
   const user = getCurrentUser();
   if (user) headers['X-Demo-User'] = user;
@@ -57,7 +57,7 @@ export async function request<T>(method: string, path: string, body?: unknown): 
     res = await fetch(`${BASE}${path}`, {
       method,
       headers,
-    body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
+      body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
     });
   } catch {
     throw new ApiError(0, 'NETWORK', 'Нет связи с сервером');
@@ -76,6 +76,15 @@ export async function request<T>(method: string, path: string, body?: unknown): 
       problem.currentStatus,
     );
   }
+  return res;
+}
 
+export async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const res = await send(method, path, body);
   return (res.status === 204 ? undefined : await res.json()) as T;
+}
+
+export async function requestBlob(path: string): Promise<Blob> {
+  const res = await send('GET', path);
+  return res.blob();
 }

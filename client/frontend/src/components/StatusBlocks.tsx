@@ -64,7 +64,7 @@ function Stats({ items }: { items: { label: string; value: string; accent?: bool
   );
 }
 
-function CancelButton({ busy, onCancel }: { busy: boolean; onCancel: () => void }) {
+export function CancelButton({ busy, onCancel }: { busy: boolean; onCancel: () => void }) {
   const [confirm, setConfirm] = useState(false);
   if (!confirm) {
     return (
@@ -275,13 +275,14 @@ export function CounterOfferBlock(props: {
 
 export function RejectedBlock({ data, onHome }: { data: ApplicationDetails; onHome: () => void }) {
   const reason = data.spots.find((s) => s.id === data.decision?.reasonSpotId);
+  const byUnderwriter = data.decision?.decidedBy === 'UNDERWRITER';
   return (
     <section className="block">
       <Hero
         tone="danger"
         icon={CrossCircleMIcon}
         title="Мы не можем одобрить заявку"
-        text="Решение принято автоматически по правилам банка."
+        text={byUnderwriter ? 'Решение принял специалист банка.' : 'Решение принято автоматически по правилам банка.'}
       />
       {(reason || data.decision?.comment) && (
         <div className="note note--danger">

@@ -49,33 +49,64 @@ export default function UnderwriterApplicationPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!id) return;
-    loginAsUnderwriter()
-      .then(() => api.getApplication(id))
-      .then(setData)
-      .catch((e) => setError(errorText(e)));
+  const loadSummary = useCallback((applicationId: string) => {
+    setSummaryError(null);
     api
-      .getUnderwritingSummary(id)
+      .getUnderwritingSummary(applicationId)
       .then(setSummary)
       .catch((e) =>
         setSummaryError(
           e instanceof ApiError && e.status === 409 ? 'Сводка появится, когда будет рассчитана вилка.' : 'Сводку получить не удалось.',
         ),
       );
-  }, [id]);
+  }, []);
+
+  useEffect(() => {
+    if (!id) return;
+    loginAsUnderwriter()
+      .then(() => {
+        loadSummary(id);
+        return api.getApplication(id);
+      })
+      .then(setData)
+      .catch((e) => setError(errorText(e)));
+  }, [id, loadSummary]);
 
   const run = useCallback(async (key: string, call: () => Promise<ApplicationDetails>) => {
     setBusy(key);
     setError(null);
     try {
-      setData(await call());
+      const next = await call();
+      setData(next);
+      loadSummary(next.application.id);
     } catch (e) {
       setError(errorText(e));
     } finally {
       setBusy(null);
     }
-  }, []);
+  }, [loadSummary]);
+
+  const openDocument = (applicationId: string, documentId: string) => {
+    const tab = window.open('', '_blank');
+    api
+      .downloadDocument(applicationId, documentId)
+      .then((blob) => {
+        const url = URL.createObjectURL(blob);
+        if (tab) {
+          tab.location.href = url;
+          return;
+        }
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `document.${blob.type.split('/')[1] ?? 'pdf'}`;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      })
+      .catch((e) => {
+        tab?.close();
+        setError(errorText(e));
+      });
+  };
 
   if (!id) {
     return (
@@ -157,6 +188,7 @@ export default function UnderwriterApplicationPage() {
         spots={spots}
         canReview={actions.includes('REVIEW_SPOT')}
         busy={busy}
+        onOpenDocument={(documentId) => openDocument(application.id, documentId)}
         onReview={(spotId, verdict, comment) =>
           run(spotId, () => api.reviewSpot(application.id, spotId, { verdict, comment }))
         }

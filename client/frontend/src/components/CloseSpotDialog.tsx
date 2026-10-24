@@ -7,6 +7,7 @@ import { Modal } from '@alfalab/core-components/modal';
 import { Radio } from '@alfalab/core-components/radio';
 import { RadioGroup } from '@alfalab/core-components/radio-group';
 import { Textarea } from '@alfalab/core-components/textarea';
+import { SOURCE_LABELS } from '../constants';
 import type { CollateralType, SourceCode, Spot, SpotCloseRequest } from '../types';
 import './CloseSpotDialog.css';
 
@@ -17,15 +18,7 @@ type Props = {
   onSubmit: (body: SpotCloseRequest, file?: File) => Promise<string | null>;
 };
 
-const SOURCE_LABELS: Record<SourceCode, string> = {
-  BKI: 'Бюро кредитных историй',
-  EGRUL: 'ЕГРЮЛ / ЕГРИП',
-  FNS: 'ФНС',
-  OFD: 'Онлайн-касса (ОФД)',
-  MARKETPLACE: 'Маркетплейс',
-  ACQUIRING: 'Эквайринг',
-  REPUTATION: 'Репутация',
-};
+const REVENUE_SOURCES: SourceCode[] = ['OFD', 'MARKETPLACE', 'ACQUIRING'];
 const COLLATERAL_OPTIONS: { code: CollateralType; label: string }[] = [
   { code: 'GUARANTEE', label: 'Поручительство собственника' },
   { code: 'PLEDGE', label: 'Залог имущества' },
@@ -54,6 +47,7 @@ const digits = (v: string) => v.replace(/\D/g, '');
 export function CloseSpotDialog({ spot, onDismiss, onSubmit }: Props) {
   const method = spot.closeMethod;
   const [consent, setConsent] = useState(false);
+  const [source, setSource] = useState<SourceCode | ''>(spot.source ?? '');
   const [option, setOption] = useState('');
   const [text, setText] = useState('');
   const [file, setFile] = useState<File | null>(null);
@@ -71,6 +65,7 @@ export function CloseSpotDialog({ spot, onDismiss, onSubmit }: Props) {
   const contractRequired = spot.scoringFactor === 'debt_load';
 
   const errors: Record<string, string> = {};
+  if (method === 'CONNECT_SOURCE' && !source) errors.source = 'Выберите, откуда взять данные';
   if (method === 'CONNECT_SOURCE' && !consent) errors.consent = 'Нужно согласие, чтобы запросить данные';
   if (method === 'ANSWER' && !option && !text.trim()) {
     errors.answer = hasOptions ? 'Выберите вариант или напишите ответ' : 'Напишите ответ';
@@ -92,8 +87,8 @@ export function CloseSpotDialog({ spot, onDismiss, onSubmit }: Props) {
     if (Object.keys(errors).length > 0) return;
 
     const body: SpotCloseRequest = { method };
-    if (method === 'CONNECT_SOURCE' && spot.source) {
-      body.sourceCode = spot.source;
+    if (method === 'CONNECT_SOURCE' && source) {
+      body.sourceCode = source;
       body.consent = true;
     }
     if (method === 'ANSWER') {
@@ -129,10 +124,28 @@ export function CloseSpotDialog({ spot, onDismiss, onSubmit }: Props) {
 
           {method === 'CONNECT_SOURCE' && (
             <>
-              <p className="close-dialog__hint">
-                Банк запросит данные в источнике «{spot.source ? SOURCE_LABELS[spot.source] : 'внешний источник'}».
-                Они нужны, чтобы закрыть это пятно и сузить вилку.
-              </p>
+              {spot.source ? (
+                <p className="close-dialog__hint">
+                  Банк запросит данные в источнике «{SOURCE_LABELS[spot.source]}».
+                  Они нужны, чтобы закрыть это пятно и сузить вилку.
+                </p>
+              ) : (
+                <>
+                  <p className="close-dialog__hint">
+                    Выберите, откуда банку взять данные о выручке. Они нужны, чтобы закрыть это пятно и сузить вилку.
+                  </p>
+                  <RadioGroup
+                    value={source}
+                    onChange={(_, payload) => setSource((payload?.value ?? '') as SourceCode | '')}
+                    direction="vertical"
+                  >
+                    {REVENUE_SOURCES.map((code) => (
+                      <Radio key={code} value={code} label={SOURCE_LABELS[code]} />
+                    ))}
+                  </RadioGroup>
+                  {touched && errors.source && <div className="notice notice--bad">{errors.source}</div>}
+                </>
+              )}
               <Checkbox
                 checked={consent}
                 label="Согласен на получение данных из источника"

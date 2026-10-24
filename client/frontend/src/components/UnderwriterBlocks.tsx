@@ -94,7 +94,7 @@ export function SummaryBlock({ summary, error }: { summary: UnderwritingSummary 
   );
 }
 
-function AnswerView({ spot }: { spot: Spot }) {
+function AnswerView({ spot, onOpenDocument }: { spot: Spot; onOpenDocument: (documentId: string) => void }) {
   const a = spot.lastAnswer;
   if (!a) return null;
   const option = spot.answerOptions?.find((o) => o.code === a.optionCode)?.label ?? a.optionCode;
@@ -109,7 +109,13 @@ function AnswerView({ spot }: { spot: Spot }) {
           {a.contractTermMonths ? ` на ${a.contractTermMonths} мес.` : ''}
         </div>
       )}
-      {a.documentId && <div className="answer__row">Документ приложен</div>}
+      {a.documentId && (
+        <div className="answer__row">
+          <Button view="text" size={32} onClick={() => onOpenDocument(a.documentId!)}>
+            Открыть документ
+          </Button>
+        </div>
+      )}
       {a.verdict === 'REJECTED' && a.reviewComment && (
         <div className="answer__row answer__row--bad">Не принято: {a.reviewComment}</div>
       )}
@@ -121,9 +127,10 @@ export function SpotsReview(props: {
   spots: Spot[];
   canReview: boolean;
   busy: string | null;
+  onOpenDocument: (documentId: string) => void;
   onReview: (spotId: string, verdict: 'ACCEPTED' | 'REJECTED', comment?: string) => void;
 }) {
-  const { spots, canReview, busy, onReview } = props;
+  const { spots, canReview, busy, onOpenDocument, onReview } = props;
   const [rejecting, setRejecting] = useState<string | null>(null);
   const [comment, setComment] = useState('');
   const [touched, setTouched] = useState(false);
@@ -150,7 +157,7 @@ export function SpotsReview(props: {
               {s.pricePp > 0 ? ` · до −${String(s.pricePp).replace('.', ',')} п.п.` : ''}
             </div>
           )}
-          <AnswerView spot={s} />
+          <AnswerView spot={s} onOpenDocument={onOpenDocument} />
 
           {canReview && s.status === 'ON_REVIEW' && (
             <>
@@ -379,7 +386,7 @@ export function DecisionForm(props: {
   const [type, setType] = useState<DecisionType | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [manual, setManual] = useState(false);
-  const [mProduct, setMProduct] = useState<ProductCode>('EQUIPMENT');
+  const [mProduct, setMProduct] = useState<ProductCode>(data.application.product.code ?? 'EQUIPMENT');
   const [mAmount, setMAmount] = useState('');
   const [mTerm, setMTerm] = useState('');
   const [reason, setReason] = useState<string | null>(null);

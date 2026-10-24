@@ -39,7 +39,7 @@ export interface ApplicationDetails {
     availableActions: ApplicationAction[];
     infoRequestDeadline?: string | null;
     company: { name: string; inn?: string };
-    product: { name: string };
+    product: { name: string; code?: ProductCode };
     amount: number;
     termMonths: number;
   };

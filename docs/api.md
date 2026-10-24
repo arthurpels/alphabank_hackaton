@@ -64,6 +64,8 @@ GET /api/v1/demo/users              # без заголовка; ?role=CLIENT|UN
 ### Демо и справочники
 
 - `GET /demo/users` — пользователи стартового экрана (без заголовка).
+- `GET /demo/time`, `POST /demo/time/advance { days }`, `POST /demo/time/reset` — время демо (без заголовка):
+  перемотка вперёд сразу отменяет просроченные дозапросы (`INFO_REQUESTED` дольше 5 дней → `CANCELLED`).
 - `GET /me` — текущий пользователь и его компания.
 - `GET /products` — продуктовая сетка: `code` (`EQUIPMENT`, `WORKING_CAPITAL`,
   `OVERDRAFT`), `name`, `minAmount`/`maxAmount` (копейки), `allowedTerms`.

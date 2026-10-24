@@ -58,6 +58,7 @@ services:
     restart: unless-stopped
     environment:
       VITE_API_URL: ${VITE_API_URL}
+      VITE_USE_MOCKS: ${VITE_USE_MOCKS:-false}
     ports:
       - "${FRONTEND_PORT}:5173"
     healthcheck:

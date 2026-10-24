@@ -34,7 +34,7 @@ export function SpotCard({ spot, onClose, busy = false, disabled = false }: Prop
             <span className="spot__review">Передано на проверку специалисту</span>
           ) : (
             <>
-              <span className="spot__price">до −{fmt(spot.pricePp)} п.п.</span>
+              {spot.pricePp > 0 && <span className="spot__price">до −{fmt(spot.pricePp)} п.п.</span>}
               <Button view="secondary" size={40} loading={busy} disabled={disabled} onClick={() => onClose(spot.id)}>
                 {CLOSE_METHOD_LABELS[spot.closeMethod]}
               </Button>
@@ -62,7 +62,7 @@ export function SpotCard({ spot, onClose, busy = false, disabled = false }: Prop
 
       {!isClosed && (
         <div className="spot__side">
-          {spot.closeMethod && <span className="spot__price">до −{fmt(spot.pricePp)} п.п.</span>}
+          {spot.closeMethod && spot.pricePp > 0 && <span className="spot__price">до −{fmt(spot.pricePp)} п.п.</span>}
           {!spot.closeMethod ? (
             <span className="spot__review">Устранить нельзя</span>
           ) : isReview ? (

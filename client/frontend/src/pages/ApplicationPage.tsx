@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@alfalab/core-components/button';
 import { Status } from '@alfalab/core-components/status';
 import { Text } from '@alfalab/core-components/text';
@@ -10,6 +10,7 @@ import { CloseSpotDialog } from '../components/CloseSpotDialog';
 import { SpotCard } from '../components/SpotCard';
 import {
   ApprovedBlock,
+  CancelButton,
   CancelledBlock,
   CheckingBlock,
   CounterOfferBlock,
@@ -19,7 +20,7 @@ import {
   SigningBlock,
   SpecialistBlock,
 } from '../components/StatusBlocks';
-import { FORK_SCALE } from '../constants';
+import { FORK_SCALE, SOURCE_LABELS } from '../constants';
 import { STATUS_META } from '../statuses';
 import type { ApplicationDetails, ApplicationStatus, DecisionZone, Spot, SpotCloseRequest } from '../types';
 import '../App.css';
@@ -61,7 +62,7 @@ function errorText(e: unknown): string {
 export default function ApplicationPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const applicationId = params.get('id') ?? FALLBACK_ID;
+  const applicationId = params.get('id') ?? (USE_MOCKS ? FALLBACK_ID : null);
   const [data, setData] = useState<ApplicationDetails | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null); // 'submit', 'accept', 'sign', 'cancel', 'reset' или id пятна
@@ -80,6 +81,7 @@ export default function ApplicationPage() {
   }, []);
 
   useEffect(() => {
+    if (!applicationId) return;
     api
       .getApplication(applicationId)
       .then(setData)
@@ -88,7 +90,7 @@ export default function ApplicationPage() {
 
   const status = data?.application.status;
   useEffect(() => {
-    if (!status || !POLL_STATUSES.includes(status)) return;
+    if (!applicationId || !status || !POLL_STATUSES.includes(status)) return;
     const timer = setInterval(() => {
       api
         .getApplication(applicationId)
@@ -98,6 +100,8 @@ export default function ApplicationPage() {
     }, POLL_MS);
     return () => clearInterval(timer);
   }, [status, applicationId]);
+
+  if (!applicationId) return <Navigate to="/client/home" replace />;
 
   if (!data) {
     return (
@@ -120,6 +124,9 @@ export default function ApplicationPage() {
       setDialogSpot(null);
       return null;
     } catch (e) {
+      if (e instanceof ApiError && e.code === 'NOT_FOUND' && body.method === 'CONNECT_SOURCE' && body.sourceCode) {
+        return `Источник «${SOURCE_LABELS[body.sourceCode]}» не нашёл данных по вашему ИНН. Пятно осталось открытым.`;
+      }
       return errorText(e);
     }
   };
@@ -127,6 +134,9 @@ export default function ApplicationPage() {
   const cancel = () => run('cancel', () => api.cancelApplication(application.id));
 
   const openSpots = spots.filter((s) => s.status !== 'CLOSED');
+  const openStops = openSpots.filter((s) => s.type === 'STOP_FACTOR');
+  const blocked = openStops.some((s) => s.closeMethod === null);
+  const debtOpen = openStops.some((s) => s.closeMethod !== null);
   const canCloseSpots = application.availableActions.includes('CLOSE_SPOT');
   const exact = fork !== null && fork.rateFrom === fork.rateTo; // вилка сошлась в одну точку
   const notice = fork ? NOTICE[fork.zone] : null;
@@ -153,7 +163,13 @@ export default function ApplicationPage() {
 
   const collecting = (
     <>
-      {fork && notice ? (
+      {blocked ? (
+        <section className="card__section">
+          <div className="notice notice--bad">
+            Заявка не может быть одобрена: есть условия, которые устранить нельзя. Они отмечены красным ниже.
+          </div>
+        </section>
+      ) : fork && notice ? (
         <section className="card__section">
           <div className="rate-row">
             <Text tag="span" color={SECONDARY}>{exact ? 'Ставка' : 'Ставка сейчас'}</Text>
@@ -189,6 +205,14 @@ export default function ApplicationPage() {
 
       {spotsSection}
 
+      {debtOpen && !blocked && (
+        <section className="card__section">
+          <div className="notice notice--bad">
+            Пока не устранено условие, отмеченное красным, отправленная заявка получит отказ.
+          </div>
+        </section>
+      )}
+
       <footer className="card__footer">
         <Button
           view="accent"
@@ -199,6 +223,9 @@ export default function ApplicationPage() {
         >
           Отправить заявку
         </Button>
+        {application.availableActions.includes('CANCEL') && (
+          <CancelButton busy={busy === 'cancel'} onCancel={cancel} />
+        )}
         {}
         {USE_MOCKS && (
           <Button
@@ -218,6 +245,17 @@ export default function ApplicationPage() {
     DRAFT: (
       <section className="card__section">
         <Text tag="p" color={SECONDARY}>Заявка ещё не рассчитана.</Text>
+        {application.availableActions.includes('EVALUATE') && (
+          <Button
+            view="accent"
+            size={48}
+            loading={busy === 'evaluate'}
+            disabled={busy !== null}
+            onClick={() => run('evaluate', () => api.evaluateApplication(application.id))}
+          >
+            Рассчитать
+          </Button>
+        )}
       </section>
     ),
     COLLECTING: collecting,

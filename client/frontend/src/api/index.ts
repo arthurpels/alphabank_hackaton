@@ -14,7 +14,7 @@ import type {
   SpotCloseRequest,
   UserRole,
 } from '../types';
-import { request } from './http';
+import { request, requestBlob } from './http';
 import { mockApi } from './mock';
 
 export { ApiError, setCurrentUser, getCurrentUser } from './http';
@@ -29,6 +29,7 @@ export interface Api {
   evaluateApplication(id: string): Promise<ApplicationDetails>;
   closeSpot(id: string, spotId: string, body: SpotCloseRequest): Promise<ApplicationDetails>;
   uploadDocument(id: string, file: File, kind: string): Promise<Document>;
+  downloadDocument(id: string, documentId: string): Promise<Blob>;
   submitApplication(id: string): Promise<ApplicationDetails>;
   acceptOffer(id: string, offerId: string): Promise<ApplicationDetails>;
   signContract(id: string): Promise<ApplicationDetails>;
@@ -56,6 +57,7 @@ const realApi: Api = {
     form.append('kind', kind);
     return request('POST', `/applications/${id}/documents`, form);
   },
+  downloadDocument: (id, documentId) => requestBlob(`/applications/${id}/documents/${documentId}`),
   submitApplication: (id) => request('POST', `/applications/${id}/submit`),
   acceptOffer: (id, offerId) => request('POST', `/applications/${id}/accept`, { offerId }),
   signContract: (id) => request('POST', `/applications/${id}/sign`),

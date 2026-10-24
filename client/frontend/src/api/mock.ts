@@ -296,6 +296,8 @@ export const mockApi: Api = {
   uploadDocument: (_appId, file, kind) =>
     wait({ id: `doc-${Date.now()}`, kind, fileName: file.name, uploadedAt: new Date().toISOString() }),
 
+  downloadDocument: () => Promise.resolve(new Blob(['Демо-документ'], { type: 'text/plain' })),
+
   submitApplication: () => {
     setStatus('SUBMITTED');
     return wait(state);
