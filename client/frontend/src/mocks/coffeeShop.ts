@@ -4,6 +4,7 @@ export const coffeeShop: ApplicationDetails = {
   application: {
     id: 'coffee-application',
     status: 'COLLECTING',
+    availableActions: ['EDIT', 'CLOSE_SPOT', 'SUBMIT', 'CANCEL'],
     company: { name: 'ООО «Кофейня»' },
     product: { name: 'Кредит на оборудование' },
     amount: 200000000,
@@ -15,6 +16,9 @@ export const coffeeShop: ApplicationDetails = {
     zone: 'UNDERWRITER',
     thresholds: { approveMax: 20, rejectMin: 24 },
   },
+  offers: [],
+  decision: null,
+  contract: null,
   spots: [
     { id: 's1', type: 'NO_DATA', title: 'Продажи через кассу не видны', clientHint: 'Видим только деньги на счёте. Подключите онлайн-кассу — банк увидит реальную выручку.', pricePp: 3.5, closeMethod: 'CONNECT_SOURCE', status: 'OPEN', source: 'OFD' },
     { id: 's2', type: 'NO_DATA', title: 'Не знаем, стабильна ли выручка — закроется, когда подключите источник', clientHint: 'Закроется само, когда подключите кассу.', pricePp: 2.5, closeMethod: 'CONNECT_SOURCE', status: 'OPEN', source: 'OFD' },

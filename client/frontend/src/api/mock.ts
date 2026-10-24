@@ -1,9 +1,40 @@
 import { coffeeShop } from '../mocks/coffeeShop';
 import { demoUsers } from '../mocks/demoUsers';
-import type { ApplicationDetails } from '../types';
+import type {
+  ApplicationAction,
+  ApplicationDetails,
+  ApplicationStatus,
+  Contract,
+  Offer,
+} from '../types';
 import type { Api } from './index';
 
+const STEP_MS = 1500;
+
+const actionsFor = (status: ApplicationStatus): ApplicationAction[] => {
+  switch (status) {
+    case 'DRAFT': return ['EDIT', 'EVALUATE', 'CANCEL'];
+    case 'COLLECTING': return ['EDIT', 'CLOSE_SPOT', 'SUBMIT', 'CANCEL'];
+    case 'INFO_REQUESTED': return ['CLOSE_SPOT', 'CANCEL'];
+    case 'APPROVED':
+    case 'COUNTER_OFFER': return ['ACCEPT', 'CANCEL'];
+    case 'SIGNING': return ['SIGN'];
+    default: return [];
+  }
+};
+
 let state: ApplicationDetails = structuredClone(coffeeShop);
+let enteredAt = Date.now();
+let frozen = false;
+
+function setStatus(status: ApplicationStatus, patch: Partial<ApplicationDetails> = {}) {
+  state = {
+    ...state,
+    ...patch,
+    application: { ...state.application, status, availableActions: actionsFor(status) },
+  };
+  enteredAt = Date.now();
+}
 
 function recalc(d: ApplicationDetails): ApplicationDetails {
   if (!d.fork) return d;
@@ -23,20 +54,166 @@ function recalc(d: ApplicationDetails): ApplicationDetails {
   return { ...d, fork: { ...d.fork, rateFrom, rateTo, zone } };
 }
 
+const pad = (n: number) => String(n).padStart(2, '0');
+
+function buildContract(offer: Offer): Contract {
+  const rate = offer.fork.rateTo;
+  const n = offer.termMonths;
+  const r = rate / 100 / 12;
+  const monthly =
+    r === 0 ? Math.round(offer.amount / n) : Math.round((offer.amount * r) / (1 - Math.pow(1 + r, -n)));
+  let balance = offer.amount;
+  const now = new Date();
+  const schedule = [];
+  for (let i = 1; i <= n; i++) {
+    const interest = Math.round(balance * r);
+    const principal = i === n ? balance : monthly - interest;
+    balance -= principal;
+    const d = new Date(now.getFullYear(), now.getMonth() + i, now.getDate());
+    schedule.push({
+      number: i,
+      date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
+      payment: principal + interest,
+      principal,
+      interest,
+      balance,
+    });
+  }
+  return { offerId: offer.id, amount: offer.amount, termMonths: n, rate, monthlyPayment: monthly, schedule };
+}
+
+const nowIso = () => new Date().toISOString();
+
+function requestedOffer(): Offer {
+  const { application, fork } = state;
+  return {
+    id: 'offer-requested',
+    productCode: 'EQUIPMENT',
+    amount: application.amount,
+    termMonths: application.termMonths,
+    fork: fork!,
+    proposedBy: 'SYSTEM',
+    status: 'OFFERED',
+    isRequested: true,
+    isManual: false,
+  };
+}
+
+function approve() {
+  setStatus('APPROVED', {
+    offers: [requestedOffer()],
+    decision: { id: 'decision-1', type: 'APPROVED', decidedBy: 'SYSTEM', override: false, decidedAt: nowIso() },
+  });
+}
+
+function reject() {
+  const reason = state.spots.find((s) => s.status !== 'CLOSED') ?? state.spots[0];
+  setStatus('REJECTED', {
+    decision: {
+      id: 'decision-1',
+      type: 'REJECTED',
+      decidedBy: 'SYSTEM',
+      override: false,
+      reasonSpotId: reason?.id ?? null,
+      comment: 'Даже в лучшем случае ставка выше допустимой.',
+      decidedAt: nowIso(),
+    },
+  });
+}
+
+function counterOffers() {
+  const fork = (rate: number) => ({ ...state.fork!, rateFrom: rate, rateTo: rate, zone: 'APPROVE' as const });
+  setStatus('COUNTER_OFFER', {
+    offers: [
+      { id: 'offer-a', productCode: 'EQUIPMENT', amount: 150000000, termMonths: 36, fork: fork(19.5), proposedBy: 'SYSTEM', status: 'OFFERED', isRequested: false, isManual: false },
+      { id: 'offer-b', productCode: 'WORKING_CAPITAL', amount: 120000000, termMonths: 36, fork: fork(20.5), proposedBy: 'SYSTEM', status: 'OFFERED', isRequested: false, isManual: false },
+    ],
+    decision: { id: 'decision-1', type: 'ALTERNATIVE', decidedBy: 'SYSTEM', override: false, decidedAt: nowIso() },
+  });
+}
+
+function accept(offerId: string) {
+  const offers = state.offers.map((o) => (o.id === offerId ? { ...o, status: 'CHOSEN' as const } : o));
+  const chosen = offers.find((o) => o.id === offerId) ?? offers[0];
+  setStatus('SIGNING', { offers, contract: buildContract(chosen) });
+}
+
+function sign() {
+  const at = nowIso();
+  setStatus('ISSUED', { contract: { ...state.contract!, signedAt: at, issuedAt: at } });
+}
+
+function advance() {
+  if (frozen || Date.now() - enteredAt < STEP_MS) return;
+  if (state.application.status === 'SUBMITTED') {
+    setStatus('AUTO_CHECK');
+  } else if (state.application.status === 'AUTO_CHECK') {
+    const zone = state.fork?.zone;
+    if (zone === 'APPROVE') approve();
+    else if (zone === 'REJECT') reject();
+    else setStatus('UNDERWRITING');
+  }
+}
+
+function applyPreset(status: ApplicationStatus) {
+  const allClosed = recalc({
+    ...structuredClone(coffeeShop),
+    spots: coffeeShop.spots.map((s) => ({ ...s, status: 'CLOSED' as const })),
+  });
+  frozen = true;
+  state = structuredClone(coffeeShop);
+  switch (status) {
+    case 'DRAFT':
+      state = { ...state, fork: null, spots: [] };
+      break;
+    case 'APPROVED':
+    case 'SIGNING':
+    case 'ISSUED':
+      state = allClosed;
+      approve();
+      if (status !== 'APPROVED') accept('offer-requested');
+      if (status === 'ISSUED') sign();
+      return;
+    case 'REJECTED':
+      state = { ...state, fork: { ...state.fork!, rateFrom: 24.5, rateTo: 26, zone: 'REJECT' } };
+      reject();
+      return;
+    case 'COUNTER_OFFER':
+      counterOffers();
+      return;
+  }
+  setStatus(status);
+}
+
+let lastPreset: string | null = null;
+function checkPreset() {
+  const wanted = new URLSearchParams(window.location.search).get('mockStatus');
+  if (wanted && wanted !== lastPreset) applyPreset(wanted as ApplicationStatus);
+  lastPreset = wanted;
+}
+
 const wait = <T>(v: T) => new Promise<T>((r) => setTimeout(() => r(structuredClone(v)), 150));
 
 export const mockApi: Api = {
   listDemoUsers: (role) => wait(role ? demoUsers.filter((u) => u.role === role) : demoUsers),
 
-  getApplication: () => wait(state),
+  getApplication: () => {
+    checkPreset();
+    advance();
+    return wait(state);
+  },
 
   createApplication: () => {
-    state = { ...structuredClone(coffeeShop), application: { ...coffeeShop.application, status: 'DRAFT' }, fork: null, spots: [] };
+    frozen = false;
+    state = { ...structuredClone(coffeeShop), fork: null, spots: [] };
+    setStatus('DRAFT');
     return wait(state);
   },
 
   evaluateApplication: () => {
-    state = { ...structuredClone(coffeeShop), application: { ...coffeeShop.application, status: 'COLLECTING' } };
+    frozen = false;
+    state = structuredClone(coffeeShop);
+    setStatus('COLLECTING');
     return wait(state);
   },
 
@@ -49,7 +226,22 @@ export const mockApi: Api = {
   },
 
   submitApplication: () => {
-    state = { ...state, application: { ...state.application, status: 'SUBMITTED' } };
+    setStatus('SUBMITTED');
+    return wait(state);
+  },
+
+  acceptOffer: (_appId, offerId) => {
+    accept(offerId);
+    return wait(state);
+  },
+
+  signContract: () => {
+    sign();
+    return wait(state);
+  },
+
+  cancelApplication: () => {
+    setStatus('CANCELLED');
     return wait(state);
   },
 };

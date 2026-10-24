@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@alfalab/core-components/button';
 import { Status } from '@alfalab/core-components/status';
 import { Text } from '@alfalab/core-components/text';
@@ -6,12 +7,24 @@ import { Typography } from '@alfalab/core-components/typography';
 import { ApiError, USE_MOCKS, api } from '../api';
 import { ForkBar } from '../components/ForkBar';
 import { SpotCard } from '../components/SpotCard';
+import {
+  ApprovedBlock,
+  CancelledBlock,
+  CheckingBlock,
+  CounterOfferBlock,
+  IssuedBlock,
+  RejectedBlock,
+  SigningBlock,
+  SpecialistBlock,
+} from '../components/StatusBlocks';
 import { FORK_SCALE } from '../constants';
 import { STATUS_META } from '../statuses';
-import type { ApplicationDetails, DecisionZone, Spot, SpotCloseRequest } from '../types';
+import type { ApplicationDetails, ApplicationStatus, DecisionZone, Spot, SpotCloseRequest } from '../types';
 import '../App.css';
 
 const APPLICATION_ID = 'coffee-application';
+const POLL_STATUSES: ApplicationStatus[] = ['SUBMITTED', 'AUTO_CHECK', 'UNDERWRITING', 'INFO_REQUESTED'];
+const POLL_MS = 3000;
 
 const fmt = (v: number) => String(v).replace('.', ',');
 const SECONDARY = 'var(--color-light-text-secondary)';
@@ -49,9 +62,10 @@ function closeRequest(spot: Spot): SpotCloseRequest {
 }
 
 export default function ApplicationPage() {
+  const navigate = useNavigate();
   const [data, setData] = useState<ApplicationDetails | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<string | null>(null); // 'submit', 'reset' или id пятна
+  const [busy, setBusy] = useState<string | null>(null); // 'submit', 'accept', 'sign', 'cancel', 'reset' или id пятна
 
   const run = useCallback(async (key: string, call: () => Promise<ApplicationDetails>) => {
     setBusy(key);
@@ -72,6 +86,19 @@ export default function ApplicationPage() {
       .catch((e) => setError(errorText(e)));
   }, []);
 
+  const status = data?.application.status;
+  useEffect(() => {
+    if (!status || !POLL_STATUSES.includes(status)) return;
+    const timer = setInterval(() => {
+      api
+        .getApplication(APPLICATION_ID)
+        .then(setData)
+        .catch(() => {
+        });
+    }, POLL_MS);
+    return () => clearInterval(timer);
+  }, [status]);
+
   if (!data) {
     return (
       <div className="card">
@@ -81,28 +108,17 @@ export default function ApplicationPage() {
   }
 
   const { application, fork, spots } = data;
+  const goHome = () => navigate('/client');
+  const accept = (offerId: string) => run('accept', () => api.acceptOffer(application.id, offerId));
+  const cancel = () => run('cancel', () => api.cancelApplication(application.id));
+
   const openSpots = spots.filter((s) => s.status !== 'CLOSED');
-  const canCloseSpots = application.status === 'COLLECTING' || application.status === 'INFO_REQUESTED';
-  const exact = fork !== null && fork.rateFrom === fork.rateTo; // вилка сошлась в одну точку
+  const canCloseSpots = application.availableActions.includes('CLOSE_SPOT');
+  const exact = fork !== null && fork.rateFrom === fork.rateTo;
   const notice = fork ? NOTICE[fork.zone] : null;
 
-  return (
-    <div className="card">
-      <header className="card__head">
-        <div>
-          <Typography.TitleResponsive tag="h1" view="small" font="system" defaultMargins={false}>
-            {application.product.name}
-          </Typography.TitleResponsive>
-          <Text tag="div" color={SECONDARY} className="card__sub">
-            {application.company.name} · {(application.amount / 100).toLocaleString('ru-RU')} ₽ ·{' '}
-            {application.termMonths} мес.
-          </Text>
-        </div>
-        <Status color={STATUS_META[application.status].color} size={32} shape="rounded" uppercase={false}>
-          {STATUS_META[application.status].label}
-        </Status>
-      </header>
-
+  const collecting = (
+    <>
       {fork && notice ? (
         <section className="card__section">
           <div className="rate-row">
@@ -137,12 +153,6 @@ export default function ApplicationPage() {
         </section>
       )}
 
-      {error && (
-        <section className="card__section">
-          <div className="notice notice--bad">{error}</div>
-        </section>
-      )}
-
       <section className="card__section">
         <h2 className="spots__title">
           {openSpots.length > 0
@@ -165,11 +175,12 @@ export default function ApplicationPage() {
           view="accent"
           size={48}
           loading={busy === 'submit'}
-          disabled={application.status !== 'COLLECTING' || busy !== null}
+          disabled={!application.availableActions.includes('SUBMIT') || busy !== null}
           onClick={() => run('submit', () => api.submitApplication(application.id))}
         >
           Отправить заявку
         </Button>
+        {}
         {USE_MOCKS && (
           <Button
             view="secondary"
@@ -181,6 +192,52 @@ export default function ApplicationPage() {
           </Button>
         )}
       </footer>
+    </>
+  );
+
+  const body: Record<ApplicationStatus, React.ReactNode> = {
+    DRAFT: (
+      <section className="card__section">
+        <Text tag="p" color={SECONDARY}>Заявка ещё не рассчитана.</Text>
+      </section>
+    ),
+    COLLECTING: collecting,
+    INFO_REQUESTED: collecting,
+    SUBMITTED: <CheckingBlock status={application.status} />,
+    AUTO_CHECK: <CheckingBlock status={application.status} />,
+    UNDERWRITING: <SpecialistBlock data={data} />,
+    APPROVED: <ApprovedBlock data={data} busy={busy} onAccept={accept} onCancel={cancel} />,
+    COUNTER_OFFER: <CounterOfferBlock data={data} busy={busy} onAccept={accept} onCancel={cancel} />,
+    REJECTED: <RejectedBlock data={data} onHome={goHome} />,
+    SIGNING: <SigningBlock data={data} busy={busy} onSign={() => run('sign', () => api.signContract(application.id))} />,
+    ISSUED: <IssuedBlock contract={data.contract} />,
+    CANCELLED: <CancelledBlock onHome={goHome} />,
+  };
+
+  return (
+    <div className="card">
+      <header className="card__head">
+        <div>
+          <Typography.TitleResponsive tag="h1" view="small" font="system" defaultMargins={false}>
+            {application.product.name}
+          </Typography.TitleResponsive>
+          <Text tag="div" color={SECONDARY} className="card__sub">
+            {application.company.name} · {(application.amount / 100).toLocaleString('ru-RU')} ₽ ·{' '}
+            {application.termMonths} мес.
+          </Text>
+        </div>
+        <Status color={STATUS_META[application.status].color} size={32} shape="rounded" uppercase={false}>
+          {STATUS_META[application.status].label}
+        </Status>
+      </header>
+
+      {error && (
+        <section className="card__section">
+          <div className="notice notice--bad">{error}</div>
+        </section>
+      )}
+
+      {body[application.status]}
     </div>
   );
 }

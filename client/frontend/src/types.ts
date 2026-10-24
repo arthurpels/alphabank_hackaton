@@ -32,6 +32,7 @@ export interface ApplicationDetails {
   application: {
     id: string;
     status: ApplicationStatus;
+    availableActions: ApplicationAction[];
     company: { name: string };
     product: { name: string };
     amount: number;
@@ -39,6 +40,9 @@ export interface ApplicationDetails {
   };
   fork: Fork | null;
   spots: Spot[];
+  offers: Offer[];
+  decision: Decision | null;
+  contract: Contract | null;
 }
 
 export interface DemoUser {
@@ -72,4 +76,55 @@ export interface SpotCloseRequest {
   collateralComment?: string;
   contractAmount?: number;
   contractTermMonths?: number;
+}
+
+export type ApplicationAction =
+  | 'EDIT' | 'EVALUATE' | 'CLOSE_SPOT' | 'SUBMIT' | 'ACCEPT'
+  | 'SIGN' | 'CANCEL' | 'REVIEW_SPOT' | 'ADD_SPOT' | 'DECIDE';
+
+export type OfferStatus = 'CALCULATED' | 'OFFERED' | 'CHOSEN' | 'DECLINED' | 'EXPIRED';
+export type DecidedBy = 'SYSTEM' | 'UNDERWRITER';
+export type DecisionType = 'APPROVED' | 'ALTERNATIVE' | 'REJECTED';
+
+export interface Offer {
+  id: string;
+  productCode: ProductCode;
+  amount: number;
+  termMonths: number;
+  collateralType?: string | null;
+  fork: Fork;
+  proposedBy: DecidedBy;
+  status: OfferStatus;
+  isRequested: boolean;
+  isManual: boolean;
+}
+
+export interface Decision {
+  id: string;
+  type: DecisionType;
+  decidedBy: DecidedBy;
+  override: boolean;
+  comment?: string | null;
+  reasonSpotId?: string | null;
+  decidedAt: string;
+}
+
+export interface PaymentScheduleItem {
+  number: number;
+  date: string;
+  payment: number;
+  principal: number;
+  interest: number;
+  balance: number;
+}
+
+export interface Contract {
+  offerId: string;
+  amount: number;
+  termMonths: number;
+  rate: number; // % годовых
+  monthlyPayment: number;
+  signedAt?: string | null;
+  issuedAt?: string | null;
+  schedule: PaymentScheduleItem[];
 }
