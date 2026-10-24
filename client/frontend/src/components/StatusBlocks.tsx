@@ -4,6 +4,7 @@ import { Spinner } from '@alfalab/core-components/spinner';
 import { BanknotesMIcon } from '@alfalab/icons-glyph/BanknotesMIcon';
 import { CheckmarkCircleMIcon } from '@alfalab/icons-glyph/CheckmarkCircleMIcon';
 import { CheckmarkMIcon } from '@alfalab/icons-glyph/CheckmarkMIcon';
+import { ExclamationCircleMIcon } from '@alfalab/icons-glyph/ExclamationCircleMIcon';
 import { ClockMIcon } from '@alfalab/icons-glyph/ClockMIcon';
 import { CrossCircleMIcon } from '@alfalab/icons-glyph/CrossCircleMIcon';
 import { DocumentLinesMIcon } from '@alfalab/icons-glyph/DocumentLinesMIcon';
@@ -126,6 +127,30 @@ export function SpecialistBlock({ data }: { data: ApplicationDetails }) {
             {onReview.map((s) => <li key={s.id}>{s.title}</li>)}
           </ul>
         </>
+      )}
+    </section>
+  );
+}
+
+export function InfoRequestedBlock({ data, onCancel, busy }: { data: ApplicationDetails; onCancel: () => void; busy: boolean }) {
+  const deadline = data.application.infoRequestDeadline;
+  const canCancel = data.application.availableActions.includes('CANCEL');
+  return (
+    <section className="block">
+      <Hero
+        tone="attention"
+        icon={ExclamationCircleMIcon}
+        title="Специалисту нужны уточнения"
+        text={
+          deadline
+            ? `Закройте новые пятна до ${ruDate(deadline)}: иначе заявка будет отменена. Когда ответите на всё, заявка вернётся к специалисту.`
+            : 'Закройте новые пятна: когда ответите на всё, заявка вернётся к специалисту.'
+        }
+      />
+      {canCancel && (
+        <div className="block__actions">
+          <CancelButton busy={busy} onCancel={onCancel} />
+        </div>
       )}
     </section>
   );

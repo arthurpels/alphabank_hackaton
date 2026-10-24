@@ -168,6 +168,11 @@ function applyPreset(status: ApplicationStatus) {
     case 'DRAFT':
       state = { ...state, fork: null, spots: [] };
       break;
+      case 'INFO_REQUESTED': {
+      const deadline = new Date(Date.now() + 5 * 24 * 3600 * 1000).toISOString();
+      state = { ...state, application: { ...state.application, infoRequestDeadline: deadline } };
+      break;
+    }
     case 'APPROVED':
     case 'SIGNING':
     case 'ISSUED':
@@ -234,6 +239,9 @@ export const mockApi: Api = {
       ...state,
       spots: state.spots.map((s) => (s.id === spotId ? { ...s, status: 'CLOSED' } : s)),
     });
+    if (state.application.status === 'INFO_REQUESTED' && state.spots.every((s) => s.status === 'CLOSED')) {
+      setStatus('UNDERWRITING');
+    }
     return wait(state);
   },
 

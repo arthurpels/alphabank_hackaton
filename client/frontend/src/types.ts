@@ -33,6 +33,7 @@ export interface ApplicationDetails {
     id: string;
     status: ApplicationStatus;
     availableActions: ApplicationAction[];
+    infoRequestDeadline?: string | null;
     company: { name: string };
     product: { name: string };
     amount: number;

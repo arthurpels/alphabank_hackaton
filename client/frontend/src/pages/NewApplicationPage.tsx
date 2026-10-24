@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@alfalab/core-components/button';
 import { Checkbox } from '@alfalab/core-components/checkbox';
-import { Input } from '@alfalab/core-components/input';
+import { SliderInput } from '@alfalab/core-components/slider-input';
 import { Text } from '@alfalab/core-components/text';
 import { Textarea } from '@alfalab/core-components/textarea';
 import { Typography } from '@alfalab/core-components/typography';
@@ -12,9 +12,8 @@ import type { DemoUser, Product, ProductCode } from '../types';
 import '../App.css';
 
 const SECONDARY = 'var(--color-light-text-secondary)';
-const GOAL_MAX = 1000; // maxLength из схемы ApplicationCreate
-
-const spaced = (digits: string) => digits.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+const AMOUNT_STEP = 50000;
+const GOAL_MAX = 1000;
 
 function errorText(e: unknown): string {
   if (e instanceof ApiError) {
@@ -33,15 +32,15 @@ export default function NewApplicationPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [productCode, setProductCode] = useState<ProductCode | null>(null);
-  const [amountText, setAmountText] = useState(''); // рубли, только цифры
+  const [amountRub, setAmountRub] = useState<number | ''>('');
   const [term, setTerm] = useState<number | null>(null);
   const [goal, setGoal] = useState('');
   const [bki, setBki] = useState(false);
   const [personalData, setPersonalData] = useState(false);
-  const [touched, setTouched] = useState(false); // показывать ошибки после первой попытки
+  const [touched, setTouched] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const createdId = useRef<string | null>(null); // чтобы при повторе не создать вторую заявку
+  const createdId = useRef<string | null>(null);
 
   useEffect(() => {
     Promise.all([api.getMe(), api.listProducts()])
@@ -50,6 +49,7 @@ export default function NewApplicationPage() {
         setProducts(p);
         if (p[0]) {
           setProductCode(p[0].code);
+          setAmountRub(p[0].minAmount / 100);
           setTerm(p[0].allowedTerms[p[0].allowedTerms.length - 1] ?? null);
         }
       })
@@ -66,12 +66,11 @@ export default function NewApplicationPage() {
 
   const product = products.find((p) => p.code === productCode) ?? null;
   const company = me.company;
-  const amountRub = amountText ? Number(amountText) : 0;
-  const amountKop = amountRub * 100;
+  const amountKop = (amountRub || 0) * 100;
 
   let amountError: string | null = null;
   if (product) {
-    if (!amountRub) amountError = 'Укажите сумму';
+    if (!amountKop) amountError = 'Укажите сумму';
     else if (amountKop < product.minAmount) amountError = `Не меньше ${rub(product.minAmount)}`;
     else if (amountKop > product.maxAmount) amountError = `Не больше ${rub(product.maxAmount)}`;
   }
@@ -81,6 +80,7 @@ export default function NewApplicationPage() {
 
   const pickProduct = (p: Product) => {
     setProductCode(p.code);
+    if (amountKop < p.minAmount || amountKop > p.maxAmount) setAmountRub(p.minAmount / 100);
     if (term === null || !p.allowedTerms.includes(term)) setTerm(p.allowedTerms[p.allowedTerms.length - 1] ?? null);
   };
 
@@ -171,15 +171,17 @@ export default function NewApplicationPage() {
         </div>
 
         <div className="form__field">
-          <Input
+          <SliderInput
             block
             size={56}
             label="Сумма, ₽"
-            inputMode="numeric"
-            value={spaced(amountText)}
+            min={product ? product.minAmount / 100 : 0}
+            max={product ? product.maxAmount / 100 : 0}
+            step={AMOUNT_STEP}
+            value={amountRub}
+            steps={product ? [rub(product.minAmount), rub(product.maxAmount)] : undefined}
             error={touched && amountError ? amountError : undefined}
-            hint={product ? `От ${rub(product.minAmount)} до ${rub(product.maxAmount)}` : undefined}
-            onChange={(_, { value }) => setAmountText(value.replace(/\D/g, '').slice(0, 12))}
+            onChange={(_, { value }) => setAmountRub(value)}
           />
         </div>
 
@@ -242,7 +244,7 @@ export default function NewApplicationPage() {
 
       <footer className="card__footer">
         <Button view="accent" size={48} loading={busy} onClick={submit}>
-          Рассчитать ставку
+          Рассчитать
         </Button>
       </footer>
     </div>

@@ -12,6 +12,7 @@ import {
   CancelledBlock,
   CheckingBlock,
   CounterOfferBlock,
+  InfoRequestedBlock,
   IssuedBlock,
   RejectedBlock,
   SigningBlock,
@@ -23,6 +24,7 @@ import type { ApplicationDetails, ApplicationStatus, DecisionZone, Spot, SpotClo
 import '../App.css';
 
 const FALLBACK_ID = 'coffee-application';
+
 const POLL_STATUSES: ApplicationStatus[] = ['SUBMITTED', 'AUTO_CHECK', 'UNDERWRITING', 'INFO_REQUESTED'];
 const POLL_MS = 3000;
 
@@ -53,6 +55,7 @@ function errorText(e: unknown): string {
   }
   return 'Что-то пошло не так. Попробуйте ещё раз.';
 }
+
 function closeRequest(spot: Spot): SpotCloseRequest {
   if (!spot.closeMethod) throw new Error('У пятна нет способа закрытия');
   if (spot.closeMethod === 'CONNECT_SOURCE' && spot.source) {
@@ -116,8 +119,29 @@ export default function ApplicationPage() {
 
   const openSpots = spots.filter((s) => s.status !== 'CLOSED');
   const canCloseSpots = application.availableActions.includes('CLOSE_SPOT');
-  const exact = fork !== null && fork.rateFrom === fork.rateTo;
+  const exact = fork !== null && fork.rateFrom === fork.rateTo; // вилка сошлась в одну точку
   const notice = fork ? NOTICE[fork.zone] : null;
+
+  const spotsSection = (
+    <>
+      <section className="card__section">
+        <h2 className="spots__title">
+          {openSpots.length > 0
+            ? `Что банк о вас пока не знает: ${openSpots.length} ${spotsWord(openSpots.length)}`
+            : 'Все пятна закрыты'}
+        </h2>
+        {spots.map((s) => (
+          <SpotCard
+            key={s.id}
+            spot={s}
+            busy={busy === s.id}
+            disabled={!canCloseSpots || busy !== null}
+            onClose={() => run(s.id, () => api.closeSpot(application.id, s.id, closeRequest(s)))}
+          />
+        ))}
+      </section>
+    </>
+  );
 
   const collecting = (
     <>
@@ -155,22 +179,7 @@ export default function ApplicationPage() {
         </section>
       )}
 
-      <section className="card__section">
-        <h2 className="spots__title">
-          {openSpots.length > 0
-            ? `Что банк о вас пока не знает: ${openSpots.length} ${spotsWord(openSpots.length)}`
-            : 'Все пятна закрыты'}
-        </h2>
-        {spots.map((s) => (
-          <SpotCard
-            key={s.id}
-            spot={s}
-            busy={busy === s.id}
-            disabled={!canCloseSpots || busy !== null}
-            onClose={() => run(s.id, () => api.closeSpot(application.id, s.id, closeRequest(s)))}
-          />
-        ))}
-      </section>
+      {spotsSection}
 
       <footer className="card__footer">
         <Button
@@ -204,7 +213,12 @@ export default function ApplicationPage() {
       </section>
     ),
     COLLECTING: collecting,
-    INFO_REQUESTED: collecting,
+    INFO_REQUESTED: (
+      <>
+        <InfoRequestedBlock data={data} busy={busy === 'cancel'} onCancel={cancel} />
+        {spotsSection}
+      </>
+    ),
     SUBMITTED: <CheckingBlock status={application.status} />,
     AUTO_CHECK: <CheckingBlock status={application.status} />,
     UNDERWRITING: <SpecialistBlock data={data} />,

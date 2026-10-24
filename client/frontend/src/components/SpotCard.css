@@ -29,3 +29,6 @@
   .spot { grid-template-columns: 1fr; }
   .spot__side { justify-content: space-between; }
 }
+
+.spot-alert { margin: 12px 0; }
+.spot-alert__foot { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 12px; }

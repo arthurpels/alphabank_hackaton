@@ -1,3 +1,4 @@
+import { Alert } from '@alfalab/core-components/alert';
 import { Button } from '@alfalab/core-components/button';
 import { Text } from '@alfalab/core-components/text';
 import { CheckmarkCircleMIcon } from '@alfalab/icons-glyph/CheckmarkCircleMIcon';
@@ -19,6 +20,28 @@ export function SpotCard({ spot, onClose, busy = false, disabled = false }: Prop
   const isClosed = spot.status === 'CLOSED';
   const isReview = spot.status === 'ON_REVIEW';
 
+  if (spot.type === 'STOP_FACTOR' && !isClosed) {
+    return (
+      <Alert view="negative" title={spot.title} className="spot-alert">
+        <div>{spot.clientHint}</div>
+        <div className="spot-alert__foot">
+          {!spot.closeMethod ? (
+            <span className="spot__review">Устранить нельзя</span>
+          ) : isReview ? (
+            <span className="spot__review">Передано на проверку специалисту</span>
+          ) : (
+            <>
+              <span className="spot__price">до −{fmt(spot.pricePp)} п.п.</span>
+              <Button view="secondary" size={40} loading={busy} disabled={disabled} onClick={() => onClose(spot.id)}>
+                {CLOSE_METHOD_LABELS[spot.closeMethod]}
+              </Button>
+            </>
+          )}
+        </div>
+      </Alert>
+    );
+  }
+
   return (
     <div className={`spot ${isClosed ? 'spot--closed' : ''}`}>
       <div className="spot__text">
@@ -35,13 +58,13 @@ export function SpotCard({ spot, onClose, busy = false, disabled = false }: Prop
 
       {!isClosed && (
         <div className="spot__side">
-                    {spot.closeMethod && <span className="spot__price">до −{fmt(spot.pricePp)} п.п.</span>}
+          {spot.closeMethod && <span className="spot__price">до −{fmt(spot.pricePp)} п.п.</span>}
           {!spot.closeMethod ? (
             <span className="spot__review">Устранить нельзя</span>
           ) : isReview ? (
             <span className="spot__review">Передано на проверку специалисту</span>
           ) : (
-              <Button view="secondary" size={40} loading={busy} disabled={disabled} onClick={() => onClose(spot.id)}>
+            <Button view="secondary" size={40} loading={busy} disabled={disabled} onClick={() => onClose(spot.id)}>
               {CLOSE_METHOD_LABELS[spot.closeMethod]}
             </Button>
           )}
