@@ -102,7 +102,9 @@ GET /api/v1/demo/users              # без заголовка; ?role=CLIENT|UN
   Только андеррайтер.
 - `POST …/spots/{spotId}/close` — закрыть пятно. Тело зависит от `closeMethod`:
   - `CONNECT_SOURCE` — `{ method, sourceCode, consent: true }`;
-  - `ANSWER` — `{ method, optionCode?, text? }` (например, `RENOVATION`);
+  - `ANSWER` — `{ method, optionCode?, text? }` (например, `RENOVATION`). Ответ по цели кредита разбирает
+    `/purpose` ML-сервиса; вердикт (кто решил: словарь или LLM, обоснование, модель и версия промпта) хранится в
+    `lastAnswer.purposeVerdict` и пишется в журнал. Пересчёты вилки и повтор того же текста модель не вызывают;
   - `UPLOAD` — `{ method, documentId, text?, contractAmount?, contractTermMonths? }`
     (сумма/срок договора — если пятно по фактору `debt_load`);
   - `PAY` — `{ method }` (погашение долга ФНС, повторный запрос делает система);

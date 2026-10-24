@@ -2,11 +2,13 @@ package com.alphabank.backend.closer;
 
 import java.time.Clock;
 import java.time.OffsetDateTime;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 
+import com.alphabank.backend.dto.response.PurposeVerdictDto;
 import com.alphabank.backend.enums.AnswerVerdict;
 import com.alphabank.backend.enums.AuditEventType;
 import com.alphabank.backend.enums.SpotStatus;
@@ -35,17 +37,52 @@ public class SpotResolutionWriter {
     }
 
     public void close(SpotRecord spot, UUID userId, String reason) {
+        close(spot, userId, reason, Map.of("spotId", spot.id().toString()));
+    }
+
+    private void close(SpotRecord spot, UUID userId, String reason, Map<String, Object> payload) {
         OffsetDateTime now = OffsetDateTime.now(clock);
         spotRepository.updateStatus(spot.id(), SpotStatus.CLOSED, now);
-        auditService.record(spot.applicationId(), AuditEventType.SPOT_CLOSED, userId, reason,
-                Map.of("spotId", spot.id().toString()));
+        auditService.record(spot.applicationId(), AuditEventType.SPOT_CLOSED, userId, reason, payload);
+    }
+
+    public void acceptPurpose(SpotRecord spot, UUID userId, String optionCode, String goal,
+                              PurposeVerdictDto verdict, boolean reused, String reason) {
+        OffsetDateTime now = OffsetDateTime.now(clock);
+        spotAnswerRepository.insert(new SpotAnswerRecord(UUID.randomUUID(), spot.id(), optionCode, goal, null,
+                null, null, AnswerVerdict.ACCEPTED, SYSTEM, null, now, now, verdict));
+        close(spot, userId, reason, purposePayload(spot, verdict, reused, AnswerVerdict.ACCEPTED));
+    }
+
+    public void rejectPurpose(SpotRecord spot, UUID userId, String goal, PurposeVerdictDto verdict, boolean reused,
+                              String comment, String reason) {
+        OffsetDateTime now = OffsetDateTime.now(clock);
+        spotAnswerRepository.insert(new SpotAnswerRecord(UUID.randomUUID(), spot.id(), null, goal, null,
+                null, null, AnswerVerdict.REJECTED, SYSTEM, comment, now, now, verdict));
+        auditService.record(spot.applicationId(), AuditEventType.SPOT_REVIEWED, userId, reason,
+                purposePayload(spot, verdict, reused, AnswerVerdict.REJECTED));
+    }
+
+    private static Map<String, Object> purposePayload(SpotRecord spot, PurposeVerdictDto verdict, boolean reused,
+                                                      AnswerVerdict answerVerdict) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("spotId", spot.id().toString());
+        payload.put("verdict", answerVerdict.name());
+        payload.put("purposeStatus", verdict.status().name());
+        payload.put("generatedBy", verdict.generatedBy());
+        payload.put("reused", reused);
+        if (verdict.llm() != null) {
+            payload.put("llm", Map.of("model", verdict.llm().model(), "digest", verdict.llm().digest(),
+                    "promptVersion", verdict.llm().promptVersion(), "cached", verdict.llm().cached()));
+        }
+        return payload;
     }
 
     public void acceptAnswer(SpotRecord spot, UUID userId, String optionCode, String text, UUID documentId,
                              String reason) {
         OffsetDateTime now = OffsetDateTime.now(clock);
         spotAnswerRepository.insert(new SpotAnswerRecord(UUID.randomUUID(), spot.id(), optionCode, text, documentId,
-                null, null, AnswerVerdict.ACCEPTED, SYSTEM, null, now, now));
+                null, null, AnswerVerdict.ACCEPTED, SYSTEM, null, now, now, null));
         close(spot, userId, reason);
     }
 
@@ -57,7 +94,7 @@ public class SpotResolutionWriter {
                              Long contractAmount, Integer contractTermMonths) {
         spotAnswerRepository.insert(new SpotAnswerRecord(UUID.randomUUID(), spot.id(), optionCode, text, documentId,
                 contractAmount, contractTermMonths, AnswerVerdict.PENDING, null, null, OffsetDateTime.now(clock),
-                null));
+                null, null));
         spotRepository.updateStatus(spot.id(), SpotStatus.ON_REVIEW, null);
         auditService.record(spot.applicationId(), AuditEventType.SPOT_CLOSED, userId,
                 "Ответ передан на проверку специалисту",
@@ -67,7 +104,7 @@ public class SpotResolutionWriter {
     public void rejectAnswer(SpotRecord spot, UUID userId, String optionCode, String text, String comment) {
         OffsetDateTime now = OffsetDateTime.now(clock);
         spotAnswerRepository.insert(new SpotAnswerRecord(UUID.randomUUID(), spot.id(), optionCode, text, null,
-                null, null, AnswerVerdict.REJECTED, SYSTEM, comment, now, now));
+                null, null, AnswerVerdict.REJECTED, SYSTEM, comment, now, now, null));
         auditService.record(spot.applicationId(), AuditEventType.SPOT_REVIEWED, userId, comment,
                 Map.of("spotId", spot.id().toString(), "verdict", AnswerVerdict.REJECTED.name()));
     }

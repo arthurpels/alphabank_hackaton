@@ -5,17 +5,17 @@ import java.util.List;
 import org.springframework.stereotype.Component;
 
 import com.alphabank.backend.dto.request.SpotCloseRequest;
+import com.alphabank.backend.dto.response.PurposeVerdictDto;
 import com.alphabank.backend.enums.CloseMethod;
 import com.alphabank.backend.enums.SpotType;
+import com.alphabank.backend.model.ResolvedPurpose;
 import com.alphabank.backend.repository.model.SpotRecord;
 import com.alphabank.backend.scoringclient.AnomalyClient;
-import com.alphabank.backend.scoringclient.PurposeClient;
 import com.alphabank.backend.scoringclient.dto.AnomaliesRequest;
 import com.alphabank.backend.scoringclient.dto.Anomaly;
-import com.alphabank.backend.scoringclient.dto.PurposeRequest;
-import com.alphabank.backend.scoringclient.dto.PurposeResponse;
 import com.alphabank.backend.scoringclient.dto.Series;
 import com.alphabank.backend.scoringclient.dto.SeriesPoint;
+import com.alphabank.backend.scoringclient.enums.PurposeStatus;
 import com.alphabank.backend.service.RevenueSeriesService;
 import com.alphabank.backend.service.impl.FactorStateServiceImpl;
 
@@ -25,15 +25,16 @@ public class AnswerCloser implements SpotCloser {
     static final String RENOVATION = "RENOVATION";
     private static final String REVENUE_DROP = "REVENUE_DROP";
     private static final double RECOVERY_SHARE = 0.9;
+    private static final String UNCLEAR_GOAL = "Не удалось понять цель — напишите подробнее, что именно покупаете";
 
-    private final PurposeClient purposeClient;
+    private final PurposeVerdictResolver purposeVerdictResolver;
     private final AnomalyClient anomalyClient;
     private final RevenueSeriesService revenueSeriesService;
     private final SpotResolutionWriter writer;
 
-    public AnswerCloser(PurposeClient purposeClient, AnomalyClient anomalyClient,
+    public AnswerCloser(PurposeVerdictResolver purposeVerdictResolver, AnomalyClient anomalyClient,
                         RevenueSeriesService revenueSeriesService, SpotResolutionWriter writer) {
-        this.purposeClient = purposeClient;
+        this.purposeVerdictResolver = purposeVerdictResolver;
         this.anomalyClient = anomalyClient;
         this.revenueSeriesService = revenueSeriesService;
         this.writer = writer;
@@ -65,17 +66,27 @@ public class AnswerCloser implements SpotCloser {
     private void closePurpose(SpotCloseContext context) {
         SpotCloseRequest request = context.request();
         String goal = request.text() != null ? request.text() : request.optionCode();
-        PurposeResponse result = purposeClient.classify(new PurposeRequest(context.product().code(), goal));
-        if (!result.applicable()) {
-            writer.acceptAnswer(context.spot(), context.user().id(), null, goal, null,
-                    "Цель для этого продукта не учитывается");
-        } else if (result.purpose() == null) {
-            writer.rejectAnswer(context.spot(), context.user().id(), null, goal,
-                    "Не удалось понять цель — напишите подробнее, что именно покупаете");
+        ResolvedPurpose resolved = purposeVerdictResolver.resolve(context.spot(), context.product().code(), goal);
+        PurposeVerdictDto verdict = resolved.verdict();
+        String source = source(resolved);
+        if (verdict.status() == PurposeStatus.NOT_APPLICABLE) {
+            writer.acceptPurpose(context.spot(), context.user().id(), null, goal, verdict, resolved.reused(),
+                    "Цель для этого продукта не учитывается — " + source);
+        } else if (verdict.purpose() == null) {
+            writer.rejectPurpose(context.spot(), context.user().id(), goal, verdict, resolved.reused(),
+                    UNCLEAR_GOAL, UNCLEAR_GOAL + " — " + source);
         } else {
-            writer.acceptAnswer(context.spot(), context.user().id(), result.purpose().name(), goal, null,
-                    "Цель кредита: " + goal);
+            writer.acceptPurpose(context.spot(), context.user().id(), verdict.purpose().name(), goal, verdict,
+                    resolved.reused(), "Цель кредита: " + goal + " — " + source);
         }
+    }
+
+    private static String source(ResolvedPurpose resolved) {
+        PurposeVerdictDto verdict = resolved.verdict();
+        String decided = verdict.llm() != null
+                ? "решила LLM " + verdict.llm().model() + ", промпт " + verdict.llm().promptVersion()
+                : verdict.status() == PurposeStatus.UNAVAILABLE ? "LLM недоступна" : "решило правило: словарь целей";
+        return resolved.reused() ? decided + "; вердикт сохранён ранее, модель не вызывалась" : decided;
     }
 
     private boolean singleDropRecovered(SpotCloseContext context) {

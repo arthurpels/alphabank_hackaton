@@ -25,7 +25,6 @@ import com.alphabank.backend.enrichment.dto.OfdResponse;
 import com.alphabank.backend.enums.ProductCode;
 import com.alphabank.backend.scoringclient.AnomalyClient;
 import com.alphabank.backend.scoringclient.OfferGridClient;
-import com.alphabank.backend.scoringclient.PurposeClient;
 import com.alphabank.backend.scoringclient.ScoringClient;
 import com.alphabank.backend.scoringclient.SummaryClient;
 import com.alphabank.backend.scoringclient.dto.AnomaliesResponse;
@@ -34,7 +33,6 @@ import com.alphabank.backend.scoringclient.dto.Factor;
 import com.alphabank.backend.scoringclient.dto.Offer;
 import com.alphabank.backend.scoringclient.dto.OfferGridResponse;
 import com.alphabank.backend.scoringclient.dto.Policy;
-import com.alphabank.backend.scoringclient.dto.PurposeResponse;
 import com.alphabank.backend.scoringclient.dto.ScoreRequest;
 import com.alphabank.backend.scoringclient.dto.ScoreResponse;
 import com.alphabank.backend.scoringclient.dto.SeriesPoint;
@@ -210,13 +208,8 @@ public class FakeExternalServicesConfig {
 
     @Bean
     @Primary
-    public PurposeClient fakePurposeClient() {
-        return request -> {
-            String goal = request.goal() == null ? "" : request.goal().toLowerCase();
-            Purpose purpose = goal.contains("кофемашин") || goal.contains("витрин") ? Purpose.MATCH
-                    : goal.contains("станок") ? Purpose.MISMATCH : null;
-            return new PurposeResponse(purpose, true, "KEYWORDS", List.of(), null);
-        };
+    public CountingPurposeClient fakePurposeClient() {
+        return new CountingPurposeClient();
     }
 
     private static ScoreResponse score(ScoreRequest request) {

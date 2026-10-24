@@ -1302,6 +1302,59 @@ components:
           type: string
           format: date-time
           nullable: true
+        purposeVerdict:
+          type: object
+          allOf:
+            - $ref: '#/components/schemas/PurposeVerdict'
+          nullable: true
+          description: только у ответа по цели кредита — кто решил и при каких версиях
+
+    PurposeVerdict:
+      type: object
+      description: |
+        Ответ `/purpose` ML-сервиса, сохранённый при ответе клиента (M05). Пересчёты вилки берут фактор «цель»
+        из сохранённого ответа и `/purpose` не вызывают. Тот же текст (без учёта регистра, пробелов, «ё») для того же
+        продукта повторно не отправляется — берётся этот вердикт. `UNAVAILABLE` не переиспользуется: при следующем
+        ответе модель спрашивается снова.
+      required: [productCode, status, generatedBy, matchedKeywords]
+      properties:
+        productCode:
+          $ref: '#/components/schemas/ProductCode'
+        status:
+          type: string
+          enum: [DECIDED, UNCLEAR, UNAVAILABLE, NOT_APPLICABLE]
+        purpose:
+          type: string
+          enum: [MATCH, MISMATCH, null]
+          nullable: true
+        generatedBy:
+          type: string
+          enum: [KEYWORDS, LLM]
+          description: KEYWORDS — решило правило (словарь целей), LLM — модель
+        matchedKeywords:
+          type: array
+          items:
+            type: string
+        reason:
+          type: string
+          nullable: true
+          description: обоснование LLM
+        llm:
+          type: object
+          nullable: true
+          description: версии, при которых получен ответ LLM; `null` — модель не использовалась
+          required: [model, digest, promptVersion, cached]
+          properties:
+            model:
+              type: string
+              example: qwen3:4b
+            digest:
+              type: string
+            promptVersion:
+              type: string
+              example: bba46b2556f0
+            cached:
+              type: boolean
 
     SpotCreate:
       type: object

@@ -102,6 +102,7 @@ erDiagram
         string review_comment "при REJECTED показывается клиенту"
         timestamp created_at
         timestamp reviewed_at
+        json purpose_verdict "ответ /purpose для пятна цели: статус, значение, кто решил, обоснование, llm.*, продукт"
     }
 
     FORK_SNAPSHOT {

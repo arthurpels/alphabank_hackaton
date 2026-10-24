@@ -105,7 +105,7 @@ public class ApplicationDetailsMapper {
     private static SpotAnswerDto toAnswer(SpotAnswerRecord answer) {
         return new SpotAnswerDto(answer.id(), answer.optionCode(), answer.text(), answer.documentId(),
                 answer.contractAmount(), answer.contractTermMonths(), answer.verdict(), answer.reviewedBy(),
-                answer.reviewComment(), answer.createdAt(), answer.reviewedAt());
+                answer.reviewComment(), answer.createdAt(), answer.reviewedAt(), answer.purposeVerdict());
     }
 
     private CompanyDto toCompany(CompanyRecord company) {
