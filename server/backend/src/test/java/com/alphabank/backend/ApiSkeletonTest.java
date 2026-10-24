@@ -60,16 +60,12 @@ class ApiSkeletonTest {
     }
 
     @Test
-    void applicationDetailsHasForkSpotsAndActions() throws Exception {
-        mvc.perform(get(APP).header(DemoUserInterceptor.HEADER, CLIENT))
+    void productsComeFromDatabase() throws Exception {
+        mvc.perform(get(API + "/products").header(DemoUserInterceptor.HEADER, CLIENT))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.application.status").value("COLLECTING"))
-                .andExpect(jsonPath("$.application.amount").value(200_000_000))
-                .andExpect(jsonPath("$.application.availableActions").isArray())
-                .andExpect(jsonPath("$.fork.rateFrom").value(17.0))
-                .andExpect(jsonPath("$.fork.zone").value("UNDERWRITER"))
-                .andExpect(jsonPath("$.spots.length()").value(4))
-                .andExpect(jsonPath("$.decision").isEmpty());
+                .andExpect(jsonPath("$.length()").value(3))
+                .andExpect(jsonPath("$[?(@.code == 'EQUIPMENT')].minAmount").value(30_000_000))
+                .andExpect(jsonPath("$[?(@.code == 'OVERDRAFT')].name").value("Овердрафт для бизнеса"));
     }
 
     @Test

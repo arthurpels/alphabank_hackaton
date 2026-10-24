@@ -1,0 +1,98 @@
+package com.alphabank.backend.mapper;
+
+import java.util.List;
+
+import org.springframework.stereotype.Component;
+
+import com.alphabank.backend.dto.response.ApplicationDetailsDto;
+import com.alphabank.backend.dto.response.ApplicationDto;
+import com.alphabank.backend.dto.response.ApplicationSummaryDto;
+import com.alphabank.backend.dto.response.CompanyDto;
+import com.alphabank.backend.dto.response.ConsentsDto;
+import com.alphabank.backend.dto.response.ForkDto;
+import com.alphabank.backend.dto.response.ProductDto;
+import com.alphabank.backend.dto.response.SpotDto;
+import com.alphabank.backend.dto.response.ZoneThresholdsDto;
+import com.alphabank.backend.enrichment.dto.EgrulResponse;
+import com.alphabank.backend.enums.ApplicationAction;
+import com.alphabank.backend.enums.ApplicationStatus;
+import com.alphabank.backend.repository.model.ApplicationRecord;
+import com.alphabank.backend.repository.model.CompanyRecord;
+import com.alphabank.backend.repository.model.ForkSnapshotRecord;
+import com.alphabank.backend.repository.model.ProductRecord;
+import com.alphabank.backend.repository.model.SpotRecord;
+import com.alphabank.backend.util.ForkZoneResolver;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+@Component
+public class ApplicationDetailsMapper {
+
+    private static final int INFO_REQUEST_DAYS = 5;
+
+    private final ObjectMapper objectMapper;
+
+    public ApplicationDetailsMapper(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
+
+    public ApplicationDetailsDto toDetails(ApplicationRecord application, CompanyRecord company, ProductRecord product,
+                                           boolean bkiConsent, ForkSnapshotRecord fork, List<SpotRecord> spots,
+                                           List<ApplicationAction> actions) {
+        ApplicationDto dto = new ApplicationDto(application.id(), application.status(), toCompany(company),
+                toProduct(product), application.amount(), application.termMonths(), application.goal(),
+                new ConsentsDto(bkiConsent, true), actions, application.createdAt(), application.submittedAt(),
+                application.infoRequestedAt(),
+                application.status() == ApplicationStatus.INFO_REQUESTED && application.infoRequestedAt() != null
+                        ? application.infoRequestedAt().plusDays(INFO_REQUEST_DAYS) : null);
+        return new ApplicationDetailsDto(dto, fork == null ? null : toFork(fork),
+                spots.stream().map(this::toSpot).toList(), List.of(), null, null);
+    }
+
+    public ApplicationSummaryDto toSummary(ApplicationRecord application, ProductRecord product,
+                                           ForkSnapshotRecord fork) {
+        return new ApplicationSummaryDto(application.id(), application.status(), product.code(),
+                application.amount(), application.termMonths(), fork == null ? null : toFork(fork),
+                application.createdAt());
+    }
+
+    public ForkDto toFork(ForkSnapshotRecord fork) {
+        ZoneThresholdsDto thresholds = new ZoneThresholdsDto(
+                fork.approveMax() == null ? 0 : fork.approveMax(),
+                fork.rejectMin() == null ? 0 : fork.rejectMin());
+        return new ForkDto(fork.id(), fork.rateFrom(), fork.rateTo(),
+                ForkZoneResolver.resolve(fork.rateFrom(), fork.rateTo(), thresholds), thresholds,
+                fork.rulesVersion(), fork.calculatedAt());
+    }
+
+    public ProductDto toProduct(ProductRecord product) {
+        return new ProductDto(product.code(), product.name(), product.minAmount(), product.maxAmount(),
+                product.allowedTerms());
+    }
+
+    public SpotDto toSpot(SpotRecord spot) {
+        return new SpotDto(spot.id(), spot.type(), spot.title(), spot.clientHint(), spot.scoringFactor(),
+                spot.pricePp() == null ? 0 : spot.pricePp(), spot.closeMethod(), spot.status(), spot.addedBy(),
+                spot.source(), spot.removable(), List.of(), null, spot.createdAt(), spot.closedAt());
+    }
+
+    private CompanyDto toCompany(CompanyRecord company) {
+        EgrulResponse egrul = parseEgrul(company.egrulSnapshot());
+        return new CompanyDto(company.id(), company.inn(), company.name(), company.legalForm(),
+                egrul == null || egrul.address() == null ? null : egrul.address().value(),
+                egrul == null || egrul.director() == null ? null : egrul.director().fio(),
+                egrul == null ? null : egrul.registeredAt(),
+                egrul == null ? null : egrul.okvedMain());
+    }
+
+    private EgrulResponse parseEgrul(String json) {
+        if (json == null) {
+            return null;
+        }
+        try {
+            return objectMapper.readValue(json, EgrulResponse.class);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Некорректный снимок ЕГРЮЛ в БД", e);
+        }
+    }
+}

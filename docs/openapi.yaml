@@ -182,6 +182,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/SourceUnavailable'
 
   /applications/{applicationId}/evaluate:
     parameters:
@@ -204,6 +206,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/SourceUnavailable'
 
   /applications/{applicationId}/fork-history:
     parameters:
@@ -639,6 +643,18 @@ components:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
+    SourceUnavailable:
+      description: моки внешних источников или скоринг-сервис недоступны
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: about:blank
+            title: Service Unavailable
+            status: 503
+            code: SOURCE_UNAVAILABLE
+            detail: Сервис данных временно недоступен, попробуйте позже
     Conflict:
       description: действие недопустимо в текущем статусе
       content:
@@ -978,7 +994,7 @@ components:
 
     Spot:
       type: object
-      required: [id, type, title, clientHint, pricePp, closeMethod, status, addedBy, createdAt]
+      required: [id, type, title, clientHint, pricePp, status, addedBy, createdAt]
       properties:
         id:
           type: string
@@ -1000,7 +1016,11 @@ components:
           description: на сколько п.п. может сузиться вилка, если закрыть пятно
           example: 2.5
         closeMethod:
-          $ref: '#/components/schemas/CloseMethod'
+          type: string
+          allOf:
+            - $ref: '#/components/schemas/CloseMethod'
+          nullable: true
+          description: null у неустранимого стоп-фактора — закрыть его нельзя
         status:
           $ref: '#/components/schemas/SpotStatus'
         addedBy:

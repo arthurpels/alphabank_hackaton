@@ -9,6 +9,7 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -16,6 +17,10 @@ import org.springframework.web.method.annotation.HandlerMethodValidationExceptio
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+
+import com.alphabank.backend.enrichment.client.MockClientException;
+import com.alphabank.backend.enrichment.client.MockNotFoundException;
+import com.alphabank.backend.enrichment.client.MockValidationException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -29,6 +34,22 @@ public class GlobalExceptionHandler {
             problem.setProperty("currentStatus", e.currentStatus());
         }
         return problem;
+    }
+
+    @ExceptionHandler(MockValidationException.class)
+    public ProblemDetail handleMockValidation(MockValidationException e) {
+        return problem(ErrorCode.VALIDATION_ERROR, e.getMessage());
+    }
+
+    @ExceptionHandler(MockNotFoundException.class)
+    public ProblemDetail handleMockNotFound(MockNotFoundException e) {
+        return problem(ErrorCode.NOT_FOUND, e.getMessage());
+    }
+
+    @ExceptionHandler({MockClientException.class, RestClientException.class})
+    public ProblemDetail handleSourceUnavailable(RuntimeException e) {
+        log.warn("Внешний сервис недоступен", e);
+        return problem(ErrorCode.SOURCE_UNAVAILABLE, "Сервис данных временно недоступен, попробуйте позже");
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

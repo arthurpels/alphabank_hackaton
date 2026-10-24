@@ -13,10 +13,10 @@ import com.alphabank.backend.dto.response.SpotDto;
 import com.alphabank.backend.enums.ApplicationStatus;
 import com.alphabank.backend.enums.UserRole;
 import com.alphabank.backend.security.CurrentUser;
+import com.alphabank.backend.service.ApplicationService;
 import com.alphabank.backend.service.SpotService;
 import com.alphabank.backend.statemachine.ApplicationStateMachine;
 import com.alphabank.backend.stub.StubApplications;
-import com.alphabank.backend.stub.StubSpots;
 import com.alphabank.backend.validator.SpotCloseRequestValidator;
 import com.alphabank.backend.validator.SpotReviewRequestValidator;
 
@@ -26,17 +26,19 @@ public class SpotServiceImpl implements SpotService {
     private final SpotCloseRequestValidator closeValidator;
     private final SpotReviewRequestValidator reviewValidator;
     private final ApplicationStateMachine stateMachine;
+    private final ApplicationService applicationService;
 
     public SpotServiceImpl(SpotCloseRequestValidator closeValidator, SpotReviewRequestValidator reviewValidator,
-                           ApplicationStateMachine stateMachine) {
+                           ApplicationStateMachine stateMachine, ApplicationService applicationService) {
         this.closeValidator = closeValidator;
         this.reviewValidator = reviewValidator;
         this.stateMachine = stateMachine;
+        this.applicationService = applicationService;
     }
 
     @Override
     public List<SpotDto> getSpots(CurrentUser user, UUID applicationId) {
-        return StubSpots.forStatus(user.isUnderwriter() ? ApplicationStatus.UNDERWRITING : ApplicationStatus.COLLECTING);
+        return applicationService.getApplication(user, applicationId).spots();
     }
 
     @Override

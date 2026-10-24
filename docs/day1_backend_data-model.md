@@ -79,7 +79,8 @@ erDiagram
         string client_hint "пояснение для клиента"
         string scoring_factor "затронутый фактор скоринга"
         numeric price_pp "цена в п.п. (насколько сузится вилка)"
-        string close_method "CONNECT_SOURCE | ANSWER | UPLOAD | PAY | ADD_COLLATERAL"
+        string close_method "CONNECT_SOURCE | ANSWER | UPLOAD | PAY | ADD_COLLATERAL | null (неустранимый стоп-фактор)"
+        boolean removable "только для STOP_FACTOR: можно ли устранить действием"
         string status "OPEN | ON_REVIEW | CLOSED"
         string added_by "SYSTEM | UNDERWRITER"
         string source "BKI | EGRUL | FNS | OFD | MARKETPLACE | ACQUIRING | REPUTATION | null"
@@ -104,6 +105,8 @@ erDiagram
         uuid application_id FK
         numeric rate_from
         numeric rate_to
+        numeric approve_max "порог автоодобрения продукта на момент расчёта"
+        numeric reject_min "порог отказа продукта на момент расчёта"
         string rules_version "версия YAML-правил, воспроизводимость"
         timestamp calculated_at
     }
