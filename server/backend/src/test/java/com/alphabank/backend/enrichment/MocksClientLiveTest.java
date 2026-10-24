@@ -21,6 +21,7 @@ import com.alphabank.backend.enrichment.dto.EgrulResponse;
 import com.alphabank.backend.enrichment.dto.FnsResponse;
 import com.alphabank.backend.enrichment.dto.MarketplaceResponse;
 import com.alphabank.backend.enrichment.dto.OfdResponse;
+import com.alphabank.backend.support.IoRetry;
 
 class MocksClientLiveTest {
 
@@ -28,7 +29,7 @@ class MocksClientLiveTest {
 
     @BeforeEach
     void setUp() {
-        client = new MocksHttpClient(RestClient.builder(), "http://localhost:8002");
+        client = new MocksHttpClient(RestClient.builder(), "http://localhost:8002", new IoRetry(3, 100));
         client.reset();
     }
 

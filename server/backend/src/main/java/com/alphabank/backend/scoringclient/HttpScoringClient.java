@@ -6,22 +6,25 @@ import org.springframework.web.client.RestClient;
 
 import com.alphabank.backend.scoringclient.dto.ScoreRequest;
 import com.alphabank.backend.scoringclient.dto.ScoreResponse;
+import com.alphabank.backend.support.IoRetry;
 
 @Component
 public class HttpScoringClient implements ScoringClient {
 
     private final RestClient restClient;
+    private final IoRetry ioRetry;
 
-    public HttpScoringClient(RestClient.Builder builder, @Value("${app.ml-url}") String mlUrl) {
+    public HttpScoringClient(RestClient.Builder builder, @Value("${app.ml-url}") String mlUrl, IoRetry ioRetry) {
         this.restClient = builder.baseUrl(mlUrl).build();
+        this.ioRetry = ioRetry;
     }
 
     @Override
     public ScoreResponse score(ScoreRequest request) {
-        return restClient.post()
+        return ioRetry.execute("ml", () -> restClient.post()
                 .uri("/score")
                 .body(request)
                 .retrieve()
-                .body(ScoreResponse.class);
+                .body(ScoreResponse.class));
     }
 }

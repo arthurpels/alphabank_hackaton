@@ -23,7 +23,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.alphabank.backend.enrichment.client.MocksClient;
-import com.alphabank.backend.security.DemoUserInterceptor;
+import com.alphabank.backend.security.DemoUserAuthFilter;
 import com.alphabank.backend.stub.StubIds;
 import com.alphabank.backend.support.FakeExternalServicesConfig;
 import com.jayway.jsonpath.JsonPath;
@@ -91,7 +91,7 @@ class IssuanceIntegrationTest {
         assertThat((String) JsonPath.read(json, "$.contract.signedAt"))
                 .isEqualTo(JsonPath.read(json, "$.contract.issuedAt"));
 
-        String history = mvc.perform(get(API + "/" + id + "/history").header(DemoUserInterceptor.HEADER, COFFEE))
+        String history = mvc.perform(get(API + "/" + id + "/history").header(DemoUserAuthFilter.HEADER, COFFEE))
                 .andReturn().getResponse().getContentAsString();
         List<String> states = JsonPath.read(history, "$[?(@.event == 'STATUS_CHANGE')].toState");
         assertThat(states).containsSubsequence("APPROVED", "SIGNING", "ISSUED");
@@ -131,7 +131,7 @@ class IssuanceIntegrationTest {
         List<String> offers = JsonPath.read(details(id), "$.offers[*].id");
         sign(id).andExpect(status().isConflict());
         accept(id, UUID.randomUUID().toString()).andExpect(status().isNotFound());
-        mvc.perform(post(API + "/" + id + "/accept").header(DemoUserInterceptor.HEADER, UNDERWRITER)
+        mvc.perform(post(API + "/" + id + "/accept").header(DemoUserAuthFilter.HEADER, UNDERWRITER)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"offerId\":\"" + offers.get(0) + "\"}"))
                 .andExpect(status().isForbidden());
 
@@ -161,7 +161,7 @@ class IssuanceIntegrationTest {
         List<String> statuses = jdbc.sql("SELECT status FROM offer WHERE application_id = :id")
                 .param("id", UUID.fromString(id)).query(String.class).list();
         assertThat(statuses).hasSize(offers.size()).containsOnly("DECLINED");
-        String history = mvc.perform(get(API + "/" + id + "/history").header(DemoUserInterceptor.HEADER, COFFEE))
+        String history = mvc.perform(get(API + "/" + id + "/history").header(DemoUserAuthFilter.HEADER, COFFEE))
                 .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
         List<String> reasons = JsonPath.read(history, "$[?(@.toState == 'CANCELLED')].reason");
         assertThat(reasons).containsExactly("Нашли деньги в другом месте");
@@ -183,31 +183,31 @@ class IssuanceIntegrationTest {
         close(id, JsonPath.read(details(id), "$.spots[4].id"),
                 "{\"method\":\"ANSWER\",\"optionCode\":\"RENOVATION\",\"text\":\"Был ремонт\"}");
         close(id, spotId(json, "purpose"), "{\"method\":\"ANSWER\",\"text\":\"2 кофемашины и витрина\"}");
-        mvc.perform(post(API + "/" + id + "/submit").header(DemoUserInterceptor.HEADER, COFFEE))
+        mvc.perform(post(API + "/" + id + "/submit").header(DemoUserAuthFilter.HEADER, COFFEE))
                 .andExpect(jsonPath("$.application.status").value("APPROVED"));
         return id;
     }
 
     private String submitted(String body) throws Exception {
         String id = evaluated(body);
-        mvc.perform(post(API + "/" + id + "/submit").header(DemoUserInterceptor.HEADER, COFFEE))
+        mvc.perform(post(API + "/" + id + "/submit").header(DemoUserAuthFilter.HEADER, COFFEE))
                 .andExpect(jsonPath("$.application.status").value("COUNTER_OFFER"));
         return id;
     }
 
     private String evaluated(String body) throws Exception {
-        String json = mvc.perform(post(API).header(DemoUserInterceptor.HEADER, COFFEE)
+        String json = mvc.perform(post(API).header(DemoUserAuthFilter.HEADER, COFFEE)
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         String id = JsonPath.read(json, "$.application.id");
-        mvc.perform(post(API + "/" + id + "/evaluate").header(DemoUserInterceptor.HEADER, COFFEE))
+        mvc.perform(post(API + "/" + id + "/evaluate").header(DemoUserAuthFilter.HEADER, COFFEE))
                 .andExpect(status().isOk());
         return id;
     }
 
     private String details(String id) throws Exception {
-        return mvc.perform(get(API + "/" + id).header(DemoUserInterceptor.HEADER, COFFEE))
+        return mvc.perform(get(API + "/" + id).header(DemoUserAuthFilter.HEADER, COFFEE))
                 .andReturn().getResponse().getContentAsString();
     }
 
@@ -217,22 +217,22 @@ class IssuanceIntegrationTest {
     }
 
     private void close(String id, String spotId, String body) throws Exception {
-        mvc.perform(post(API + "/" + id + "/spots/" + spotId + "/close").header(DemoUserInterceptor.HEADER, COFFEE)
+        mvc.perform(post(API + "/" + id + "/spots/" + spotId + "/close").header(DemoUserAuthFilter.HEADER, COFFEE)
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isOk());
     }
 
     private ResultActions accept(String id, String offerId) throws Exception {
-        return mvc.perform(post(API + "/" + id + "/accept").header(DemoUserInterceptor.HEADER, COFFEE)
+        return mvc.perform(post(API + "/" + id + "/accept").header(DemoUserAuthFilter.HEADER, COFFEE)
                 .contentType(MediaType.APPLICATION_JSON).content("{\"offerId\":\"" + offerId + "\"}"));
     }
 
     private ResultActions sign(String id) throws Exception {
-        return mvc.perform(post(API + "/" + id + "/sign").header(DemoUserInterceptor.HEADER, COFFEE));
+        return mvc.perform(post(API + "/" + id + "/sign").header(DemoUserAuthFilter.HEADER, COFFEE));
     }
 
     private ResultActions cancel(String id, String body) throws Exception {
-        return mvc.perform(post(API + "/" + id + "/cancel").header(DemoUserInterceptor.HEADER, COFFEE)
+        return mvc.perform(post(API + "/" + id + "/cancel").header(DemoUserAuthFilter.HEADER, COFFEE)
                 .contentType(MediaType.APPLICATION_JSON).content(body));
     }
 }

@@ -19,6 +19,6 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
     @Override
     public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
                                   NativeWebRequest webRequest, WebDataBinderFactory binderFactory) {
-        return webRequest.getAttribute(DemoUserInterceptor.ATTRIBUTE, RequestAttributes.SCOPE_REQUEST);
+        return webRequest.getAttribute(DemoUserAuthFilter.ATTRIBUTE, RequestAttributes.SCOPE_REQUEST);
     }
 }

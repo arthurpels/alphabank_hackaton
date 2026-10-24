@@ -404,6 +404,30 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /applications/{applicationId}/documents/{documentId}:
+    parameters:
+      - $ref: '#/components/parameters/ApplicationId'
+      - name: documentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: downloadDocument
+      tags: [spots]
+      summary: Скачать документ
+      description: 'Файл отдаётся с Content-Disposition: attachment; доступен владельцу заявки и андеррайтеру (T22).'
+      responses:
+        '200':
+          description: содержимое файла
+          content:
+            application/pdf: {}
+            image/jpeg: {}
+            image/png: {}
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /applications/{applicationId}/spots:
     parameters:
       - $ref: '#/components/parameters/ApplicationId'

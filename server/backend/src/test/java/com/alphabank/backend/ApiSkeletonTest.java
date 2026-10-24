@@ -13,7 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-import com.alphabank.backend.security.DemoUserInterceptor;
+import com.alphabank.backend.security.DemoUserAuthFilter;
 import com.alphabank.backend.stub.StubIds;
 
 @SpringBootTest
@@ -53,7 +53,7 @@ class ApiSkeletonTest {
 
     @Test
     void meReturnsClientWithCompany() throws Exception {
-        mvc.perform(get(API + "/me").header(DemoUserInterceptor.HEADER, CLIENT))
+        mvc.perform(get(API + "/me").header(DemoUserAuthFilter.HEADER, CLIENT))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.role").value("CLIENT"))
                 .andExpect(jsonPath("$.company.inn").value("7701234560"));
@@ -61,7 +61,7 @@ class ApiSkeletonTest {
 
     @Test
     void productsComeFromDatabase() throws Exception {
-        mvc.perform(get(API + "/products").header(DemoUserInterceptor.HEADER, CLIENT))
+        mvc.perform(get(API + "/products").header(DemoUserAuthFilter.HEADER, CLIENT))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(3))
                 .andExpect(jsonPath("$[?(@.code == 'EQUIPMENT')].minAmount").value(30_000_000))
@@ -70,14 +70,14 @@ class ApiSkeletonTest {
 
     @Test
     void submitOfUnknownApplicationIs404() throws Exception {
-        mvc.perform(post(APP + "/submit").header(DemoUserInterceptor.HEADER, CLIENT))
+        mvc.perform(post(APP + "/submit").header(DemoUserAuthFilter.HEADER, CLIENT))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("NOT_FOUND"));
     }
 
     @Test
     void invalidCreateIs400Problem() throws Exception {
-        mvc.perform(post(API + "/applications").header(DemoUserInterceptor.HEADER, CLIENT)
+        mvc.perform(post(API + "/applications").header(DemoUserAuthFilter.HEADER, CLIENT)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"productCode\":\"EQUIPMENT\",\"amount\":100,\"termMonths\":24,"
                                 + "\"goal\":\"витрина\",\"consents\":{\"bki\":true,\"personalData\":true}}"))
@@ -88,7 +88,7 @@ class ApiSkeletonTest {
     @Test
     void closeSpotOfUnknownApplicationIs404() throws Exception {
         mvc.perform(post(APP + "/spots/" + StubIds.COFFEE_APPLICATION_ID + "/close")
-                        .header(DemoUserInterceptor.HEADER, CLIENT)
+                        .header(DemoUserAuthFilter.HEADER, CLIENT)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"method\":\"CONNECT_SOURCE\"}"))
                 .andExpect(status().isNotFound())
@@ -97,14 +97,14 @@ class ApiSkeletonTest {
 
     @Test
     void clientCannotUseUnderwriterQueue() throws Exception {
-        mvc.perform(get(API + "/underwriting/queue").header(DemoUserInterceptor.HEADER, CLIENT))
+        mvc.perform(get(API + "/underwriting/queue").header(DemoUserAuthFilter.HEADER, CLIENT))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("FORBIDDEN"));
     }
 
     @Test
     void decisionOnUnknownApplicationIs404() throws Exception {
-        mvc.perform(post(APP + "/decision").header(DemoUserInterceptor.HEADER, UNDERWRITER)
+        mvc.perform(post(APP + "/decision").header(DemoUserAuthFilter.HEADER, UNDERWRITER)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"type\":\"REJECTED\"}"))
                 .andExpect(status().isNotFound());
@@ -112,7 +112,7 @@ class ApiSkeletonTest {
 
     @Test
     void offersOfUnknownApplicationIs404() throws Exception {
-        mvc.perform(get(APP + "/offers").header(DemoUserInterceptor.HEADER, UNDERWRITER))
+        mvc.perform(get(APP + "/offers").header(DemoUserAuthFilter.HEADER, UNDERWRITER))
                 .andExpect(status().isNotFound());
     }
 

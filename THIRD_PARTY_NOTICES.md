@@ -9,7 +9,7 @@
 
 | Компонент | Версия | Лицензия | Зачем |
 |---|---|---|---|
-| Spring Boot (`spring-boot-starter-web`, `-validation`, `-test`) | 3.3.4 | Apache-2.0 | веб-сервер, REST, валидация запросов, тесты |
+| Spring Boot (`spring-boot-starter-web`, `-validation`, `-security`, `-test`) | 3.3.4 | Apache-2.0 | веб-сервер, REST, валидация запросов, аутентификация и роли (T20), тесты |
 | Hibernate Validator (через `spring-boot-starter-validation`) | 8.0.1.Final | Apache-2.0 | проверка полей запросов (`@NotNull`, `@Size`…) |
 | springdoc-openapi (`springdoc-openapi-starter-webmvc-ui`) | 2.6.0 | Apache-2.0 | Swagger UI и `/v3/api-docs` |
 | Swagger UI (через springdoc) | 5.17.14 | Apache-2.0 | интерфейс документации API |

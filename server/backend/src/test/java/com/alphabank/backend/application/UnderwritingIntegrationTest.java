@@ -24,7 +24,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.alphabank.backend.enrichment.client.MocksClient;
-import com.alphabank.backend.security.DemoUserInterceptor;
+import com.alphabank.backend.security.DemoUserAuthFilter;
 import com.alphabank.backend.stub.StubIds;
 import com.alphabank.backend.support.FakeExternalServicesConfig;
 import com.jayway.jsonpath.JsonPath;
@@ -72,13 +72,13 @@ class UnderwritingIntegrationTest {
     void builderGoesThroughInfoRequestToCounterOffer() throws Exception {
         String id = submitted(BUILDER, BUILDER_REQUEST);
 
-        mvc.perform(get(API + "/underwriting/queue").header(DemoUserInterceptor.HEADER, UNDERWRITER))
+        mvc.perform(get(API + "/underwriting/queue").header(DemoUserAuthFilter.HEADER, UNDERWRITER))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[?(@.applicationId == '" + id + "')].companyName")
                         .value("ИП Петров Сергей Николаевич"))
                 .andExpect(jsonPath("$[?(@.applicationId == '" + id + "')].status").value("UNDERWRITING"));
         mvc.perform(get(API + "/underwriting/applications/" + id + "/summary")
-                        .header(DemoUserInterceptor.HEADER, UNDERWRITER))
+                        .header(DemoUserAuthFilter.HEADER, UNDERWRITER))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.generatedBy").value("TEMPLATE"))
                 .andExpect(jsonPath("$.items[0].text").value("кредитный рейтинг 655, просрочек за 12 мес. нет"))
@@ -91,7 +91,7 @@ class UnderwritingIntegrationTest {
                 .andExpect(jsonPath("$.application.infoRequestDeadline").isNotEmpty())
                 .andReturn().getResponse().getContentAsString();
         String contractSpot = spotId(json, "DOCUMENT");
-        mvc.perform(get(APPS + "/" + id).header(DemoUserInterceptor.HEADER, BUILDER))
+        mvc.perform(get(APPS + "/" + id).header(DemoUserAuthFilter.HEADER, BUILDER))
                 .andExpect(jsonPath("$.spots[?(@.id == '" + contractSpot + "')].addedBy").value("UNDERWRITER"))
                 .andExpect(jsonPath("$.spots[?(@.id == '" + contractSpot + "')].pricePp").value(3.5));
 
@@ -106,7 +106,7 @@ class UnderwritingIntegrationTest {
                 .andExpect(jsonPath("$.spots[?(@.id == '" + contractSpot + "')].status").value("ON_REVIEW"))
                 .andExpect(jsonPath("$.spots[?(@.id == '" + contractSpot + "')].lastAnswer.contractAmount")
                         .value(960000000));
-        mvc.perform(get(APPS + "/" + id + "/offers").header(DemoUserInterceptor.HEADER, UNDERWRITER))
+        mvc.perform(get(APPS + "/" + id + "/offers").header(DemoUserAuthFilter.HEADER, UNDERWRITER))
                 .andExpect(jsonPath("$[*].status").value(everyItem(is("CALCULATED"))))
                 .andExpect(jsonPath("$.length()").value(2));
 
@@ -132,13 +132,13 @@ class UnderwritingIntegrationTest {
                 .andExpect(jsonPath("$.decision.type").value("ALTERNATIVE"))
                 .andExpect(jsonPath("$.decision.decidedBy").value("UNDERWRITER"))
                 .andExpect(jsonPath("$.decision.decidedByUserId").value(UNDERWRITER));
-        mvc.perform(get(APPS + "/" + id + "/offers").header(DemoUserInterceptor.HEADER, BUILDER))
+        mvc.perform(get(APPS + "/" + id + "/offers").header(DemoUserAuthFilter.HEADER, BUILDER))
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].id").value(calculated.get(0)))
                 .andExpect(jsonPath("$[0].status").value("OFFERED"))
                 .andExpect(jsonPath("$[0].isManual").value(false));
 
-        String history = mvc.perform(get(APPS + "/" + id + "/history").header(DemoUserInterceptor.HEADER, BUILDER))
+        String history = mvc.perform(get(APPS + "/" + id + "/history").header(DemoUserAuthFilter.HEADER, BUILDER))
                 .andReturn().getResponse().getContentAsString();
         List<String> states = JsonPath.read(history, "$[?(@.event == 'STATUS_CHANGE')].toState");
         assertThat(states).containsSubsequence("UNDERWRITING", "INFO_REQUESTED", "UNDERWRITING", "COUNTER_OFFER");
@@ -174,14 +174,14 @@ class UnderwritingIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.application.status").value("COUNTER_OFFER"))
                 .andExpect(jsonPath("$.decision.override").value(true));
-        mvc.perform(get(APPS + "/" + id + "/offers").header(DemoUserInterceptor.HEADER, COFFEE))
+        mvc.perform(get(APPS + "/" + id + "/offers").header(DemoUserAuthFilter.HEADER, COFFEE))
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].amount").value(150000000))
                 .andExpect(jsonPath("$[0].isManual").value(true))
                 .andExpect(jsonPath("$[0].proposedBy").value("UNDERWRITER"))
                 .andExpect(jsonPath("$[0].comment").value("Снижаем сумму"));
 
-        String history = mvc.perform(get(APPS + "/" + id + "/history").header(DemoUserInterceptor.HEADER, COFFEE))
+        String history = mvc.perform(get(APPS + "/" + id + "/history").header(DemoUserAuthFilter.HEADER, COFFEE))
                 .andReturn().getResponse().getContentAsString();
         List<Integer> before = JsonPath.read(history, "$[?(@.event == 'OVERRIDE')].payload.before.amount");
         List<Integer> after = JsonPath.read(history, "$[?(@.event == 'OVERRIDE')].payload.after.amount");
@@ -203,7 +203,7 @@ class UnderwritingIntegrationTest {
     @Test
     void rejectionNeedsSpotOfThisApplication() throws Exception {
         String id = submitted(COFFEE, COFFEE_REQUEST);
-        String collateral = JsonPath.read(mvc.perform(get(APPS + "/" + id).header(DemoUserInterceptor.HEADER, COFFEE))
+        String collateral = JsonPath.read(mvc.perform(get(APPS + "/" + id).header(DemoUserAuthFilter.HEADER, COFFEE))
                 .andReturn().getResponse().getContentAsString(), "$.spots[3].id");
 
         decide(id, "{\"type\":\"REJECTED\",\"reasonSpotId\":\"" + UUID.randomUUID() + "\",\"comment\":\"Нет\"}")
@@ -220,30 +220,30 @@ class UnderwritingIntegrationTest {
         addSpot(collecting, CONTRACT_SPOT).andExpect(status().isConflict());
 
         String id = submitted(COFFEE, COFFEE_REQUEST);
-        mvc.perform(post(APPS + "/" + id + "/decision").header(DemoUserInterceptor.HEADER, COFFEE)
+        mvc.perform(post(APPS + "/" + id + "/decision").header(DemoUserAuthFilter.HEADER, COFFEE)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"type\":\"APPROVED\"}"))
                 .andExpect(status().isForbidden());
         addSpot(id, CONTRACT_SPOT.replace("\"DOCUMENT\"", "\"STOP_FACTOR\"")).andExpect(status().isBadRequest());
         addSpot(id, CONTRACT_SPOT.replace("debt_load", "liquidity")).andExpect(status().isBadRequest());
-        String collateral = JsonPath.read(mvc.perform(get(APPS + "/" + id).header(DemoUserInterceptor.HEADER, COFFEE))
+        String collateral = JsonPath.read(mvc.perform(get(APPS + "/" + id).header(DemoUserAuthFilter.HEADER, COFFEE))
                 .andReturn().getResponse().getContentAsString(), "$.spots[3].id");
         review(id, collateral, "{\"verdict\":\"ACCEPTED\"}").andExpect(status().isConflict());
     }
 
     private String evaluated(String user, String body) throws Exception {
-        String json = mvc.perform(post(APPS).header(DemoUserInterceptor.HEADER, user)
+        String json = mvc.perform(post(APPS).header(DemoUserAuthFilter.HEADER, user)
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         String id = JsonPath.read(json, "$.application.id");
-        mvc.perform(post(APPS + "/" + id + "/evaluate").header(DemoUserInterceptor.HEADER, user))
+        mvc.perform(post(APPS + "/" + id + "/evaluate").header(DemoUserAuthFilter.HEADER, user))
                 .andExpect(status().isOk());
         return id;
     }
 
     private String submitted(String user, String body) throws Exception {
         String id = evaluated(user, body);
-        mvc.perform(post(APPS + "/" + id + "/submit").header(DemoUserInterceptor.HEADER, user))
+        mvc.perform(post(APPS + "/" + id + "/submit").header(DemoUserAuthFilter.HEADER, user))
                 .andExpect(jsonPath("$.application.status").value("UNDERWRITING"));
         return id;
     }
@@ -263,24 +263,24 @@ class UnderwritingIntegrationTest {
     }
 
     private ResultActions addSpot(String id, String body) throws Exception {
-        return mvc.perform(post(APPS + "/" + id + "/spots").header(DemoUserInterceptor.HEADER, UNDERWRITER)
+        return mvc.perform(post(APPS + "/" + id + "/spots").header(DemoUserAuthFilter.HEADER, UNDERWRITER)
                 .contentType(MediaType.APPLICATION_JSON).content(body));
     }
 
     private ResultActions review(String id, String spotId, String body) throws Exception {
         return mvc.perform(post(APPS + "/" + id + "/spots/" + spotId + "/review")
-                .header(DemoUserInterceptor.HEADER, UNDERWRITER)
+                .header(DemoUserAuthFilter.HEADER, UNDERWRITER)
                 .contentType(MediaType.APPLICATION_JSON).content(body));
     }
 
     private ResultActions decide(String id, String body) throws Exception {
-        return mvc.perform(post(APPS + "/" + id + "/decision").header(DemoUserInterceptor.HEADER, UNDERWRITER)
+        return mvc.perform(post(APPS + "/" + id + "/decision").header(DemoUserAuthFilter.HEADER, UNDERWRITER)
                 .contentType(MediaType.APPLICATION_JSON).content(body));
     }
 
     private ResultActions close(String user, String id, String spotId, String body) throws Exception {
         return mvc.perform(post(APPS + "/" + id + "/spots/" + spotId + "/close")
-                .header(DemoUserInterceptor.HEADER, user)
+                .header(DemoUserAuthFilter.HEADER, user)
                 .contentType(MediaType.APPLICATION_JSON).content(body));
     }
 }

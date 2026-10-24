@@ -7,6 +7,10 @@ spring:
     multipart:
       max-file-size: 10MB
       max-request-size: 10MB
+  http:
+    client:
+      connect-timeout: 1500ms
+      read-timeout: 4000ms
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/credit_pipeline}
     username: ${SPRING_DATASOURCE_USERNAME:alphabank}
@@ -30,3 +34,6 @@ app:
   mocks-url: ${MOCKS_URL:http://localhost:8002}
   documents-dir: ${DOCUMENTS_DIR:/data/documents}
   cors-allowed-origins: http://localhost:5173
+  external:
+    retry-attempts: 3
+    retry-backoff-ms: 200

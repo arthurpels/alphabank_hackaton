@@ -5,7 +5,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import com.alphabank.backend.security.CurrentUser;
-import com.alphabank.backend.security.DemoUserInterceptor;
+import com.alphabank.backend.security.DemoUserAuthFilter;
 
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
@@ -32,7 +32,7 @@ public class OpenApiConfig {
                 .components(new Components().addSecuritySchemes(DEMO_USER, new SecurityScheme()
                         .type(SecurityScheme.Type.APIKEY)
                         .in(SecurityScheme.In.HEADER)
-                        .name(DemoUserInterceptor.HEADER)
+                        .name(DemoUserAuthFilter.HEADER)
                         .description("id пользователя, выбранного на стартовом экране")))
                 .addSecurityItem(new SecurityRequirement().addList(DEMO_USER));
     }

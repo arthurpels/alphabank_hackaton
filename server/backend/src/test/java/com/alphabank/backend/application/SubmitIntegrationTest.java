@@ -20,7 +20,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.alphabank.backend.enrichment.client.MocksClient;
-import com.alphabank.backend.security.DemoUserInterceptor;
+import com.alphabank.backend.security.DemoUserAuthFilter;
 import com.alphabank.backend.stub.StubIds;
 import com.alphabank.backend.support.FakeExternalServicesConfig;
 import com.jayway.jsonpath.JsonPath;
@@ -76,7 +76,7 @@ class SubmitIntegrationTest {
                 .andExpect(jsonPath("$.offers[0].amount").value(200000000))
                 .andExpect(jsonPath("$.offers[0].fork.rateTo").value(19.5));
 
-        String history = mvc.perform(get(API + "/" + id + "/fork-history").header(DemoUserInterceptor.HEADER, COFFEE))
+        String history = mvc.perform(get(API + "/" + id + "/fork-history").header(DemoUserAuthFilter.HEADER, COFFEE))
                 .andReturn().getResponse().getContentAsString();
         List<Double> rateTo = JsonPath.read(history, "$[*].rateTo");
         assertThat(rateTo).containsExactly(26.0, 23.5, 21.0, 19.5, 19.5);
@@ -92,13 +92,13 @@ class SubmitIntegrationTest {
                 .andExpect(jsonPath("$.decision").isEmpty())
                 .andExpect(jsonPath("$.offers.length()").value(0));
 
-        mvc.perform(get(API + "/" + id + "/offers").header(DemoUserInterceptor.HEADER, UNDERWRITER))
+        mvc.perform(get(API + "/" + id + "/offers").header(DemoUserAuthFilter.HEADER, UNDERWRITER))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(2))
                 .andExpect(jsonPath("$[0].status").value("CALCULATED"))
                 .andExpect(jsonPath("$[0].amount").value(120000000))
                 .andExpect(jsonPath("$[0].isRequested").value(false));
-        mvc.perform(get(API + "/" + id + "/offers").header(DemoUserInterceptor.HEADER, COFFEE))
+        mvc.perform(get(API + "/" + id + "/offers").header(DemoUserAuthFilter.HEADER, COFFEE))
                 .andExpect(jsonPath("$.length()").value(0));
     }
 
@@ -174,7 +174,7 @@ class SubmitIntegrationTest {
         submit(COFFEE, id).andExpect(status().isOk());
         submit(COFFEE, id).andExpect(status().isConflict());
 
-        String draft = JsonPath.read(mvc.perform(post(API).header(DemoUserInterceptor.HEADER, COFFEE)
+        String draft = JsonPath.read(mvc.perform(post(API).header(DemoUserAuthFilter.HEADER, COFFEE)
                         .contentType(MediaType.APPLICATION_JSON).content(COFFEE_REQUEST))
                 .andReturn().getResponse().getContentAsString(), "$.application.id");
         submit(COFFEE, draft).andExpect(status().isConflict());
@@ -185,7 +185,7 @@ class SubmitIntegrationTest {
         String id = evaluated(TECHSNAB, TECHSNAB_REQUEST);
         submit(TECHSNAB, id);
 
-        String history = mvc.perform(get(API + "/" + id + "/history").header(DemoUserInterceptor.HEADER, TECHSNAB))
+        String history = mvc.perform(get(API + "/" + id + "/history").header(DemoUserAuthFilter.HEADER, TECHSNAB))
                 .andReturn().getResponse().getContentAsString();
         List<String> types = JsonPath.read(history, "$[*].event");
         assertThat(types).contains("DECISION");
@@ -194,18 +194,18 @@ class SubmitIntegrationTest {
     }
 
     private String evaluated(String user, String body) throws Exception {
-        String json = mvc.perform(post(API).header(DemoUserInterceptor.HEADER, user)
+        String json = mvc.perform(post(API).header(DemoUserAuthFilter.HEADER, user)
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         String id = JsonPath.read(json, "$.application.id");
-        mvc.perform(post(API + "/" + id + "/evaluate").header(DemoUserInterceptor.HEADER, user))
+        mvc.perform(post(API + "/" + id + "/evaluate").header(DemoUserAuthFilter.HEADER, user))
                 .andExpect(status().isOk());
         return id;
     }
 
     private String details(String user, String id) throws Exception {
-        return mvc.perform(get(API + "/" + id).header(DemoUserInterceptor.HEADER, user))
+        return mvc.perform(get(API + "/" + id).header(DemoUserAuthFilter.HEADER, user))
                 .andReturn().getResponse().getContentAsString();
     }
 
@@ -215,12 +215,12 @@ class SubmitIntegrationTest {
     }
 
     private ResultActions submit(String user, String id) throws Exception {
-        return mvc.perform(post(API + "/" + id + "/submit").header(DemoUserInterceptor.HEADER, user));
+        return mvc.perform(post(API + "/" + id + "/submit").header(DemoUserAuthFilter.HEADER, user));
     }
 
     private void close(String user, String id, String spotId, String body) throws Exception {
         mvc.perform(post(API + "/" + id + "/spots/" + spotId + "/close")
-                        .header(DemoUserInterceptor.HEADER, user)
+                        .header(DemoUserAuthFilter.HEADER, user)
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isOk());
     }

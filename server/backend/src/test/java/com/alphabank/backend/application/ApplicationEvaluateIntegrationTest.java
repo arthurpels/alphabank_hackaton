@@ -15,7 +15,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.alphabank.backend.security.DemoUserInterceptor;
+import com.alphabank.backend.security.DemoUserAuthFilter;
 import com.alphabank.backend.stub.StubIds;
 import com.alphabank.backend.support.FakeExternalServicesConfig;
 import com.jayway.jsonpath.JsonPath;
@@ -41,7 +41,7 @@ class ApplicationEvaluateIntegrationTest {
 
     @Test
     void createdApplicationIsDraftWithoutFork() throws Exception {
-        mvc.perform(post(API).header(DemoUserInterceptor.HEADER, COFFEE)
+        mvc.perform(post(API).header(DemoUserAuthFilter.HEADER, COFFEE)
                         .contentType(MediaType.APPLICATION_JSON).content(COFFEE_REQUEST))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.application.status").value("DRAFT"))
@@ -57,7 +57,7 @@ class ApplicationEvaluateIntegrationTest {
     void coffeeGetsFork17to26AndFourSpots() throws Exception {
         String id = create();
 
-        mvc.perform(post(API + "/" + id + "/evaluate").header(DemoUserInterceptor.HEADER, COFFEE))
+        mvc.perform(post(API + "/" + id + "/evaluate").header(DemoUserAuthFilter.HEADER, COFFEE))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.application.status").value("COLLECTING"))
                 .andExpect(jsonPath("$.fork.rateFrom").value(17.0))
@@ -73,12 +73,12 @@ class ApplicationEvaluateIntegrationTest {
                 .andExpect(jsonPath("$.application.company.directorFio").value("Смирнова А. В."))
                 .andExpect(jsonPath("$.application.availableActions[2]").value("SUBMIT"));
 
-        mvc.perform(get(API + "/" + id + "/spots").header(DemoUserInterceptor.HEADER, COFFEE))
+        mvc.perform(get(API + "/" + id + "/spots").header(DemoUserAuthFilter.HEADER, COFFEE))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(4))
                 .andExpect(jsonPath("$[0].title").value("Продажи через кассу не видны"));
 
-        mvc.perform(get(API + "/" + id + "/history").header(DemoUserInterceptor.HEADER, COFFEE))
+        mvc.perform(get(API + "/" + id + "/history").header(DemoUserAuthFilter.HEADER, COFFEE))
                 .andExpect(jsonPath("$[0].toState").value("DRAFT"))
                 .andExpect(jsonPath("$[1].fromState").value("DRAFT"))
                 .andExpect(jsonPath("$[1].toState").value("COLLECTING"))
@@ -88,24 +88,24 @@ class ApplicationEvaluateIntegrationTest {
     @Test
     void editInCollectingRecalculatesFork() throws Exception {
         String id = create();
-        mvc.perform(post(API + "/" + id + "/evaluate").header(DemoUserInterceptor.HEADER, COFFEE));
+        mvc.perform(post(API + "/" + id + "/evaluate").header(DemoUserAuthFilter.HEADER, COFFEE));
 
-        mvc.perform(patch(API + "/" + id).header(DemoUserInterceptor.HEADER, COFFEE)
+        mvc.perform(patch(API + "/" + id).header(DemoUserAuthFilter.HEADER, COFFEE)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"termMonths\":24}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.application.termMonths").value(24))
                 .andExpect(jsonPath("$.application.status").value("COLLECTING"));
 
-        mvc.perform(get(API + "/" + id + "/fork-history").header(DemoUserInterceptor.HEADER, COFFEE))
+        mvc.perform(get(API + "/" + id + "/fork-history").header(DemoUserAuthFilter.HEADER, COFFEE))
                 .andExpect(jsonPath("$.length()").value(2));
     }
 
     @Test
     void evaluateTwiceIs409() throws Exception {
         String id = create();
-        mvc.perform(post(API + "/" + id + "/evaluate").header(DemoUserInterceptor.HEADER, COFFEE));
+        mvc.perform(post(API + "/" + id + "/evaluate").header(DemoUserAuthFilter.HEADER, COFFEE));
 
-        mvc.perform(post(API + "/" + id + "/evaluate").header(DemoUserInterceptor.HEADER, COFFEE))
+        mvc.perform(post(API + "/" + id + "/evaluate").header(DemoUserAuthFilter.HEADER, COFFEE))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("INVALID_TRANSITION"))
                 .andExpect(jsonPath("$.currentStatus").value("COLLECTING"));
@@ -115,14 +115,14 @@ class ApplicationEvaluateIntegrationTest {
     void evaluateWithoutBkiConsentIs400() throws Exception {
         String id = create(COFFEE_REQUEST.replace("\"bki\":true", "\"bki\":false"));
 
-        mvc.perform(post(API + "/" + id + "/evaluate").header(DemoUserInterceptor.HEADER, COFFEE))
+        mvc.perform(post(API + "/" + id + "/evaluate").header(DemoUserAuthFilter.HEADER, COFFEE))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
     }
 
     @Test
     void termOutsideProductIs400() throws Exception {
-        mvc.perform(post(API).header(DemoUserInterceptor.HEADER, COFFEE)
+        mvc.perform(post(API).header(DemoUserAuthFilter.HEADER, COFFEE)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(COFFEE_REQUEST.replace("\"termMonths\":36", "\"termMonths\":18")))
                 .andExpect(status().isBadRequest());
@@ -132,9 +132,9 @@ class ApplicationEvaluateIntegrationTest {
     void otherCompanyCannotSeeApplicationButUnderwriterCan() throws Exception {
         String id = create();
 
-        mvc.perform(get(API + "/" + id).header(DemoUserInterceptor.HEADER, BUILDER))
+        mvc.perform(get(API + "/" + id).header(DemoUserAuthFilter.HEADER, BUILDER))
                 .andExpect(status().isForbidden());
-        mvc.perform(get(API + "/" + id).header(DemoUserInterceptor.HEADER, UNDERWRITER))
+        mvc.perform(get(API + "/" + id).header(DemoUserAuthFilter.HEADER, UNDERWRITER))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.application.availableActions.length()").value(0));
     }
@@ -143,14 +143,14 @@ class ApplicationEvaluateIntegrationTest {
     void clientSeesOwnApplicationsInList() throws Exception {
         String id = create();
 
-        mvc.perform(get(API).header(DemoUserInterceptor.HEADER, COFFEE))
+        mvc.perform(get(API).header(DemoUserAuthFilter.HEADER, COFFEE))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(id));
     }
 
     @Test
     void unknownApplicationIs404() throws Exception {
-        mvc.perform(get(API + "/00000000-0000-0000-0000-0000000000ff").header(DemoUserInterceptor.HEADER, COFFEE))
+        mvc.perform(get(API + "/00000000-0000-0000-0000-0000000000ff").header(DemoUserAuthFilter.HEADER, COFFEE))
                 .andExpect(status().isNotFound());
     }
 
@@ -159,7 +159,7 @@ class ApplicationEvaluateIntegrationTest {
     }
 
     private String create(String body) throws Exception {
-        String json = mvc.perform(post(API).header(DemoUserInterceptor.HEADER, COFFEE)
+        String json = mvc.perform(post(API).header(DemoUserAuthFilter.HEADER, COFFEE)
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();

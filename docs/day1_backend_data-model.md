@@ -2,7 +2,7 @@
 
 Все сущности системы и их связи. Статусы заявки и переходы — в
 `application-states.md` (там же правила статусной машины); здесь — хранение.
-Имена пятен, способы закрытия и продукты — из общих черновиков.
+Имена пятен, способы закрытия и продукты — из общих договорённостей команды (`concept.md`).
 
 Коды статусов заявки: `DRAFT, COLLECTING, SUBMITTED, AUTO_CHECK, UNDERWRITING,
 INFO_REQUESTED, APPROVED, COUNTER_OFFER, REJECTED, SIGNING, ISSUED, CANCELLED`.

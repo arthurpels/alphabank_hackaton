@@ -20,7 +20,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.alphabank.backend.enrichment.client.MocksClient;
-import com.alphabank.backend.security.DemoUserInterceptor;
+import com.alphabank.backend.security.DemoUserAuthFilter;
 import com.alphabank.backend.stub.StubIds;
 import com.alphabank.backend.support.FakeExternalServicesConfig;
 import com.jayway.jsonpath.JsonPath;
@@ -79,7 +79,7 @@ class SpotCloseIntegrationTest {
                 .andExpect(jsonPath("$.fork.zone").value("APPROVE"))
                 .andExpect(jsonPath("$.application.status").value("COLLECTING"));
 
-        String history = mvc.perform(get(API + "/" + id + "/fork-history").header(DemoUserInterceptor.HEADER, COFFEE))
+        String history = mvc.perform(get(API + "/" + id + "/fork-history").header(DemoUserAuthFilter.HEADER, COFFEE))
                 .andReturn().getResponse().getContentAsString();
         List<Double> rateTo = JsonPath.read(history, "$[*].rateTo");
         assertThat(rateTo).containsExactly(26.0, 23.5, 21.0, 19.5);
@@ -146,7 +146,7 @@ class SpotCloseIntegrationTest {
 
         close(COFFEE, id, debtLoad, "{\"method\":\"CONNECT_SOURCE\",\"sourceCode\":\"MARKETPLACE\",\"consent\":true}")
                 .andExpect(status().isNotFound());
-        mvc.perform(get(API + "/" + id).header(DemoUserInterceptor.HEADER, COFFEE))
+        mvc.perform(get(API + "/" + id).header(DemoUserAuthFilter.HEADER, COFFEE))
                 .andExpect(jsonPath("$.spots[0].status").value("OPEN"));
     }
 
@@ -173,7 +173,7 @@ class SpotCloseIntegrationTest {
 
     @Test
     void closingInDraftIs409() throws Exception {
-        String json = mvc.perform(post(API).header(DemoUserInterceptor.HEADER, COFFEE)
+        String json = mvc.perform(post(API).header(DemoUserAuthFilter.HEADER, COFFEE)
                         .contentType(MediaType.APPLICATION_JSON).content(COFFEE_REQUEST))
                 .andReturn().getResponse().getContentAsString();
         String id = JsonPath.read(json, "$.application.id");
@@ -183,18 +183,18 @@ class SpotCloseIntegrationTest {
     }
 
     private String evaluated(String user, String body) throws Exception {
-        String json = mvc.perform(post(API).header(DemoUserInterceptor.HEADER, user)
+        String json = mvc.perform(post(API).header(DemoUserAuthFilter.HEADER, user)
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         String id = JsonPath.read(json, "$.application.id");
-        mvc.perform(post(API + "/" + id + "/evaluate").header(DemoUserInterceptor.HEADER, user))
+        mvc.perform(post(API + "/" + id + "/evaluate").header(DemoUserAuthFilter.HEADER, user))
                 .andExpect(status().isOk());
         return id;
     }
 
     private String details(String user, String id) throws Exception {
-        return mvc.perform(get(API + "/" + id).header(DemoUserInterceptor.HEADER, user))
+        return mvc.perform(get(API + "/" + id).header(DemoUserAuthFilter.HEADER, user))
                 .andReturn().getResponse().getContentAsString();
     }
 
@@ -205,7 +205,7 @@ class SpotCloseIntegrationTest {
 
     private ResultActions close(String user, String id, String spotId, String body) throws Exception {
         return mvc.perform(post(API + "/" + id + "/spots/" + spotId + "/close")
-                .header(DemoUserInterceptor.HEADER, user)
+                .header(DemoUserAuthFilter.HEADER, user)
                 .contentType(MediaType.APPLICATION_JSON).content(body));
     }
 }
