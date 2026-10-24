@@ -2,6 +2,7 @@ import type { ApplicationDetails } from '../types';
 
 export const coffeeShop: ApplicationDetails = {
   application: {
+    id: 'coffee-application',
     status: 'COLLECTING',
     company: { name: 'ООО «Кофейня»' },
     product: { name: 'Кредит на оборудование' },

@@ -1,11 +1,21 @@
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Typography } from '@alfalab/core-components/typography';
 import { ArrowRightMIcon } from '@alfalab/icons-glyph/ArrowRightMIcon';
-import { demoUsers } from '../mocks/demoUsers';
+import { api, setCurrentUser } from '../api';
+import type { DemoUser } from '../types';
 
 export default function ChooseClientPage() {
   const navigate = useNavigate();
-  const clients = demoUsers.filter((u) => u.role === 'CLIENT');
+  const [clients, setClients] = useState<DemoUser[] | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    api
+      .listDemoUsers('CLIENT')
+      .then(setClients)
+      .catch(() => setFailed(true));
+  }, []);
 
   return (
     <div className="hero-wrap">
@@ -22,12 +32,17 @@ export default function ChooseClientPage() {
         </Typography.TitleResponsive>
       </div>
       <div className="hero-card">
-        {clients.map((u) => (
+        {failed && <p className="hero-card__empty">Не удалось загрузить список компаний. Обновите страницу.</p>}
+        {!failed && !clients && <p className="hero-card__empty">Загружаем…</p>}
+        {clients?.map((u) => (
           <button
             key={u.id}
             type="button"
             className="tile"
-            onClick={() => navigate('/client/application')}
+            onClick={() => {
+              setCurrentUser(u.id);
+              navigate('/client/application');
+            }}
           >
             <span className="tile__text">
               <span className="tile__title">{u.personaTitle ?? u.company?.name ?? u.fio}</span>

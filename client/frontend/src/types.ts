@@ -29,6 +29,7 @@ export interface Fork {
 
 export interface ApplicationDetails {
   application: {
+    id: string;
     status: ApplicationStatus;
     company: { name: string };
     product: { name: string };
@@ -45,4 +46,29 @@ export interface DemoUser {
   role: UserRole;
   personaTitle: string | null;
   company: { name: string; inn: string } | null;
+}
+
+export type ProductCode = 'WORKING_CAPITAL' | 'EQUIPMENT' | 'OVERDRAFT';
+export type SourceCode = 'BKI' | 'EGRUL' | 'FNS' | 'OFD' | 'MARKETPLACE' | 'ACQUIRING' | 'REPUTATION';
+export type CollateralType = 'GUARANTEE' | 'PLEDGE' | 'DECLINED';
+
+export interface ApplicationCreate {
+  productCode: ProductCode;
+  amount: number;
+  termMonths: number;
+  goal: string;
+  consents: { bki: boolean; personalData: boolean };
+}
+
+export interface SpotCloseRequest {
+  method: CloseMethod;
+  sourceCode?: SourceCode;
+  consent?: boolean;
+  optionCode?: string;
+  text?: string;
+  documentId?: string;
+  collateralType?: CollateralType;
+  collateralComment?: string;
+  contractAmount?: number;
+  contractTermMonths?: number;
 }
