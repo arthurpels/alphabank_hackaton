@@ -32,14 +32,13 @@ import com.alphabank.backend.repository.model.OfferRecord;
 import com.alphabank.backend.repository.model.ProductRecord;
 import com.alphabank.backend.repository.model.SpotAnswerRecord;
 import com.alphabank.backend.repository.model.SpotRecord;
+import com.alphabank.backend.statemachine.ApplicationTransitions;
 import com.alphabank.backend.util.ForkZoneResolver;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Component
 public class ApplicationDetailsMapper {
-
-    private static final int INFO_REQUEST_DAYS = 5;
 
     private final ObjectMapper objectMapper;
 
@@ -57,7 +56,7 @@ public class ApplicationDetailsMapper {
                 new ConsentsDto(bkiConsent, true), actions, application.createdAt(), application.submittedAt(),
                 application.infoRequestedAt(),
                 application.status() == ApplicationStatus.INFO_REQUESTED && application.infoRequestedAt() != null
-                        ? application.infoRequestedAt().plusDays(INFO_REQUEST_DAYS) : null);
+                        ? application.infoRequestedAt().plusDays(ApplicationTransitions.INFO_REQUEST_DAYS) : null);
         return new ApplicationDetailsDto(dto, fork == null ? null : toFork(fork),
                 spots.stream().map(spot -> toSpot(spot, answers.get(spot.id()))).toList(), offers, decision,
                 contract);

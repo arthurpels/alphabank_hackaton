@@ -31,7 +31,8 @@ public class WebConfig implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(demoUserInterceptor)
                 .addPathPatterns(ApiPaths.BASE + "/**")
-                .excludePathPatterns(ApiPaths.BASE + "/demo/users");
+                .excludePathPatterns(ApiPaths.BASE + "/demo/users", ApiPaths.BASE + "/demo/time",
+                        ApiPaths.BASE + "/demo/time/**");
     }
 
     @Override
