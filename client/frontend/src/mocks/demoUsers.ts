@@ -1,6 +1,6 @@
 import type { DemoUser } from '../types';
 
-export const demoUsers: DemoUser[] = [
+const raw: (Omit<DemoUser, 'company'> & { company: { name: string; inn: string } | null })[] = [
   {
     id: 'coffee',
     fio: 'Смирнова А. В.',
@@ -44,3 +44,13 @@ export const demoUsers: DemoUser[] = [
     company: null,
   },
 ];
+
+export const demoUsers: DemoUser[] = raw.map((u) => ({
+  ...u,
+  company: u.company && {
+    id: `company-${u.id}`,
+    inn: u.company.inn,
+    name: u.company.name,
+    legalForm: u.company.name.startsWith('ИП') ? 'IP' : 'OOO',
+  },
+}));

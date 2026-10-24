@@ -17,6 +17,7 @@ export interface Spot {
   pricePp: number;
   closeMethod: CloseMethod | null;
   status: SpotStatus;
+  source?: SourceCode | null;
   removable?: boolean | null;
 }
 
@@ -29,7 +30,9 @@ export interface Fork {
 
 export interface ApplicationDetails {
   application: {
+    id: string;
     status: ApplicationStatus;
+    availableActions: ApplicationAction[];
     company: { name: string };
     product: { name: string };
     amount: number;
@@ -37,6 +40,20 @@ export interface ApplicationDetails {
   };
   fork: Fork | null;
   spots: Spot[];
+  offers: Offer[];
+  decision: Decision | null;
+  contract: Contract | null;
+}
+
+export interface Company {
+  id: string;
+  inn: string;
+  name: string;
+  legalForm: 'OOO' | 'IP';
+  address?: string | null;
+  directorFio?: string | null;
+  registeredAt?: string | null;
+  okvedMain?: string | null;
 }
 
 export interface DemoUser {
@@ -44,5 +61,89 @@ export interface DemoUser {
   fio: string;
   role: UserRole;
   personaTitle: string | null;
-  company: { name: string; inn: string } | null;
+  company: Company | null;
+}
+
+export interface Product {
+  code: ProductCode;
+  name: string;
+  minAmount: number;
+  maxAmount: number;
+  allowedTerms: number[];
+}
+
+export type ProductCode = 'WORKING_CAPITAL' | 'EQUIPMENT' | 'OVERDRAFT';
+export type SourceCode = 'BKI' | 'EGRUL' | 'FNS' | 'OFD' | 'MARKETPLACE' | 'ACQUIRING' | 'REPUTATION';
+export type CollateralType = 'GUARANTEE' | 'PLEDGE' | 'DECLINED';
+
+export interface ApplicationCreate {
+  productCode: ProductCode;
+  amount: number;
+  termMonths: number;
+  goal: string;
+  consents: { bki: boolean; personalData: boolean };
+}
+
+export interface SpotCloseRequest {
+  method: CloseMethod;
+  sourceCode?: SourceCode;
+  consent?: boolean;
+  optionCode?: string;
+  text?: string;
+  documentId?: string;
+  collateralType?: CollateralType;
+  collateralComment?: string;
+  contractAmount?: number;
+  contractTermMonths?: number;
+}
+
+export type ApplicationAction =
+  | 'EDIT' | 'EVALUATE' | 'CLOSE_SPOT' | 'SUBMIT' | 'ACCEPT'
+  | 'SIGN' | 'CANCEL' | 'REVIEW_SPOT' | 'ADD_SPOT' | 'DECIDE';
+
+export type OfferStatus = 'CALCULATED' | 'OFFERED' | 'CHOSEN' | 'DECLINED' | 'EXPIRED';
+export type DecidedBy = 'SYSTEM' | 'UNDERWRITER';
+export type DecisionType = 'APPROVED' | 'ALTERNATIVE' | 'REJECTED';
+
+export interface Offer {
+  id: string;
+  productCode: ProductCode;
+  amount: number;
+  termMonths: number;
+  collateralType?: string | null;
+  fork: Fork;
+  proposedBy: DecidedBy;
+  status: OfferStatus;
+  isRequested: boolean;
+  isManual: boolean;
+}
+
+export interface Decision {
+  id: string;
+  type: DecisionType;
+  decidedBy: DecidedBy;
+  override: boolean;
+  comment?: string | null;
+  reasonSpotId?: string | null;
+  decidedAt: string;
+}
+
+export interface PaymentScheduleItem {
+  number: number;
+  date: string;
+  payment: number;
+  principal: number;
+  interest: number;
+  balance: number;
+}
+
+export interface Contract {
+  offerId: string;
+  amount: number;
+  termMonths: number;
+  rate: number;
+  monthlyPayment: number;
+  signedAt?: string | null;
+  issuedAt?: string | null;
+  schedule: PaymentScheduleItem[];
 }
