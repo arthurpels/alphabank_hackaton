@@ -7,8 +7,10 @@ import type {
   ApplicationStatus,
   Contract,
   Offer,
+  Spot,
+  SpotCloseRequest,
 } from '../types';
-import { getCurrentUser } from './http';
+import { ApiError, getCurrentUser } from './http';
 import { underwriterMock } from './mockUnderwriter';
 import type { Api } from './index';
 
@@ -201,6 +203,14 @@ function checkPreset() {
   lastPreset = wanted;
 }
 
+function checkCloseBody(b: SpotCloseRequest): string | null {
+  if (b.method === 'CONNECT_SOURCE' && (!b.sourceCode || !b.consent)) return 'Нужно согласие на подключение источника';
+  if (b.method === 'ANSWER' && !b.optionCode && !b.text?.trim()) return 'Выберите вариант или напишите ответ';
+  if (b.method === 'UPLOAD' && !b.documentId) return 'Сначала загрузите документ';
+  if (b.method === 'ADD_COLLATERAL' && !b.collateralType) return 'Выберите вариант обеспечения';
+  return null;
+}
+
 const wait = <T>(v: T) => new Promise<T>((r) => setTimeout(() => r(structuredClone(v)), 150));
 
 export const mockApi: Api = {
@@ -256,17 +266,35 @@ export const mockApi: Api = {
     setStatus('COLLECTING');
     return wait(state);
   },
+    closeSpot: (_appId, spotId, body) => {
+    const spot = state.spots.find((s) => s.id === spotId);
+    if (!spot) return Promise.reject(new ApiError(404, 'NOT_FOUND', 'Пятно не найдено'));
+    if (spot.status === 'CLOSED') return Promise.reject(new ApiError(409, 'INVALID_TRANSITION', 'Пятно уже закрыто'));
+    const bad = checkCloseBody(body);
+    if (bad) return Promise.reject(new ApiError(400, 'VALIDATION_ERROR', bad));
 
-  closeSpot: (_appId, spotId) => {
+    let status: Spot['status'] = 'CLOSED';
+    let lastAnswer: Spot['lastAnswer'] = null;
+    const answer = { id: `a-${spotId}`, optionCode: body.optionCode, text: body.text, documentId: body.documentId, contractAmount: body.contractAmount, contractTermMonths: body.contractTermMonths, createdAt: new Date().toISOString() };
+    if (body.method === 'UPLOAD' || (body.method === 'ANSWER' && spot.answerOptions?.length) || (body.method === 'ADD_COLLATERAL' && body.collateralType === 'PLEDGE')) {
+      status = 'ON_REVIEW';
+      lastAnswer = { ...answer, verdict: 'PENDING' };
+    } else if (body.method === 'ANSWER' && (body.text ?? '').trim().length < 10) {
+      status = 'OPEN';
+      lastAnswer = { ...answer, verdict: 'REJECTED', reviewComment: 'Опишите цель подробнее: на что именно пойдут деньги.' };
+    }
     state = recalc({
       ...state,
-      spots: state.spots.map((s) => (s.id === spotId ? { ...s, status: 'CLOSED' } : s)),
+      spots: state.spots.map((s) => (s.id === spotId ? { ...s, status, lastAnswer } : s)),
     });
-    if (state.application.status === 'INFO_REQUESTED' && state.spots.every((s) => s.status === 'CLOSED')) {
+    if (state.application.status === 'INFO_REQUESTED' && state.spots.every((s) => s.status !== 'OPEN')) {
       setStatus('UNDERWRITING');
     }
     return wait(state);
   },
+
+  uploadDocument: (_appId, file, kind) =>
+    wait({ id: `doc-${Date.now()}`, kind, fileName: file.name, uploadedAt: new Date().toISOString() }),
 
   submitApplication: () => {
     setStatus('SUBMITTED');

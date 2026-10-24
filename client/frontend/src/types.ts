@@ -244,3 +244,10 @@ export interface UnderwritingSummary {
   generatedBy: 'LLM' | 'TEMPLATE';
   items: SummaryItem[];
 }
+
+export interface Document {
+  id: string;
+  kind: string;
+  fileName: string;
+  uploadedAt: string;
+}

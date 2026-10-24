@@ -6,6 +6,7 @@ import { Text } from '@alfalab/core-components/text';
 import { Typography } from '@alfalab/core-components/typography';
 import { ApiError, USE_MOCKS, api } from '../api';
 import { ForkBar } from '../components/ForkBar';
+import { CloseSpotDialog } from '../components/CloseSpotDialog';
 import { SpotCard } from '../components/SpotCard';
 import {
   ApprovedBlock,
@@ -22,6 +23,7 @@ import { FORK_SCALE } from '../constants';
 import { STATUS_META } from '../statuses';
 import type { ApplicationDetails, ApplicationStatus, DecisionZone, Spot, SpotCloseRequest } from '../types';
 import '../App.css';
+const DOCUMENT_KIND = 'CONTRACT_GP';
 
 const FALLBACK_ID = 'coffee-application';
 
@@ -56,14 +58,6 @@ function errorText(e: unknown): string {
   return 'Что-то пошло не так. Попробуйте ещё раз.';
 }
 
-function closeRequest(spot: Spot): SpotCloseRequest {
-  if (!spot.closeMethod) throw new Error('У пятна нет способа закрытия');
-  if (spot.closeMethod === 'CONNECT_SOURCE' && spot.source) {
-    return { method: 'CONNECT_SOURCE', sourceCode: spot.source, consent: true };
-  }
-  return { method: spot.closeMethod };
-}
-
 export default function ApplicationPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -71,6 +65,7 @@ export default function ApplicationPage() {
   const [data, setData] = useState<ApplicationDetails | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null); // 'submit', 'accept', 'sign', 'cancel', 'reset' или id пятна
+  const [dialogSpot, setDialogSpot] = useState<Spot | null>(null); 
 
   const run = useCallback(async (key: string, call: () => Promise<ApplicationDetails>) => {
     setBusy(key);
@@ -114,6 +109,20 @@ export default function ApplicationPage() {
 
   const { application, fork, spots } = data;
   const goHome = () => navigate('/client');
+  const submitClose = async (spot: Spot, body: SpotCloseRequest, file?: File): Promise<string | null> => {
+    try {
+      let request = body;
+      if (file) {
+        const doc = await api.uploadDocument(application.id, file, DOCUMENT_KIND);
+        request = { ...body, documentId: doc.id };
+      }
+      setData(await api.closeSpot(application.id, spot.id, request));
+      setDialogSpot(null);
+      return null;
+    } catch (e) {
+      return errorText(e);
+    }
+  };
   const accept = (offerId: string) => run('accept', () => api.acceptOffer(application.id, offerId));
   const cancel = () => run('cancel', () => api.cancelApplication(application.id));
 
@@ -134,9 +143,8 @@ export default function ApplicationPage() {
           <SpotCard
             key={s.id}
             spot={s}
-            busy={busy === s.id}
             disabled={!canCloseSpots || busy !== null}
-            onClose={() => run(s.id, () => api.closeSpot(application.id, s.id, closeRequest(s)))}
+            onClose={() => setDialogSpot(s)}
           />
         ))}
       </section>
@@ -254,6 +262,14 @@ export default function ApplicationPage() {
       )}
 
       {body[application.status]}
+
+      {dialogSpot && (
+        <CloseSpotDialog
+          spot={dialogSpot}
+          onDismiss={() => setDialogSpot(null)}
+          onSubmit={(b, file) => submitClose(dialogSpot, b, file)}
+        />
+      )}
     </div>
   );
 }

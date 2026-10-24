@@ -1,0 +1,16 @@
+.close-dialog { display: flex; flex-direction: column; gap: 16px; }
+.close-dialog__text { margin: 0; font-size: 15px; line-height: 22px; }
+.close-dialog__hint { margin: 0; font-size: 14px; line-height: 20px; color: var(--color-light-text-secondary); }
+.close-dialog__label { margin: 0 0 8px; font-size: 14px; line-height: 20px; color: var(--color-light-text-secondary); }
+.close-dialog__row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.close-dialog__prev {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--color-light-status-muted-negative);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+@media (max-width: 600px) {
+  .close-dialog__row { grid-template-columns: 1fr; }
+}

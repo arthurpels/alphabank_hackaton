@@ -32,3 +32,4 @@
 
 .spot-alert { margin: 12px 0; }
 .spot-alert__foot { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 12px; }
+.spot__rejected { margin-top: 8px; font-size: 14px; line-height: 20px; color: var(--color-light-text-negative); }

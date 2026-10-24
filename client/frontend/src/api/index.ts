@@ -4,6 +4,7 @@ import type {
   ApplicationStatus,
   ApplicationSummary,
   DecisionRequest,
+  Document,
   QueueItem,
   SpotCreate,
   SpotReviewRequest,
@@ -27,6 +28,7 @@ export interface Api {
   createApplication(body: ApplicationCreate): Promise<ApplicationDetails>;
   evaluateApplication(id: string): Promise<ApplicationDetails>;
   closeSpot(id: string, spotId: string, body: SpotCloseRequest): Promise<ApplicationDetails>;
+  uploadDocument(id: string, file: File, kind: string): Promise<Document>;
   submitApplication(id: string): Promise<ApplicationDetails>;
   acceptOffer(id: string, offerId: string): Promise<ApplicationDetails>;
   signContract(id: string): Promise<ApplicationDetails>;
@@ -48,6 +50,12 @@ const realApi: Api = {
   createApplication: (body) => request('POST', '/applications', body),
   evaluateApplication: (id) => request('POST', `/applications/${id}/evaluate`),
   closeSpot: (id, spotId, body) => request('POST', `/applications/${id}/spots/${spotId}/close`, body),
+  uploadDocument: (id, file, kind) => {
+    const form = new FormData();
+    form.append('file', file);
+    form.append('kind', kind);
+    return request('POST', `/applications/${id}/documents`, form);
+  },
   submitApplication: (id) => request('POST', `/applications/${id}/submit`),
   acceptOffer: (id, offerId) => request('POST', `/applications/${id}/accept`, { offerId }),
   signContract: (id) => request('POST', `/applications/${id}/sign`),

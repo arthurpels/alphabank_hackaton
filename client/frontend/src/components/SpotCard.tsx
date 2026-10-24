@@ -19,11 +19,14 @@ const SECONDARY = 'var(--color-light-text-secondary)';
 export function SpotCard({ spot, onClose, busy = false, disabled = false }: Props) {
   const isClosed = spot.status === 'CLOSED';
   const isReview = spot.status === 'ON_REVIEW';
+  const rejectedComment =
+    spot.status === 'OPEN' && spot.lastAnswer?.verdict === 'REJECTED' ? spot.lastAnswer.reviewComment : null;
 
   if (spot.type === 'STOP_FACTOR' && !isClosed) {
     return (
       <Alert view="negative" title={spot.title} className="spot-alert">
         <div>{spot.clientHint}</div>
+        {rejectedComment && <div className="spot__rejected">Ответ не принят: {rejectedComment}</div>}
         <div className="spot-alert__foot">
           {!spot.closeMethod ? (
             <span className="spot__review">Устранить нельзя</span>
@@ -54,6 +57,7 @@ export function SpotCard({ spot, onClose, busy = false, disabled = false }: Prop
             {spot.clientHint}
           </Text>
         )}
+        {rejectedComment && <div className="spot__rejected">Ответ не принят: {rejectedComment}</div>}
       </div>
 
       {!isClosed && (
