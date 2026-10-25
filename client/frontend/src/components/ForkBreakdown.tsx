@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { SOURCE_LABELS } from '../constants';
 import type { Fork, ForkFactor } from '../types';
 import './ForkBreakdown.css';
@@ -59,6 +60,7 @@ export function ForkBreakdown({ fork, showSource = false }: Props) {
           </span>
         </li>
       </ul>
+      <Link to="/rules" className="breakdown__more">Как мы считаем</Link>
     </details>
   );
 }

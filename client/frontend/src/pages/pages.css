@@ -171,3 +171,4 @@
 .queue-num { text-align: center; }
 .queue-main { overflow: hidden; text-overflow: ellipsis; }
 .queue-status { display: flex; justify-content: center; }
+.hero-card__link { align-self: center; font-size: 14px; color: var(--color-light-text-secondary); text-decoration: underline; padding: 8px; }

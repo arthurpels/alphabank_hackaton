@@ -32,3 +32,4 @@
 .breakdown__val--bad { color: var(--color-light-text-negative); }
 .breakdown__val--range { color: var(--color-light-text-attention-press); }
 .breakdown__price { font-size: 13px; line-height: 18px; font-weight: 400; color: var(--color-light-text-secondary); }
+.breakdown__more { display: inline-block; margin-top: 8px; font-size: 14px; color: var(--color-light-text-secondary); }

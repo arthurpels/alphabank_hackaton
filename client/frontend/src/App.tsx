@@ -7,6 +7,7 @@ import NewApplicationPage from './pages/NewApplicationPage';
 import ApplicationPage from './pages/ApplicationPage';
 import CheckPage from './pages/CheckPage';
 import UnderwriterPage from './pages/UnderwriterPage';
+import RulesPage from './pages/RulesPage';
 import UnderwriterApplicationPage from './pages/UnderwriterApplicationPage';
 import './pages/pages.css';
 
@@ -32,6 +33,7 @@ export default function App() {
         <Route path="/client/application" element={<ApplicationPage />} />
         <Route path="/underwriter" element={<UnderwriterPage />} />
         <Route path="/underwriter/application" element={<UnderwriterApplicationPage />} />
+        <Route path="/rules" element={<RulesPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>

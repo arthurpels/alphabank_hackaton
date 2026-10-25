@@ -1,6 +1,7 @@
 import { coffeeShop } from '../mocks/coffeeShop';
 import { demoUsers } from '../mocks/demoUsers';
 import { products } from '../mocks/products';
+import { mockRules } from '../mocks/rules';
 import type {
   ApplicationAction,
   ApplicationDetails,
@@ -330,6 +331,7 @@ export const mockApi: Api = {
   listDemoUsers: (role) => wait(role ? demoUsers.filter((u) => u.role === role) : demoUsers),
   getMe: () => wait(demoUsers.find((u) => u.id === getCurrentUser()) ?? demoUsers[0]),
   listProducts: () => wait(products),
+  getRules: () => wait(mockRules),
   listApplications: () => {
     checkPreset();
     if (!createdAt && !frozen) return wait([]);

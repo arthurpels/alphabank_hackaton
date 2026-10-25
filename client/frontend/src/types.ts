@@ -361,3 +361,42 @@ export interface ForkVerification {
   verdicts: UsedVerdict[];
   diff: FieldDiff[];
 }
+
+export interface RulesRule {
+  condition: string | null;
+  value: number;
+}
+
+export interface RulesFactor {
+  code: FactorCode;
+  title: string;
+  unknown: { best: number; worst: number; spotPricePp: number } | null;
+  rules: RulesRule[];
+  overdraftRules: RulesRule[];
+}
+
+export interface RulesProduct {
+  code: ProductCode;
+  name: string;
+  baseRate: number;
+  thresholds: { approveMax: number; rejectMin: number };
+  amount: { min: number; max: number };
+  terms: number[];
+  policy: { metric: 'PTI' | 'LIMIT_SHARE'; cap: number };
+  skipFactors: FactorCode[];
+}
+
+export interface RulesStopFactor {
+  code: string;
+  condition: string;
+  removable: boolean;
+  closeMethod: 'PAY' | null;
+}
+
+export interface RulesResponse {
+  rulesVersion: string;
+  calcRatePct: number;
+  products: RulesProduct[];
+  factors: RulesFactor[];
+  stopFactors: RulesStopFactor[];
+}
