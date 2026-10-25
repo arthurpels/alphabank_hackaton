@@ -1,4 +1,13 @@
-import type { AnomalyCause, AnomalyVerdict, LlmMeta, PurposeVerdict, Spot, SpotAnswer, UnderwritingSummary } from './types';
+import type {
+  AnomalyCause,
+  AnomalyVerdict,
+  LlmMeta,
+  PurposeProfile,
+  PurposeVerdict,
+  Spot,
+  SpotAnswer,
+  UnderwritingSummary,
+} from './types';
 
 export const LLM_WAIT_SECONDS = 90;
 export const SUMMARY_POLL_MS = 3000;
@@ -35,7 +44,19 @@ function llmDetails(llm: LlmMeta): string[] {
 }
 
 export function purposeAuthor(v: PurposeVerdict): Author {
-   if (v.profile?.status === 'DOES_NOT_FIT') {
+  if (v.status === 'DECIDED' && v.purpose === 'MISMATCH') {
+    return {
+      kind: 'WAITING',
+      title: WAIT_TEXT.handedToSpecialist,
+      details: [
+        'Цель не похожа на выбранный продукт. Это не отказ: ответ посмотрит специалист банка.',
+        ...(v.evidence ? [`В вашем тексте: «${v.evidence}».`] : []),
+        ...(v.reason ? [v.reason] : []),
+        ...(v.llm ? llmDetails(v.llm) : []),
+      ],
+    };
+  }
+  if (v.profile?.status === 'DOES_NOT_FIT') {
     const p = v.profile;
     return {
       kind: 'WAITING',
@@ -127,6 +148,9 @@ export function anomalyAuthor(spot: Spot, v: AnomalyVerdict): Author {
 
 export function answerAuthor(spot: Spot, answer: SpotAnswer | null | undefined = spot.lastAnswer): Author | null {
   if (!answer) return null;
+  if (answer.verdict !== 'PENDING' && answer.reviewedBy && answer.reviewedBy !== 'SYSTEM') {
+    return { kind: 'HUMAN', title: 'Специалист банка', details: answer.reviewComment ? [answer.reviewComment] : [] };
+  }
   if (answer.anomalyVerdict) return anomalyAuthor(spot, answer.anomalyVerdict);
   if (answer.purposeVerdict) return purposeAuthor(answer.purposeVerdict);
   if (answer.verdict === 'ACCEPTED' && answer.reviewedBy === 'SYSTEM') {
@@ -136,8 +160,67 @@ export function answerAuthor(spot: Spot, answer: SpotAnswer | null | undefined =
       details: ['Банк проверил ответ по данным из источников и принял его без участия специалиста.'],
     };
   }
-  if (answer.verdict !== 'PENDING' && answer.reviewedBy && answer.reviewedBy !== 'SYSTEM') {
-    return { kind: 'HUMAN', title: 'Специалист банка', details: answer.reviewComment ? [answer.reviewComment] : [] };
+  return null;
+}
+
+const PURPOSE_VERDICT_LABELS: Record<'MATCH' | 'MISMATCH', string> = {
+  MATCH: 'цель подходит продукту',
+  MISMATCH: 'цель не подходит продукту',
+};
+
+const PROFILE_VERDICT_LABELS: Record<PurposeProfile['status'], string> = {
+  FITS: 'похожа на деятельность компании',
+  DOES_NOT_FIT: 'не похожа на деятельность компании',
+  UNCLEAR: 'связь с деятельностью неочевидна',
+  NOT_CHECKED: 'с деятельностью не сверяли',
+};
+
+const VIOLATION_LABELS: Record<string, string> = {
+  FORMAT: 'ответ модели не по формату',
+  NO_EVIDENCE: 'модель не привела цитату',
+  EVIDENCE_NOT_IN_GOAL: 'цитаты модели нет в тексте клиента',
+  GENERIC_EVIDENCE: 'в цитате только общие слова',
+  UNCERTAIN_REASON: 'модель сомневается',
+  UNIVERSAL_PURCHASE: 'трата нужна любому бизнесу',
+  MANIPULATION: 'похоже на попытку повлиять на проверку',
+};
+
+export interface ModelVerdict {
+  title: string;
+  evidence: string | null;
+  reason: string | null;
+  violation: string | null;
+}
+
+function purposeVerdictTitle(v: PurposeVerdict): string {
+  if (v.status === 'NOT_APPLICABLE') return 'цель для продукта не учитывается';
+  if (v.status === 'UNAVAILABLE') return 'ИИ-проверка недоступна';
+  if (!v.purpose) return 'цель не понятна';
+  const profile = v.profile && v.profile.status !== 'NOT_CHECKED' ? `, ${PROFILE_VERDICT_LABELS[v.profile.status]}` : '';
+  return PURPOSE_VERDICT_LABELS[v.purpose] + profile;
+}
+
+export function modelVerdict(spot: Spot, answer: SpotAnswer): ModelVerdict | null {
+  const p = answer.purposeVerdict;
+  if (p) {
+    const profile = p.profile?.status === 'DOES_NOT_FIT' || p.profile?.status === 'UNCLEAR' ? p.profile : null;
+    const violation = p.violation ?? profile?.violation ?? null;
+    return {
+      title: purposeVerdictTitle(p),
+      evidence: p.evidence ?? profile?.evidence ?? null,
+      reason: [p.reason, profile?.reason].filter(Boolean).join(' ') || null,
+      violation: violation ? VIOLATION_LABELS[violation] ?? violation : null,
+    };
+  }
+  const c = answer.anomalyVerdict?.classification;
+  if (c) {
+    const cause = causeLabel(spot, c.code);
+    return {
+      title: cause ? `причина: ${cause}` : 'причину определить не удалось',
+      evidence: c.evidence ?? null,
+      reason: c.reason ?? null,
+      violation: c.violation ? VIOLATION_LABELS[c.violation] ?? c.violation : null,
+    };
   }
   return null;
 }

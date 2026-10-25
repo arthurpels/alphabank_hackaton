@@ -12,6 +12,8 @@ public record PurposeResponse(
         String generatedBy,
         List<String> matchedKeywords,
         String reason,
+        String evidence,
+        String violation,
         LlmMeta llm,
         ProfileCheck profile) {
 }

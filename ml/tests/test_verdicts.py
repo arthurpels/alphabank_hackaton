@@ -140,7 +140,10 @@ def test_cache_key_covers_model_digest_prompt_and_schema(changed: tuple) -> None
 
 def test_purpose_reports_cached_verdict(ollama: FakeOllama, cache: VerdictCache) -> None:
     classifier = PurposeClassifier(
-        engine.purpose_keywords, CachedLlm(ollama.client(), cache), load_prompts(PROMPTS_PATH)
+        engine.purpose_keywords,
+        CachedLlm(ollama.client(), cache),
+        load_prompts(PROMPTS_PATH),
+        dictionary=engine.purpose_dictionary,
     )
     request = PurposeRequest(product_code="WORKING_CAPITAL", goal="закупка оборудования для цеха")
     first = classifier.classify(request).model_dump(by_alias=True, mode="json")

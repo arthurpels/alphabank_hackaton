@@ -22,6 +22,7 @@
 .answer__label { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--color-light-text-secondary); }
 .answer__row { font-size: 15px; line-height: 22px; }
 .answer__row--bad { color: var(--color-light-text-negative); }
+.answer__model { margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--color-light-border-primary); display: flex; flex-direction: column; gap: 4px; }
 .reject { margin-top: 8px; }
 .uw-closed { margin-top: 12px; }
 .uw-closed summary { cursor: pointer; font-size: 15px; font-weight: 600; padding: 8px 0; }

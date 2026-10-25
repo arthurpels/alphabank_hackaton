@@ -32,7 +32,8 @@ public class CountingPurposeClient implements PurposeClient {
             return response;
         }
         return new PurposeResponse(response.status(), response.purpose(), response.applicable(),
-                response.generatedBy(), response.matchedKeywords(), response.reason(), response.llm(),
+                response.generatedBy(), response.matchedKeywords(), response.reason(), response.evidence(),
+                response.violation(), response.llm(),
                 new ProfileCheck(request.okved(), ACTIVITY, ProfileStatus.NOT_CHECKED, null, null, null, null));
     }
 
@@ -41,7 +42,7 @@ public class CountingPurposeClient implements PurposeClient {
         String goal = request.goal() == null ? "" : request.goal().toLowerCase();
         if (goal.contains("трактор")) {
             return new PurposeResponse(PurposeStatus.DECIDED, Purpose.MATCH, true, "KEYWORDS", List.of("трактор"),
-                    null, null, new ProfileCheck(request.okved(), ACTIVITY, ProfileStatus.DOES_NOT_FIT,
+                    null, null, null, null, new ProfileCheck(request.okved(), ACTIVITY, ProfileStatus.DOES_NOT_FIT,
                     "Трактор не нужен кофейне", "трактор", null, LLM));
         }
         if (goal.contains("кофемашин") || goal.contains("витрин")) {
@@ -52,7 +53,11 @@ public class CountingPurposeClient implements PurposeClient {
         }
         if (goal.contains("для цеха")) {
             return new PurposeResponse(PurposeStatus.DECIDED, Purpose.MATCH, true, "LLM", List.of(),
-                    "Оснащение цеха — покупка оборудования", LLM, null);
+                    "Оснащение цеха — покупка оборудования", "оснащение для цеха", null, LLM, null);
+        }
+        if (goal.contains("отпуск")) {
+            return new PurposeResponse(PurposeStatus.DECIDED, Purpose.MISMATCH, true, "LLM", List.of(),
+                    "Отпуск сотрудников — не покупка оборудования", "отпуск", null, LLM, null);
         }
         if (goal.contains("недоступн")) {
             return keywords(PurposeStatus.UNAVAILABLE, null, List.of());
@@ -60,8 +65,8 @@ public class CountingPurposeClient implements PurposeClient {
         if (goal.contains("таймаут")) {
             throw new ResourceAccessException("Read timed out");
         }
-        return new PurposeResponse(PurposeStatus.UNCLEAR, null, true, "LLM", List.of(), "Цель слишком общая", LLM,
-                null);
+        return new PurposeResponse(PurposeStatus.UNCLEAR, null, true, "LLM", List.of(), "Цель слишком общая", null,
+                "GENERIC_EVIDENCE", LLM, null);
     }
 
     public PurposeRequest lastRequest() {
@@ -78,6 +83,6 @@ public class CountingPurposeClient implements PurposeClient {
     }
 
     private static PurposeResponse keywords(PurposeStatus status, Purpose purpose, List<String> matched) {
-        return new PurposeResponse(status, purpose, true, "KEYWORDS", matched, null, null, null);
+        return new PurposeResponse(status, purpose, true, "KEYWORDS", matched, null, null, null, null, null);
     }
 }

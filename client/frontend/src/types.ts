@@ -308,6 +308,8 @@ export interface PurposeVerdict {
   generatedBy: 'KEYWORDS' | 'LLM';
   matchedKeywords: string[];
   reason?: string | null;
+  evidence?: string | null;
+  violation?: string | null;
   llm?: LlmMeta | null;
   profile?: PurposeProfile | null;
 }

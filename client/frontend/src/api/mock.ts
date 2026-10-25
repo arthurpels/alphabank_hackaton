@@ -245,6 +245,18 @@ function judgePurpose(text: string): PurposeVerdict {
   if (llmIsOff()) {
     return { ...base, status: 'UNAVAILABLE', purpose: null, generatedBy: 'KEYWORDS', reason: null, llm: null };
   }
+  if (goal.includes('отпуск')) {
+    return {
+      ...base,
+      status: 'DECIDED',
+      purpose: 'MISMATCH',
+      generatedBy: 'LLM',
+      reason: 'Отпуск сотрудников — не покупка оборудования.',
+      evidence: 'отпуск',
+      violation: null,
+      llm: MOCK_LLM,
+    };
+  }
   if (goal.trim().length < 25 || goal.includes('развитие')) {
     return {
       ...base,
@@ -431,7 +443,7 @@ export const mockApi: Api = {
     } else if ((spot.scoringFactor === 'purpose' || spot.id === 's3') && body.method === 'ANSWER') {
       const verdict = judgePurpose(body.text ?? body.optionCode ?? '');
       if (verdict.generatedBy === 'LLM') delay = LLM_DELAY_MS;
-      if (verdict.status === 'UNAVAILABLE' || verdict.profile?.status === 'DOES_NOT_FIT') {
+      if (verdict.status === 'UNAVAILABLE' || verdict.purpose === 'MISMATCH' || verdict.profile?.status === 'DOES_NOT_FIT') {
         status = 'ON_REVIEW';
         lastAnswer = { ...answer, verdict: 'PENDING', purposeVerdict: verdict };
       } else if (verdict.status === 'UNCLEAR') {

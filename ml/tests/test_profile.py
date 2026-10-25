@@ -24,7 +24,13 @@ class FakeLlm:
 def classify(answer: dict[str, Any] | None, goal: str, okved: str | None = "26.20",
              product: ProductCode = ProductCode.EQUIPMENT):
     llm = FakeLlm(answer)
-    classifier = PurposeClassifier(engine.purpose_keywords, None, prompts, ProfileChecker(okved_classes, llm, prompts))
+    classifier = PurposeClassifier(
+        engine.purpose_keywords,
+        None,
+        prompts,
+        ProfileChecker(okved_classes, llm, prompts),
+        dictionary=engine.purpose_dictionary,
+    )
     return classifier.classify(PurposeRequest(product_code=product, goal=goal, okved=okved)), llm
 
 
@@ -109,7 +115,13 @@ def test_without_okved_there_is_no_profile() -> None:
 
 
 def test_without_llm_profile_is_not_checked() -> None:
-    classifier = PurposeClassifier(engine.purpose_keywords, None, prompts, ProfileChecker(okved_classes, None, prompts))
+    classifier = PurposeClassifier(
+        engine.purpose_keywords,
+        None,
+        prompts,
+        ProfileChecker(okved_classes, None, prompts),
+        dictionary=engine.purpose_dictionary,
+    )
 
     response = classifier.classify(PurposeRequest(product_code=ProductCode.EQUIPMENT, goal="кофемашины", okved="26.20"))
 

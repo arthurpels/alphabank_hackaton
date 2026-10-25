@@ -80,10 +80,22 @@ public class AnswerCloser implements SpotCloser {
                     resolved.reused(), "Цель не похожа на деятельность компании (" + verdict.profile().activity()
                             + "): " + verdict.profile().evidence() + " — ответ передан на проверку специалисту — "
                             + source);
+        } else if (verdict.purpose() == Purpose.MISMATCH) {
+            writer.sendPurposeToReview(context.spot(), context.user().id(), verdict.purpose().name(), goal, verdict,
+                    resolved.reused(), "Цель не подходит продукту: " + mismatchEvidence(verdict)
+                            + " — ответ передан на проверку специалисту — " + source);
         } else {
             writer.acceptPurpose(context.spot(), context.user().id(), verdict.purpose().name(), goal, verdict,
                     resolved.reused(), "Цель кредита: " + goal + " — " + source);
         }
+    }
+
+    private static String mismatchEvidence(PurposeVerdictDto verdict) {
+        if (verdict.evidence() != null && !verdict.evidence().isBlank()) {
+            return verdict.evidence();
+        }
+        return verdict.matchedKeywords().isEmpty() ? "предмет покупки не из этого продукта"
+                : String.join(", ", verdict.matchedKeywords());
     }
 
     private static String source(ResolvedPurpose resolved) {

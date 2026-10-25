@@ -20,7 +20,7 @@ import type {
   SpotType,
   UnderwritingSummary,
 } from '../types';
-import { answerAuthor, summaryAuthor, WAIT_TEXT } from '../verdictLabels';
+import { answerAuthor, modelVerdict, summaryAuthor, WAIT_TEXT } from '../verdictLabels';
 import { AuthorBadge } from './AuthorBadge';
 import './UnderwriterBlocks.css';
 
@@ -102,10 +102,11 @@ function AnswerView({ spot, onOpenDocument }: { spot: Spot; onOpenDocument: (doc
   if (!a) return null;
   const option = spot.answerOptions?.find((o) => o.code === a.optionCode)?.label ?? a.optionCode;
   const author = answerAuthor(spot, a);
+  const model = modelVerdict(spot, a);
   return (
     <div className="answer">
       <div className="answer__label">Ответ клиента</div>
-      {option && <div className="answer__row">Вариант: {option}</div>}
+      {option && !a.purposeVerdict && <div className="answer__row">Вариант: {option}</div>}
       {a.text && <div className="answer__row">{a.text}</div>}
       {a.contractAmount != null && (
         <div className="answer__row">
@@ -118,6 +119,14 @@ function AnswerView({ spot, onOpenDocument }: { spot: Spot; onOpenDocument: (doc
           <Button view="text" size={32} onClick={() => onOpenDocument(a.documentId!)}>
             Открыть документ
           </Button>
+        </div>
+      )}
+      {model && (
+        <div className="answer__model">
+          <div className="answer__label">Вердикт: {model.title}</div>
+          {model.evidence && <div className="answer__row">Цитата: «{model.evidence}»</div>}
+          {model.reason && <div className="answer__row">Обоснование: {model.reason}</div>}
+          {model.violation && <div className="answer__row answer__row--bad">Нарушение: {model.violation}</div>}
         </div>
       )}
       {a.verdict === 'REJECTED' && a.reviewComment && (
@@ -222,15 +231,14 @@ export function SpotsReview(props: {
         <details className="uw-closed">
           <summary>Закрытые пятна ({closed.length})</summary>
           <ul>
-            {closed.map((s) => {
-              const author = answerAuthor(s);
-              return (
-                <li key={s.id}>
+            {closed.map((s) => (
+              <li key={s.id}>
+                <div>
                   <CheckmarkCircleMIcon className="uw-closed__check" /> {s.title}
-                  {author && <AuthorBadge author={author} />}
-                </li>
-              );
-            })}
+                </div>
+                <AnswerView spot={s} onOpenDocument={onOpenDocument} />
+              </li>
+            ))}
           </ul>
         </details>
       )}

@@ -1525,7 +1525,8 @@ components:
         из сохранённого ответа и `/purpose` не вызывают. Тот же текст (без учёта регистра, пробелов, «ё») для того же
         продукта повторно не отправляется — берётся этот вердикт. `UNAVAILABLE` (в том числе таймаут) сохраняется
         с ответом `PENDING`, пятно уходит андеррайтеру в `ON_REVIEW`; это не отказ и не `UNCLEAR`. Если андеррайтер
-        вернул ответ клиенту, при новом ответе модель спрашивается снова.
+        вернул ответ клиенту, при новом ответе модель спрашивается снова. `MISMATCH` тоже не закрывает пятно сам:
+        ответ `PENDING`, пятно `ON_REVIEW` у андеррайтера с цитатой и обоснованием модели (не отказ).
       required: [productCode, status, generatedBy, matchedKeywords]
       properties:
         productCode:
@@ -1549,6 +1550,15 @@ components:
           type: string
           nullable: true
           description: обоснование LLM
+        evidence:
+          type: string
+          nullable: true
+          description: дословная цитата из текста клиента, на которой LLM основала ответ
+        violation:
+          type: string
+          nullable: true
+          enum: [FORMAT, NO_EVIDENCE, EVIDENCE_NOT_IN_GOAL, GENERIC_EVIDENCE, UNCERTAIN_REASON, MANIPULATION, null]
+          description: какое правило ответов нарушено (см. `PurposeResponse.violation` в `openapi-ml.yaml`)
         llm:
           type: object
           nullable: true
