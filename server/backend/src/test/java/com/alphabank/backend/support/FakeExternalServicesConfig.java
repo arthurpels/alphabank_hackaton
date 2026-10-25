@@ -26,6 +26,7 @@ import com.alphabank.backend.enums.ProductCode;
 import com.alphabank.backend.scoringclient.AnomalyClient;
 import com.alphabank.backend.scoringclient.MlVersionClient;
 import com.alphabank.backend.scoringclient.OfferGridClient;
+import com.alphabank.backend.scoringclient.RulesClient;
 import com.alphabank.backend.scoringclient.ScoringClient;
 import com.alphabank.backend.scoringclient.SummaryClient;
 import com.alphabank.backend.scoringclient.dto.AnomaliesResponse;
@@ -210,6 +211,21 @@ public class FakeExternalServicesConfig {
     @Primary
     public MlVersionClient fakeMlVersionClient() {
         return () -> Optional.of(ENGINE_VERSION);
+    }
+
+    @Bean
+    @Primary
+    public RulesClient fakeRulesClient() {
+        return () -> {
+            com.fasterxml.jackson.databind.node.ObjectNode rules =
+                    com.fasterxml.jackson.databind.node.JsonNodeFactory.instance.objectNode();
+            rules.put("rulesVersion", "2026-10-23.draft1");
+            rules.put("calcRatePct", 15.0);
+            rules.putArray("products");
+            rules.putArray("factors");
+            rules.putArray("stopFactors");
+            return rules;
+        };
     }
 
     @Bean

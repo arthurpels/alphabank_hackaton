@@ -221,7 +221,10 @@ public class ApplicationServiceImpl implements ApplicationService {
     @Override
     public List<ForkDto> getForkHistory(CurrentUser user, UUID applicationId) {
         accessService.load(user, applicationId);
-        return forkSnapshotRepository.findByApplicationId(applicationId).stream().map(mapper::toFork).toList();
+        List<SpotRecord> spots = spotRepository.findByApplicationId(applicationId);
+        return forkSnapshotRepository.findByApplicationId(applicationId).stream()
+                .map(fork -> mapper.toFork(fork, spots))
+                .toList();
     }
 
     @Override

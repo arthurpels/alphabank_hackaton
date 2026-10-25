@@ -24,7 +24,7 @@ public class JdbcForkSnapshotRepository implements ForkSnapshotRepository {
 
     private static final String SELECT = """
             SELECT id, application_id, rate_from, rate_to, approve_max, reject_min, rules_version, as_of, calculated_at,
-                   score_request, request_hash, score_response, engine_version, verdicts::text AS verdicts
+                   reproducible, score_request, request_hash, score_response, engine_version, verdicts::text AS verdicts
             FROM fork_snapshot
             """;
     private static final String HISTORY = SELECT + """
@@ -93,6 +93,14 @@ public class JdbcForkSnapshotRepository implements ForkSnapshotRepository {
                 .optional();
     }
 
+    @Override
+    public void updateReproducible(UUID id, boolean reproducible) {
+        jdbc.sql("UPDATE fork_snapshot SET reproducible = :reproducible WHERE id = :id")
+                .param("id", id)
+                .param("reproducible", reproducible)
+                .update();
+    }
+
     private ForkSnapshotRecord map(ResultSet rs) throws SQLException {
         double approveMax = rs.getDouble("approve_max");
         boolean approveNull = rs.wasNull();
@@ -112,6 +120,7 @@ public class JdbcForkSnapshotRepository implements ForkSnapshotRepository {
                 rs.getString("rules_version"),
                 rs.getObject("as_of", LocalDate.class),
                 rs.getObject("calculated_at", OffsetDateTime.class),
+                rs.getObject("reproducible", Boolean.class),
                 trace);
     }
 

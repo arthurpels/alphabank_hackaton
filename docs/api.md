@@ -76,6 +76,9 @@ GET /api/v1/demo/users              # без заголовка; ?role=CLIENT|UN
 - `GET /me` — текущий пользователь и его компания.
 - `GET /products` — продуктовая сетка: `code` (`EQUIPMENT`, `WORKING_CAPITAL`,
   `OVERDRAFT`), `name`, `minAmount`/`maxAmount` (копейки), `allowedTerms`.
+- `GET /rules` — действующие правила скоринга из ML: `rulesVersion`, продукты и пороги,
+  факторы, вклады и диапазоны неизвестных значений. Публичный endpoint, `X-Demo-User`
+  не нужен; недоступность ML → `503 SOURCE_UNAVAILABLE`.
 
 ### Жизненный цикл заявки (`/applications`)
 
@@ -86,6 +89,10 @@ GET /api/v1/demo/users              # без заголовка; ?role=CLIENT|UN
 - `GET /applications` — список заявок текущего клиента.
 - `GET /applications/{id}` — карточка: параметры, компания, статус, вилка
   (`fork`: `rateFrom`/`rateTo`, `zone`, `thresholds`), пятна, офферы, решение.
+  В `fork.factors` — сохранённое разложение `/score`: вклад известного фактора `value`
+  или диапазон неизвестного `best`/`worst`, цена пятна `spotPricePp` и `source`.
+  ML при чтении вилки повторно не вызывается; для снимков до M06 `factors` пустой.
+  `fork.reproducible` — результат последней проверки (`null`, если её ещё не было).
   Клиенту — только свои; андеррайтеру — любая.
 - `PATCH /applications/{id}` — поменять сумму/срок/цель (только `DRAFT`, `COLLECTING`).
 - `POST /applications/{id}/evaluate` — **первичный расчёт**: бэкенд ходит в моки

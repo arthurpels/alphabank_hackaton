@@ -137,6 +137,25 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /rules:
+    get:
+      operationId: getScoringRules
+      tags: [catalog]
+      summary: Действующие правила скоринга
+      description: |
+        Публичный прокси к ML `GET /rules`: версия правил, продукты и пороги, факторы,
+        вклады и диапазоны неизвестных значений. Заголовок `X-Demo-User` не нужен.
+      security: []
+      responses:
+        '200':
+          description: действующие правила
+          content:
+            application/json:
+              schema:
+                $ref: './openapi-ml.yaml#/components/schemas/RulesResponse'
+        '503':
+          $ref: '#/components/responses/SourceUnavailable'
+
   /products:
     get:
       operationId: listProducts
@@ -1183,7 +1202,7 @@ components:
 
     Fork:
       type: object
-      required: [id, rateFrom, rateTo, zone, thresholds, rulesVersion, asOf, calculatedAt]
+      required: [id, rateFrom, rateTo, zone, thresholds, rulesVersion, asOf, calculatedAt, factors, reproducible]
       properties:
         id:
           type: string
@@ -1211,6 +1230,56 @@ components:
         calculatedAt:
           type: string
           format: date-time
+        factors:
+          type: array
+          description: разложение из сохранённого ответа `/score`; пустой массив у снимка, рассчитанного до M06
+          items:
+            $ref: '#/components/schemas/ForkFactor'
+        reproducible:
+          type: boolean
+          nullable: true
+          description: результат последнего `POST .../fork/verify`; null — проверка ещё не выполнялась
+
+    ForkFactor:
+      type: object
+      required: [code, title, applicable, known, value, best, worst, spotPricePp, source]
+      properties:
+        code:
+          type: string
+          enum: [credit_history, business_age, tax_discipline, debt_load, revenue_stability, purpose, collateral]
+        title:
+          type: string
+          example: Подтверждённая выручка и долговая нагрузка
+        applicable:
+          type: boolean
+        known:
+          type: boolean
+          description: true — задан вклад `value`; false — задан диапазон `best`…`worst`
+        value:
+          type: number
+          nullable: true
+          description: вклад известного фактора, п.п.
+          example: -0.5
+        best:
+          type: number
+          nullable: true
+          description: вклад неизвестного фактора в нижний край вилки, п.п.
+          example: -1.5
+        worst:
+          type: number
+          nullable: true
+          description: вклад неизвестного фактора в верхний край вилки, п.п.
+          example: 2
+        spotPricePp:
+          type: number
+          nullable: true
+          description: цена открытого пятна, `worst - best`, п.п.
+          example: 3.5
+        source:
+          allOf:
+            - $ref: '#/components/schemas/SourceCode'
+          nullable: true
+          description: источник данных; null — клиентский ответ, обеспечение или неоднозначный источник
 
     ZoneThresholds:
       type: object

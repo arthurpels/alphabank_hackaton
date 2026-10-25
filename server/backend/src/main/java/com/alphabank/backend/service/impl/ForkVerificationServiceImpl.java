@@ -74,7 +74,9 @@ public class ForkVerificationServiceImpl implements ForkVerificationService {
         List<UsedVerdictDto> verdicts = trace.verdicts().stream()
                 .map(verdict -> new UsedVerdictDto(verdict.spotId(), verdict.scoringFactor(), verdict.verdict()))
                 .toList();
-        return new ForkVerificationDto(snapshot.id(), diff.isEmpty(), snapshot.rulesVersion(),
+        boolean reproducible = diff.isEmpty();
+        forkSnapshotRepository.updateReproducible(snapshot.id(), reproducible);
+        return new ForkVerificationDto(snapshot.id(), reproducible, snapshot.rulesVersion(),
                 trace.engineVersion(), mlVersionClient.engineVersion().orElse(null), trace.requestHash(),
                 snapshot.calculatedAt(), verdicts, diff);
     }

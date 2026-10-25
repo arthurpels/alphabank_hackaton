@@ -49,7 +49,7 @@ public class ForkSnapshotServiceImpl implements ForkSnapshotService {
                 usedVerdicts(applicationId));
         ForkSnapshotRecord snapshot = new ForkSnapshotRecord(UUID.randomUUID(), applicationId, score.rateFrom(),
                 score.rateTo(), score.thresholds().approveMax(), score.thresholds().rejectMin(),
-                score.rulesVersion(), request.asOf(), calculatedAt, trace);
+                score.rulesVersion(), request.asOf(), calculatedAt, null, trace);
         forkSnapshotRepository.insert(snapshot);
         return snapshot;
     }
