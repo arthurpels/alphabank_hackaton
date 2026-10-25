@@ -177,10 +177,8 @@ public class FakeExternalServicesConfig {
 
     @Bean
     @Primary
-    public SummaryClient fakeSummaryClient() {
-        return request -> new UnderwritingSummaryDto("TEMPLATE", request.facts().stream()
-                .map(fact -> new SummaryItemDto(fact.label(), List.of(fact)))
-                .toList());
+    public CountingSummaryClient fakeSummaryClient() {
+        return new CountingSummaryClient();
     }
 
     @Bean

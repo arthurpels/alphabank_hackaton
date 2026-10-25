@@ -18,6 +18,7 @@ erDiagram
     PRODUCT ||--o{ APPLICATION : "запрошен"
     APPLICATION ||--o{ SPOT : "пятна"
     APPLICATION ||--o{ FORK_SNAPSHOT : "снимки вилки"
+    APPLICATION ||--o| UNDERWRITING_SUMMARY : "сохранённая сводка"
     APPLICATION ||--o{ OFFER : "варианты условий"
     APPLICATION ||--o{ DOCUMENT : "документы"
     APPLICATION ||--o| DECISION : "итог"
@@ -122,6 +123,17 @@ erDiagram
         text score_response "ответ /score, канонический JSON — эталон для verify"
         string engine_version "версия движка ml (GET /health → engineVersion)"
         json verdicts "вердикты разбора цели на момент расчёта: [{spotId, scoringFactor, verdict с llm.*}]"
+    }
+
+    UNDERWRITING_SUMMARY {
+        uuid application_id PK, FK "одна актуальная сводка на заявку"
+        string status "ready | generating"
+        string generated_by "TEMPLATE | LLM"
+        json items "пункты сводки и ссылки на факты"
+        json llm "model, digest, promptVersion, cached; null у шаблона"
+        timestamp generated_at
+        timestamp updated_at
+        bigint revision "защита от перезаписи новой версии старой async-задачей"
     }
 
     OFFER {

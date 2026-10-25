@@ -794,7 +794,7 @@ paths:
       operationId: getUnderwritingSummary
       tags: [underwriting]
       summary: Сводка для андеррайтера
-      description: 3–5 выводов, у каждого — ссылки на факты-источники. Генерирует LLM (T27); без LLM — шаблонный текст (`generatedBy = TEMPLATE`).
+      description: Сохранённая сводка, читается из БД без обращения к мокам или ML. Шаблон доступен сразу; при включённой LLM ответ `generating + TEMPLATE` позже заменяется на `ready + LLM` с `llm.*`.
       responses:
         '200':
           description: сводка
@@ -1805,8 +1805,12 @@ components:
 
     UnderwritingSummary:
       type: object
-      required: [items, generatedBy]
+      required: [status, items, generatedBy, llm, generatedAt]
       properties:
+        status:
+          type: string
+          enum: [ready, generating]
+          description: generating — показан готовый шаблон, LLM-версия ещё создаётся
         generatedBy:
           type: string
           enum: [LLM, TEMPLATE]
@@ -1814,6 +1818,23 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SummaryItem'
+        llm:
+          type: object
+          nullable: true
+          required: [model, digest, promptVersion, cached]
+          properties:
+            model:
+              type: string
+              example: qwen3:4b
+            digest:
+              type: string
+            promptVersion:
+              type: string
+            cached:
+              type: boolean
+        generatedAt:
+          type: string
+          format: date-time
 
     SummaryItem:
       type: object

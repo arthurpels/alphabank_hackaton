@@ -28,6 +28,7 @@ import com.alphabank.backend.scoringclient.dto.ScoreResponse;
 import com.alphabank.backend.service.AutoCheckService;
 import com.alphabank.backend.service.ForkCalculationService;
 import com.alphabank.backend.service.StatusTransitionService;
+import com.alphabank.backend.service.SummaryGenerationService;
 
 @Service
 public class AutoCheckServiceImpl implements AutoCheckService {
@@ -41,13 +42,15 @@ public class AutoCheckServiceImpl implements AutoCheckService {
     private final OfferWriter offerWriter;
     private final DecisionWriter decisionWriter;
     private final StatusTransitionService statusTransitionService;
+    private final SummaryGenerationService summaryGenerationService;
     private final Clock clock;
 
     public AutoCheckServiceImpl(ForkCalculationService forkCalculationService, EnrichmentService enrichmentService,
                                 StopFactorSync stopFactorSync, AutoDecisionRule decisionRule,
                                 GridOfferWriter gridOfferWriter, SpotRepository spotRepository,
                                 OfferWriter offerWriter, DecisionWriter decisionWriter,
-                                StatusTransitionService statusTransitionService, Clock clock) {
+                                StatusTransitionService statusTransitionService,
+                                SummaryGenerationService summaryGenerationService, Clock clock) {
         this.forkCalculationService = forkCalculationService;
         this.enrichmentService = enrichmentService;
         this.stopFactorSync = stopFactorSync;
@@ -57,6 +60,7 @@ public class AutoCheckServiceImpl implements AutoCheckService {
         this.offerWriter = offerWriter;
         this.decisionWriter = decisionWriter;
         this.statusTransitionService = statusTransitionService;
+        this.summaryGenerationService = summaryGenerationService;
         this.clock = clock;
     }
 
@@ -112,7 +116,12 @@ public class AutoCheckServiceImpl implements AutoCheckService {
     }
 
     private ApplicationStatus moveTo(ApplicationRecord application, ApplicationStatus status, String reason) {
-        return statusTransitionService.apply(application.id(), status, TransitionInitiator.SYSTEM, null, reason);
+        ApplicationStatus result = statusTransitionService.apply(application.id(), status, TransitionInitiator.SYSTEM,
+                null, reason);
+        if (result == ApplicationStatus.UNDERWRITING) {
+            summaryGenerationService.refresh(application.id());
+        }
+        return result;
     }
 
     private OffsetDateTime now() {

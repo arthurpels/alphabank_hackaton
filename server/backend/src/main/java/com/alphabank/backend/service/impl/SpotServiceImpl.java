@@ -36,6 +36,7 @@ import com.alphabank.backend.service.ApplicationService;
 import com.alphabank.backend.service.ForkCalculationService;
 import com.alphabank.backend.service.SpotService;
 import com.alphabank.backend.service.StatusTransitionService;
+import com.alphabank.backend.service.SummaryGenerationService;
 import com.alphabank.backend.statemachine.ApplicationStateMachine;
 import com.alphabank.backend.validator.SpotCloseRequestValidator;
 
@@ -51,13 +52,15 @@ public class SpotServiceImpl implements SpotService {
     private final ForkCalculationService forkCalculationService;
     private final GridOfferWriter gridOfferWriter;
     private final StatusTransitionService statusTransitionService;
+    private final SummaryGenerationService summaryGenerationService;
     private final Map<CloseMethod, SpotCloser> closers;
 
     public SpotServiceImpl(SpotCloseRequestValidator closeValidator, ApplicationStateMachine stateMachine,
                            ApplicationService applicationService, ApplicationAccessService accessService,
                            ProductRepository productRepository, SpotRepository spotRepository,
                            ForkCalculationService forkCalculationService, GridOfferWriter gridOfferWriter,
-                           StatusTransitionService statusTransitionService, List<SpotCloser> closers) {
+                           StatusTransitionService statusTransitionService,
+                           SummaryGenerationService summaryGenerationService, List<SpotCloser> closers) {
         this.closeValidator = closeValidator;
         this.stateMachine = stateMachine;
         this.applicationService = applicationService;
@@ -67,6 +70,7 @@ public class SpotServiceImpl implements SpotService {
         this.forkCalculationService = forkCalculationService;
         this.gridOfferWriter = gridOfferWriter;
         this.statusTransitionService = statusTransitionService;
+        this.summaryGenerationService = summaryGenerationService;
         this.closers = closers.stream().collect(Collectors.toMap(SpotCloser::method, Function.identity()));
     }
 
@@ -102,8 +106,12 @@ public class SpotServiceImpl implements SpotService {
 
         ForkCalculation calculation = forkCalculationService.calculate(application, product, inn);
         forkCalculationService.save(applicationId, calculation.request(), calculation.score());
-        if (moveStatusAfterClose(application, user) == ApplicationStatus.UNDERWRITING) {
+        ApplicationStatus status = moveStatusAfterClose(application, user);
+        if (status == ApplicationStatus.UNDERWRITING) {
             gridOfferWriter.save(applicationId, calculation.request(), OfferStatus.CALCULATED);
+        }
+        if (status == ApplicationStatus.UNDERWRITING || status == ApplicationStatus.INFO_REQUESTED) {
+            summaryGenerationService.refresh(applicationId);
         }
         return applicationService.getApplication(user, applicationId);
     }

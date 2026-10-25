@@ -150,7 +150,10 @@ GET /api/v1/demo/users              # без заголовка; ?role=CLIENT|UN
 - `GET /underwriting/queue?status=…` — очередь заявок. Без `status` — в работе (`UNDERWRITING`,
   `INFO_REQUESTED`), старые сверху. `status` можно повторять: «Завершённые» —
   `APPROVED`, `COUNTER_OFFER`, `REJECTED`, `SIGNING`, `ISSUED`, `CANCELLED`, новые сверху; только поданные заявки.
-- `GET /underwriting/applications/{id}/summary` — сводка фактов по заявке.
+- `GET /underwriting/applications/{id}/summary` — сохранённая сводка фактов, читается из БД без вызова
+  моков/ML. Поля: `status` (`ready`/`generating`), `generatedBy`, `items`, `llm`, `generatedAt`.
+  Шаблон создаётся при переходе в `UNDERWRITING` и после изменений пятен. При включённой LLM
+  асинхронная версия позже заменяет шаблон; ошибка LLM оставляет шаблон в `ready`.
 - `POST /applications/{id}/decision { type, offerIds?, comment?, override? }` —
   решение: `APPROVED` / ветка «иные условия» через `ALTERNATIVE` / `REJECTED`.
   Ручная правка условий — `override: true` + обязательный `comment`.

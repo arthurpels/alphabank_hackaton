@@ -43,5 +43,7 @@ app:
     timeout-ms: ${ML_LLM_TIMEOUT_MS:90000}
     circuit-failures: ${ML_LLM_CIRCUIT_FAILURES:3}
     circuit-open-ms: ${ML_LLM_CIRCUIT_OPEN_MS:30000}
+  summary:
+    llm-enabled: ${LLM_SUMMARY_ENABLED:false}
   info-request:
     check-interval: PT1M

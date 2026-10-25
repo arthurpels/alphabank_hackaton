@@ -15,7 +15,7 @@ import com.alphabank.backend.config.ApiPaths;
 import com.alphabank.backend.dto.request.DecisionRequest;
 import com.alphabank.backend.dto.response.ApplicationDetailsDto;
 import com.alphabank.backend.dto.response.QueueItemDto;
-import com.alphabank.backend.dto.response.UnderwritingSummaryDto;
+import com.alphabank.backend.dto.response.UnderwritingSummaryResponseDto;
 import com.alphabank.backend.enums.ApplicationStatus;
 import com.alphabank.backend.security.CurrentUser;
 import com.alphabank.backend.service.DecisionService;
@@ -47,7 +47,7 @@ public class UnderwritingController {
 
     @GetMapping("/underwriting/applications/{applicationId}/summary")
     @Operation(operationId = "getUnderwritingSummary", summary = "Сводка для андеррайтера")
-    public UnderwritingSummaryDto getUnderwritingSummary(CurrentUser user, @PathVariable UUID applicationId) {
+    public UnderwritingSummaryResponseDto getUnderwritingSummary(CurrentUser user, @PathVariable UUID applicationId) {
         return underwritingService.getSummary(user, applicationId);
     }
 
