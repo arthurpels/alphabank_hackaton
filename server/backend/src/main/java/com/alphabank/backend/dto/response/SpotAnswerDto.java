@@ -17,5 +17,6 @@ public record SpotAnswerDto(
         String reviewComment,
         OffsetDateTime createdAt,
         OffsetDateTime reviewedAt,
-        PurposeVerdictDto purposeVerdict) {
+        PurposeVerdictDto purposeVerdict,
+        AnomalyVerdictDto anomalyVerdict) {
 }

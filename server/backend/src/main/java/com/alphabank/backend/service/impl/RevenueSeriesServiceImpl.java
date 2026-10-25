@@ -30,12 +30,22 @@ public class RevenueSeriesServiceImpl implements RevenueSeriesService {
 
     @Override
     public Series fetch(SourceCode source, String inn) {
+        return fetch(source, inn, MocksClient.CURRENT_MONTHS);
+    }
+
+    @Override
+    public Series fetchHistory(SourceCode source, String inn) {
+        return fetch(source, inn, MocksClient.HISTORY_MONTHS);
+    }
+
+    private Series fetch(SourceCode source, String inn, int months) {
         List<SeriesPoint> points = switch (source) {
-            case OFD -> mocksClient.ofdRevenue(inn).map(ofd -> ofd.months().stream()
+            case OFD -> mocksClient.ofdRevenue(inn, months).map(ofd -> ofd.months().stream()
                     .map(m -> new SeriesPoint(m.month(), m.revenue() * 100)).toList()).orElse(null);
-            case MARKETPLACE -> mocksClient.marketplaceSales(inn).map(wb -> wb.months().stream()
-                    .map(m -> new SeriesPoint(m.month(), m.payout() * 100)).toList()).orElse(null);
-            case ACQUIRING -> mocksClient.acquiringTurnover(inn).map(acq -> acq.months().stream()
+            case MARKETPLACE -> mocksClient.marketplaceSales(inn, Math.min(months, MocksClient.MARKETPLACE_MONTHS))
+                    .map(wb -> wb.months().stream()
+                            .map(m -> new SeriesPoint(m.month(), m.payout() * 100)).toList()).orElse(null);
+            case ACQUIRING -> mocksClient.acquiringTurnover(inn, months).map(acq -> acq.months().stream()
                     .map(m -> new SeriesPoint(m.month(), m.turnover() * 100)).toList()).orElse(null);
             default -> throw ApiException.validation("Источник " + source + " не даёт выручку");
         };

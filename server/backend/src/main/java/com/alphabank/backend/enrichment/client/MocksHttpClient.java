@@ -71,11 +71,11 @@ public class MocksHttpClient implements MocksClient {
     }
 
     @Override
-    public Optional<OfdResponse> ofdRevenue(String inn) {
+    public Optional<OfdResponse> ofdRevenue(String inn, int months) {
         return ioRetry.execute("OFD", () -> {
             try {
                 OfdResponse res = restClient.get()
-                        .uri("/mock/ofd/v1/revenue?inn={inn}&months=12", inn)
+                        .uri("/mock/ofd/v1/revenue?inn={inn}&months={months}", inn, months)
                         .retrieve()
                         .body(OfdResponse.class);
                 return Optional.ofNullable(res);
@@ -89,11 +89,11 @@ public class MocksHttpClient implements MocksClient {
     }
 
     @Override
-    public Optional<MarketplaceResponse> marketplaceSales(String inn) {
+    public Optional<MarketplaceResponse> marketplaceSales(String inn, int months) {
         return ioRetry.execute("MARKETPLACE", () -> {
             try {
                 MarketplaceResponse res = restClient.get()
-                        .uri("/mock/marketplace/v1/sales?inn={inn}&months=6", inn)
+                        .uri("/mock/marketplace/v1/sales?inn={inn}&months={months}", inn, months)
                         .retrieve()
                         .body(MarketplaceResponse.class);
                 return Optional.ofNullable(res);
@@ -107,11 +107,11 @@ public class MocksHttpClient implements MocksClient {
     }
 
     @Override
-    public Optional<AcquiringResponse> acquiringTurnover(String inn) {
+    public Optional<AcquiringResponse> acquiringTurnover(String inn, int months) {
         return ioRetry.execute("ACQUIRING", () -> {
             try {
                 AcquiringResponse res = restClient.get()
-                        .uri("/mock/acquiring/v1/turnover?inn={inn}&months=12", inn)
+                        .uri("/mock/acquiring/v1/turnover?inn={inn}&months={months}", inn, months)
                         .retrieve()
                         .body(AcquiringResponse.class);
                 return Optional.ofNullable(res);

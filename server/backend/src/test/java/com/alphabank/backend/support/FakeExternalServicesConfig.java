@@ -110,24 +110,24 @@ public class FakeExternalServicesConfig {
             }
 
             @Override
-            public Optional<OfdResponse> ofdRevenue(String inn) {
+            public Optional<OfdResponse> ofdRevenue(String inn, int requestedMonths) {
                 if (!COFFEE_INN.equals(inn)) {
                     return Optional.empty();
                 }
                 List<OfdResponse.MonthRevenue> months = new ArrayList<>();
-                for (int i = 0; i < MONTHS.size(); i++) {
+                for (int i = Math.max(0, MONTHS.size() - requestedMonths); i < MONTHS.size(); i++) {
                     months.add(new OfdResponse.MonthRevenue(MONTHS.get(i), COFFEE_OFD.get(i)));
                 }
                 return Optional.of(new OfdResponse("OFD", inn, months, 0.7));
             }
 
             @Override
-            public Optional<MarketplaceResponse> marketplaceSales(String inn) {
+            public Optional<MarketplaceResponse> marketplaceSales(String inn, int months) {
                 return Optional.empty();
             }
 
             @Override
-            public Optional<AcquiringResponse> acquiringTurnover(String inn) {
+            public Optional<AcquiringResponse> acquiringTurnover(String inn, int months) {
                 return Optional.empty();
             }
 
@@ -210,6 +210,12 @@ public class FakeExternalServicesConfig {
     @Primary
     public MlVersionClient fakeMlVersionClient() {
         return () -> Optional.of(ENGINE_VERSION);
+    }
+
+    @Bean
+    @Primary
+    public CountingAnswerClient fakeAnswerClient() {
+        return new CountingAnswerClient();
     }
 
     @Bean

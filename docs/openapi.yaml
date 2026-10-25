@@ -1344,6 +1344,110 @@ components:
             - $ref: '#/components/schemas/PurposeVerdict'
           nullable: true
           description: только у ответа по цели кредита — кто решил и при каких версиях
+        anomalyVerdict:
+          type: object
+          allOf:
+            - $ref: '#/components/schemas/AnomalyVerdict'
+          nullable: true
+          description: только у ответа на аномалию выручки — какую причину назвал клиент и подтвердили ли её данные (M16)
+
+    AnomalyVerdict:
+      type: object
+      description: |
+        Разбор ответа на аномалию выручки, сохранённый при ответе клиента (M16). Вариант-кнопка (`optionCode`) берётся
+        как есть, без модели; свободный текст разбирает `/answers/classify` ML-сервиса (словарь, затем LLM с правилами
+        ответов). Тот же текст для того же пятна повторно не отправляется — берётся сохранённая классификация, кроме
+        `UNAVAILABLE`. Затем `/answers/verify` проверяет причину данными источника за 24 месяца (маркетплейс — 6):
+        `ACCEPTED` — пятно закрывает система с правилом в журнале; `REVIEW` — ответ `PENDING`, пятно у специалиста
+        в `ON_REVIEW`. LLM недоступна — тоже специалисту: отказа из-за недоступности нет.
+      required: [code]
+      properties:
+        anomaly:
+          type: object
+          nullable: true
+          description: аномалия, на которую отвечал клиент; null — в текущих данных источника её уже нет, ответ у специалиста
+          required: [code, month, changePct]
+          properties:
+            code:
+              type: string
+              enum: [REVENUE_DROP, REVENUE_SPIKE]
+            month:
+              type: string
+              example: 2026-03
+            changePct:
+              type: integer
+              example: -45
+            source:
+              type: string
+              allOf:
+                - $ref: '#/components/schemas/SourceCode'
+              nullable: true
+        code:
+          type: string
+          enum: [RENOVATION, SEASONAL, CLIENT_LOST, OTHER, null]
+          nullable: true
+          description: причина; null — LLM недоступна и причину определить не удалось
+        classification:
+          type: object
+          nullable: true
+          description: ответ `/answers/classify`; null — клиент выбрал вариант кнопкой
+          required: [status, generatedBy, matchedKeywords]
+          properties:
+            status:
+              type: string
+              enum: [DECIDED, UNAVAILABLE]
+            code:
+              type: string
+              enum: [RENOVATION, SEASONAL, CLIENT_LOST, OTHER, null]
+              nullable: true
+            generatedBy:
+              type: string
+              enum: [KEYWORDS, LLM]
+            matchedKeywords:
+              type: array
+              items:
+                type: string
+            reason:
+              type: string
+              nullable: true
+            evidence:
+              type: string
+              nullable: true
+              description: дословная цитата из ответа клиента
+            violation:
+              type: string
+              nullable: true
+              description: какое правило ответа нарушено (`MANIPULATION`, `NO_CUE`, …) — тогда код `OTHER`
+            llm:
+              type: object
+              nullable: true
+              required: [model, digest, promptVersion, cached]
+              properties:
+                model:
+                  type: string
+                digest:
+                  type: string
+                promptVersion:
+                  type: string
+                cached:
+                  type: boolean
+        check:
+          type: object
+          nullable: true
+          description: ответ `/answers/verify`; null — проверки не было (LLM недоступна, аномалия не найдена, `ml` не ответил)
+          required: [verdict, explanation]
+          properties:
+            verdict:
+              type: string
+              enum: [ACCEPTED, REVIEW]
+            rule:
+              type: string
+              nullable: true
+              description: правило из `answer_checks` (`RENOVATION_ONE_OFF`, `SEASONAL_LAST_YEAR`); null — для этой причины проверки данными нет
+              example: RENOVATION_ONE_OFF
+            explanation:
+              type: string
+              example: 'Падение разовое: в апреле выручка вернулась к 98 % от уровня до падения'
 
     PurposeVerdict:
       type: object

@@ -3,6 +3,7 @@ package com.alphabank.backend.repository.model;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
+import com.alphabank.backend.dto.response.AnomalyVerdictDto;
 import com.alphabank.backend.dto.response.PurposeVerdictDto;
 import com.alphabank.backend.enums.AnswerVerdict;
 
@@ -19,5 +20,6 @@ public record SpotAnswerRecord(
         String reviewComment,
         OffsetDateTime createdAt,
         OffsetDateTime reviewedAt,
-        PurposeVerdictDto purposeVerdict) {
+        PurposeVerdictDto purposeVerdict,
+        AnomalyVerdictDto anomalyVerdict) {
 }

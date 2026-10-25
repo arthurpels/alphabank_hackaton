@@ -1,8 +1,6 @@
 package com.alphabank.backend.closer;
 
 import java.util.List;
-import java.util.Locale;
-import java.util.Objects;
 import java.util.Optional;
 
 import org.slf4j.Logger;
@@ -21,6 +19,7 @@ import com.alphabank.backend.scoringclient.PurposeClient;
 import com.alphabank.backend.scoringclient.dto.PurposeRequest;
 import com.alphabank.backend.scoringclient.dto.PurposeResponse;
 import com.alphabank.backend.scoringclient.enums.PurposeStatus;
+import com.alphabank.backend.util.TextNormalizer;
 
 @Component
 public class PurposeVerdictResolver {
@@ -52,13 +51,13 @@ public class PurposeVerdictResolver {
     }
 
     private Optional<PurposeVerdictDto> stored(SpotRecord spot, ProductCode product, String goal) {
-        String normalized = normalize(goal);
+        String normalized = TextNormalizer.normalize(goal);
         List<SpotAnswerRecord> answers = spotAnswerRepository.findBySpotId(spot.id());
         return answers.stream()
                 .filter(answer -> answer.purposeVerdict() != null)
                 .filter(answer -> answer.purposeVerdict().productCode() == product)
                 .filter(answer -> answer.purposeVerdict().status() != PurposeStatus.UNAVAILABLE)
-                .filter(answer -> normalize(answer.text()).equals(normalized))
+                .filter(answer -> TextNormalizer.normalize(answer.text()).equals(normalized))
                 .map(SpotAnswerRecord::purposeVerdict)
                 .reduce((first, second) -> second);
     }
@@ -78,10 +77,5 @@ public class PurposeVerdictResolver {
             return PurposeStatus.NOT_APPLICABLE;
         }
         return response.purpose() == null ? PurposeStatus.UNCLEAR : PurposeStatus.DECIDED;
-    }
-
-    private static String normalize(String text) {
-        return String.join(" ", Objects.requireNonNullElse(text, "").toLowerCase(Locale.ROOT).replace('ё', 'е')
-                .trim().split("\\s+"));
     }
 }
