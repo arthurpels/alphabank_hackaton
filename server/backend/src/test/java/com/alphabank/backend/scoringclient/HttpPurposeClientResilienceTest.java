@@ -10,6 +10,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -30,9 +31,11 @@ class HttpPurposeClientResilienceTest {
 
     private HttpServer server;
     private ExecutorService executor;
+    private final CountDownLatch timeoutRequests = new CountDownLatch(1);
 
     @AfterEach
     void stopServer() {
+        timeoutRequests.countDown();
         if (server != null) {
             server.stop(0);
         }
@@ -49,7 +52,7 @@ class HttpPurposeClientResilienceTest {
             int request = requests.incrementAndGet();
             if (request <= 2) {
                 try {
-                    Thread.sleep(1000);
+                    timeoutRequests.await();
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
@@ -85,7 +88,7 @@ class HttpPurposeClientResilienceTest {
     private HttpPurposeClient client(DemoClock clock) {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(300);
-        factory.setReadTimeout(200);
+        factory.setReadTimeout(1000);
         LlmCircuitBreaker circuitBreaker = new LlmCircuitBreaker(2, 30_000, clock);
         return new HttpPurposeClient(RestClient.builder(), factory,
                 "http://localhost:" + server.getAddress().getPort(), circuitBreaker);
