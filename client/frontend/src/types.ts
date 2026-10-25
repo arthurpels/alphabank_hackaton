@@ -309,6 +309,17 @@ export interface PurposeVerdict {
   matchedKeywords: string[];
   reason?: string | null;
   llm?: LlmMeta | null;
+  profile?: PurposeProfile | null;
+}
+
+export interface PurposeProfile {
+  okved: string;
+  activity?: string | null;
+  status: 'FITS' | 'DOES_NOT_FIT' | 'UNCLEAR' | 'NOT_CHECKED';
+  reason?: string | null;
+  evidence?: string | null;
+  violation?: string | null;
+  llm?: LlmMeta | null;
 }
 
 export type AnomalyCause = 'RENOVATION' | 'SEASONAL' | 'CLIENT_LOST' | 'OTHER';

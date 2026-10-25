@@ -230,6 +230,7 @@ const MOCK_LLM = {
   cached: false,
 };
 const PURPOSE_WORDS = ['кофемашин', 'оборудован', 'станок', 'техник', 'витрин', 'холодильник', 'принтер'];
+const PROFILE_MISMATCH_WORDS = ['трактор', 'экскаватор', 'бульдозер'];
 const LLM_DELAY_MS = 1200;
 
 const llmIsOff = () => new URLSearchParams(window.location.search).get('mockLlm') === 'off';
@@ -254,6 +255,8 @@ function judgePurpose(text: string): PurposeVerdict {
       llm: MOCK_LLM,
     };
   }
+  const odd = PROFILE_MISMATCH_WORDS.find((w) => goal.includes(w));
+  const okved = { okved: '56.30', activity: 'ОКВЭД 56.30 — Деятельность по предоставлению продуктов питания и напитков' };
   return {
     ...base,
     status: 'DECIDED',
@@ -261,6 +264,9 @@ function judgePurpose(text: string): PurposeVerdict {
     generatedBy: 'LLM',
     reason: 'В тексте назван предмет покупки, он подходит под выбранный продукт.',
     llm: MOCK_LLM,
+    profile: odd
+      ? { ...okved, status: 'DOES_NOT_FIT', reason: 'Покупка не связана с общепитом.', evidence: odd, violation: null, llm: MOCK_LLM }
+      : { ...okved, status: 'FITS', reason: null, evidence: null, violation: null, llm: MOCK_LLM },
   };
 }
 
@@ -425,7 +431,7 @@ export const mockApi: Api = {
     } else if ((spot.scoringFactor === 'purpose' || spot.id === 's3') && body.method === 'ANSWER') {
       const verdict = judgePurpose(body.text ?? body.optionCode ?? '');
       if (verdict.generatedBy === 'LLM') delay = LLM_DELAY_MS;
-      if (verdict.status === 'UNAVAILABLE') {
+      if (verdict.status === 'UNAVAILABLE' || verdict.profile?.status === 'DOES_NOT_FIT') {
         status = 'ON_REVIEW';
         lastAnswer = { ...answer, verdict: 'PENDING', purposeVerdict: verdict };
       } else if (verdict.status === 'UNCLEAR') {

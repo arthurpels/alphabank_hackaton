@@ -35,6 +35,19 @@ function llmDetails(llm: LlmMeta): string[] {
 }
 
 export function purposeAuthor(v: PurposeVerdict): Author {
+   if (v.profile?.status === 'DOES_NOT_FIT') {
+    const p = v.profile;
+    return {
+      kind: 'WAITING',
+      title: WAIT_TEXT.handedToSpecialist,
+      details: [
+        `Цель подходит продукту, но не похожа на деятельность компании${p.activity ? ` (${p.activity})` : ''}. Это не отказ: ответ посмотрит специалист банка.`,
+        ...(p.evidence ? [`В вашем тексте: «${p.evidence}».`] : []),
+        ...(p.reason ? [p.reason] : []),
+        ...(p.llm ? llmDetails(p.llm) : []),
+      ],
+    };
+  }
   if (v.status === 'UNAVAILABLE') {
     return {
       kind: 'WAITING',
