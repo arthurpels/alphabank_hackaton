@@ -251,7 +251,11 @@ class PersonaGoldenMasterTest {
             last.set("verdict", answer.get("verdict"));
             last.set("optionCode", answer.get("optionCode"));
             last.set("reviewedBy", answer.get("reviewedBy"));
-            last.set("purpose", pick(answer.get("purposeVerdict"), "status", "purpose", "generatedBy"));
+            ObjectNode purpose = pick(answer.get("purposeVerdict"), "status", "purpose", "generatedBy");
+            if (purpose != null) {
+                purpose.set("profile", pick(answer.get("purposeVerdict").get("profile"), "okved", "status"));
+            }
+            last.set("purpose", purpose);
             last.set("anomaly", anomaly(answer.get("anomalyVerdict")));
         }
         return node;

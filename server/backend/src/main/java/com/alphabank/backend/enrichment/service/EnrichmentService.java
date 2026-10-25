@@ -4,6 +4,8 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
@@ -24,6 +26,7 @@ import com.alphabank.backend.enums.ProductCode;
 import com.alphabank.backend.enums.SourceCode;
 import com.alphabank.backend.repository.ApplicationSourceRepository;
 import com.alphabank.backend.repository.CompanyRepository;
+import com.alphabank.backend.repository.model.CompanyRecord;
 import com.alphabank.backend.scoringclient.dto.ScoreRequest;
 import com.alphabank.backend.scoringclient.enums.Collateral;
 import com.alphabank.backend.scoringclient.enums.Purpose;
@@ -142,6 +145,19 @@ public class EnrichmentService {
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Ошибка сериализации ЕГРЮЛ", e);
         }
+    }
+
+    public Optional<String> okvedMain(String inn) {
+        return companyRepository.findByInn(inn)
+                .map(CompanyRecord::egrulSnapshot)
+                .filter(Objects::nonNull)
+                .map(json -> {
+                    try {
+                        return objectMapper.readValue(json, EgrulResponse.class).okvedMain();
+                    } catch (JsonProcessingException e) {
+                        throw new IllegalStateException("Некорректный снимок ЕГРЮЛ в БД", e);
+                    }
+                });
     }
 
     public void recordConsent(UUID applicationId, SourceCode sourceCode, boolean consentGiven) {

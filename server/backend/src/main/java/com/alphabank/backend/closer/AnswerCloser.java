@@ -14,6 +14,9 @@ import com.alphabank.backend.model.ResolvedPurpose;
 import com.alphabank.backend.repository.model.SpotRecord;
 import com.alphabank.backend.scoringclient.enums.AnswerCheckVerdict;
 import com.alphabank.backend.scoringclient.enums.AnswerClassifyStatus;
+import com.alphabank.backend.enrichment.service.EnrichmentService;
+import com.alphabank.backend.scoringclient.enums.ProfileStatus;
+import com.alphabank.backend.scoringclient.enums.Purpose;
 import com.alphabank.backend.scoringclient.enums.PurposeStatus;
 import com.alphabank.backend.service.impl.FactorStateServiceImpl;
 
@@ -24,12 +27,14 @@ public class AnswerCloser implements SpotCloser {
 
     private final PurposeVerdictResolver purposeVerdictResolver;
     private final AnomalyAnswerResolver anomalyAnswerResolver;
+    private final EnrichmentService enrichmentService;
     private final SpotResolutionWriter writer;
 
     public AnswerCloser(PurposeVerdictResolver purposeVerdictResolver, AnomalyAnswerResolver anomalyAnswerResolver,
-                        SpotResolutionWriter writer) {
+                        EnrichmentService enrichmentService, SpotResolutionWriter writer) {
         this.purposeVerdictResolver = purposeVerdictResolver;
         this.anomalyAnswerResolver = anomalyAnswerResolver;
+        this.enrichmentService = enrichmentService;
         this.writer = writer;
     }
 
@@ -56,18 +61,25 @@ public class AnswerCloser implements SpotCloser {
     private void closePurpose(SpotCloseContext context) {
         SpotCloseRequest request = context.request();
         String goal = request.text() != null ? request.text() : request.optionCode();
-        ResolvedPurpose resolved = purposeVerdictResolver.resolve(context.spot(), context.product().code(), goal);
+        ResolvedPurpose resolved = purposeVerdictResolver.resolve(context.spot(), context.product().code(), goal,
+                enrichmentService.okvedMain(context.inn()).orElse(null));
         PurposeVerdictDto verdict = resolved.verdict();
         String source = source(resolved);
         if (verdict.status() == PurposeStatus.NOT_APPLICABLE) {
             writer.acceptPurpose(context.spot(), context.user().id(), null, goal, verdict, resolved.reused(),
                     "Цель для этого продукта не учитывается — " + source);
         } else if (verdict.status() == PurposeStatus.UNAVAILABLE) {
-            writer.sendPurposeToReview(context.spot(), context.user().id(), goal, verdict, resolved.reused(),
+            writer.sendPurposeToReview(context.spot(), context.user().id(), null, goal, verdict, resolved.reused(),
                     "LLM недоступна — ответ передан на проверку специалисту");
         } else if (verdict.purpose() == null) {
             writer.rejectPurpose(context.spot(), context.user().id(), goal, verdict, resolved.reused(),
                     UNCLEAR_GOAL, UNCLEAR_GOAL + " — " + source);
+        } else if (verdict.purpose() == Purpose.MATCH && verdict.profile() != null
+                && verdict.profile().status() == ProfileStatus.DOES_NOT_FIT) {
+            writer.sendPurposeToReview(context.spot(), context.user().id(), verdict.purpose().name(), goal, verdict,
+                    resolved.reused(), "Цель не похожа на деятельность компании (" + verdict.profile().activity()
+                            + "): " + verdict.profile().evidence() + " — ответ передан на проверку специалисту — "
+                            + source);
         } else {
             writer.acceptPurpose(context.spot(), context.user().id(), verdict.purpose().name(), goal, verdict,
                     resolved.reused(), "Цель кредита: " + goal + " — " + source);

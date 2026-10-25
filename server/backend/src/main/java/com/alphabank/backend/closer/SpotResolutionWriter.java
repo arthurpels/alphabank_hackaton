@@ -64,9 +64,9 @@ public class SpotResolutionWriter {
                 purposePayload(spot, verdict, reused, AnswerVerdict.REJECTED));
     }
 
-    public void sendPurposeToReview(SpotRecord spot, UUID userId, String goal, PurposeVerdictDto verdict,
-                                    boolean reused, String reason) {
-        spotAnswerRepository.insert(new SpotAnswerRecord(UUID.randomUUID(), spot.id(), null, goal, null,
+    public void sendPurposeToReview(SpotRecord spot, UUID userId, String optionCode, String goal,
+                                    PurposeVerdictDto verdict, boolean reused, String reason) {
+        spotAnswerRepository.insert(new SpotAnswerRecord(UUID.randomUUID(), spot.id(), optionCode, goal, null,
                 null, null, AnswerVerdict.PENDING, null, null, OffsetDateTime.now(clock), null, verdict, null));
         spotRepository.updateStatus(spot.id(), SpotStatus.ON_REVIEW, null);
         auditService.record(spot.applicationId(), AuditEventType.SPOT_CLOSED, userId, reason,
@@ -81,6 +81,10 @@ public class SpotResolutionWriter {
         payload.put("purposeStatus", verdict.status().name());
         payload.put("generatedBy", verdict.generatedBy());
         payload.put("reused", reused);
+        if (verdict.profile() != null) {
+            payload.put("profileStatus", verdict.profile().status().name());
+            payload.put("okved", verdict.profile().okved());
+        }
         if (verdict.llm() != null) {
             payload.put("llm", Map.of("model", verdict.llm().model(), "digest", verdict.llm().digest(),
                     "promptVersion", verdict.llm().promptVersion(), "cached", verdict.llm().cached()));

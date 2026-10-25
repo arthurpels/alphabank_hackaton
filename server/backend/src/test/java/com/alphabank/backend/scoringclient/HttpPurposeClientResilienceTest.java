@@ -71,7 +71,7 @@ class HttpPurposeClientResilienceTest {
         server.start();
         DemoClock clock = new DemoClock(Clock.fixed(Instant.parse("2026-10-23T10:00:00Z"), ZoneOffset.UTC));
         HttpPurposeClient client = client(clock);
-        PurposeRequest request = new PurposeRequest(ProductCode.EQUIPMENT, "оборудование");
+        PurposeRequest request = new PurposeRequest(ProductCode.EQUIPMENT, "оборудование", null);
 
         assertThrows(RestClientException.class, () -> client.classify(request));
         assertThrows(RestClientException.class, () -> client.classify(request));

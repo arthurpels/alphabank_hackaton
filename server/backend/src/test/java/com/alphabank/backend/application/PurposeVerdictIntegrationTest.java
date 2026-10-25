@@ -81,6 +81,25 @@ class PurposeVerdictIntegrationTest {
     }
 
     @Test
+    void goalNotLikeCompanyActivityGoesToSpecialist() throws Exception {
+        String id = evaluated();
+
+        answerPurpose(id, "трактор для доставки")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath(PURPOSE + ".status").value("ON_REVIEW"))
+                .andExpect(jsonPath(PURPOSE + ".lastAnswer.verdict").value("PENDING"))
+                .andExpect(jsonPath(PURPOSE + ".lastAnswer.optionCode").value("MATCH"))
+                .andExpect(jsonPath(PURPOSE + ".lastAnswer.purposeVerdict.purpose").value("MATCH"))
+                .andExpect(jsonPath(PURPOSE + ".lastAnswer.purposeVerdict.profile.status").value("DOES_NOT_FIT"))
+                .andExpect(jsonPath(PURPOSE + ".lastAnswer.purposeVerdict.profile.okved").value("56.30"));
+
+        assertThat(purposeClient.lastRequest().okved()).isEqualTo("56.30");
+        List<String> reasons = JsonPath.read(history(id), "$[?(@.payload.profileStatus == 'DOES_NOT_FIT')].reason");
+        assertThat(reasons).containsExactly("Цель не похожа на деятельность компании (" + CountingPurposeClient.ACTIVITY
+                + "): трактор — ответ передан на проверку специалисту — решило правило: словарь целей");
+    }
+
+    @Test
     void ruleVerdictIsJournaledAsKeywords() throws Exception {
         String id = evaluated();
 

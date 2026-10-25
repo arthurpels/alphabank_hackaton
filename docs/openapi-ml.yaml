@@ -1291,7 +1291,14 @@ paths:
         клиента → ответ». `MATCH` и `MISMATCH` принимаются, только если цитата есть дословно в тексте клиента, называет
         предмет покупки (не только общие слова) и обоснование не содержит сомнений; иначе — `UNCLEAR` с кодом в `violation`. Ответ не по формату — `UNAVAILABLE`
         с `violation = FORMAT`. `generatedBy` показывает, кто решил, `reason` — объяснение LLM. Пустая цель — `null` без LLM. Для продуктов
-        без словаря (овердрафт) — `applicable = false`.'
+        без словаря (овердрафт) — `applicable = false`.
+        Деятельность компании (M33): если передан `okved` (основной ОКВЭД из ЕГРЮЛ) и цель подходит продукту (`MATCH`),
+        LLM с правилами ответов (`ml/llm.yaml`, раздел `profile`) проверяет, похожа ли цель на деятельность компании
+        (класс ОКВЭД из `ml/okved.yaml`). Итог — в `profile`: `FITS` — подходит или это трата, нужная любому бизнесу
+        (офисная техника, мебель, транспорт, аренда, зарплата, налоги); `DOES_NOT_FIT` — предмет покупки явно нужен
+        другой деятельности, бэкенд отправляет ответ специалисту (не отказ); `UNCLEAR` — связь неочевидна, специалисту
+        не отправляем; `NOT_CHECKED` — проверки не было (LLM выключена или не ответила, класс ОКВЭД неизвестен,
+        цель не `MATCH`). Без `okved` — `profile: null`.'
       requestBody:
         required: true
         content:
@@ -1314,6 +1321,12 @@ paths:
                 value:
                   productCode: WORKING_CAPITAL
                   goal: закупка оборудования для цеха
+              profile:
+                summary: Производитель компьютеров берёт кредит на кофемашины — без LLM деятельность не проверена
+                value:
+                  productCode: EQUIPMENT
+                  goal: кофемашины для второй точки
+                  okved: '26.20'
       responses:
         '200':
           description: результат разбора
@@ -1336,6 +1349,7 @@ paths:
                     evidence: null
                     violation: null
                     llm: null
+                    profile: null
                 mismatch:
                   summary: Станок за счёт оборотного кредита — цель не совпадает
                   value:
@@ -1349,6 +1363,7 @@ paths:
                     evidence: null
                     violation: null
                     llm: null
+                    profile: null
                 ambiguous:
                   summary: Признаки обоих продуктов — без LLM цель не определена
                   value:
@@ -1363,6 +1378,28 @@ paths:
                     evidence: null
                     violation: null
                     llm: null
+                    profile: null
+                profile:
+                  summary: Производитель компьютеров берёт кредит на кофемашины — без LLM деятельность не проверена
+                  value:
+                    status: DECIDED
+                    purpose: MATCH
+                    applicable: true
+                    generatedBy: KEYWORDS
+                    matchedKeywords:
+                    - кофемашин
+                    reason: null
+                    evidence: null
+                    violation: null
+                    llm: null
+                    profile:
+                      okved: '26.20'
+                      activity: ОКВЭД 26.20 — Производство компьютеров, электронных и оптических изделий
+                      status: NOT_CHECKED
+                      reason: null
+                      evidence: null
+                      violation: null
+                      llm: null
         '422':
           $ref: '#/components/responses/ValidationError'
   /summary:
@@ -2299,6 +2336,12 @@ components:
           nullable: true
           maxLength: 1000
           description: цель со слов клиента
+        okved:
+          type: string
+          nullable: true
+          pattern: ^\d{2}(\.\d{1,2}){0,2}$
+          example: '56.30'
+          description: основной ОКВЭД компании из ЕГРЮЛ; есть — проверяется соответствие цели деятельности (M33)
     PurposeResponse:
       type: object
       required:
@@ -2349,6 +2392,56 @@ components:
             `NO_EVIDENCE` — нет цитаты; `EVIDENCE_NOT_IN_GOAL` — цитаты нет в тексте клиента; `GENERIC_EVIDENCE` — в цитате только общие слова
             («на развитие бизнеса»), предмета покупки нет; `UNCERTAIN_REASON` — в
             обосновании сомнение, а ответ уверенный (статус `UNCLEAR`)'
+        llm:
+          $ref: '#/components/schemas/LlmMeta'
+        profile:
+          allOf:
+          - $ref: '#/components/schemas/ProfileCheck'
+          nullable: true
+          description: проверка цели против деятельности компании (M33); `null` — `okved` не передан
+    ProfileCheck:
+      type: object
+      required:
+      - okved
+      - activity
+      - status
+      properties:
+        okved:
+          type: string
+          example: '26.20'
+        activity:
+          type: string
+          nullable: true
+          description: класс ОКВЭД из `ml/okved.yaml`; `null` — класс неизвестен
+          example: ОКВЭД 26.20 — Производство компьютеров, электронных и оптических изделий
+        status:
+          type: string
+          enum:
+          - FITS
+          - DOES_NOT_FIT
+          - UNCLEAR
+          - NOT_CHECKED
+        reason:
+          type: string
+          nullable: true
+          description: объяснение LLM
+        evidence:
+          type: string
+          nullable: true
+          description: цитата из цели клиента — предмет покупки
+        violation:
+          type: string
+          nullable: true
+          enum:
+          - FORMAT
+          - NO_EVIDENCE
+          - EVIDENCE_NOT_IN_GOAL
+          - UNIVERSAL_PURCHASE
+          - UNCERTAIN_REASON
+          - null
+          description: '`UNIVERSAL_PURCHASE` — LLM ответила «не похоже», но цель — трата, нужная любому бизнесу (итог `FITS`);
+            `NO_EVIDENCE`, `EVIDENCE_NOT_IN_GOAL`, `UNCERTAIN_REASON` — «не похоже» без цитаты или с сомнением (итог `UNCLEAR`);
+            `FORMAT` — ответ не по схеме (итог `NOT_CHECKED`)'
         llm:
           $ref: '#/components/schemas/LlmMeta'
     SpotType:

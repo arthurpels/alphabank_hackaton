@@ -2,6 +2,7 @@ from typing import Any
 
 from scoring.answer_rules import PURPOSE_ANSWERS, PurposeRules
 from scoring.llm import LlmClient, prompt_version
+from scoring.profile import ProfileChecker
 from scoring.schemas import LlmMeta, ProductCode, Purpose, PurposeRequest, PurposeResponse, PurposeStatus
 
 LLM_SCHEMA = {
@@ -20,7 +21,13 @@ def _normalize(text: str) -> str:
 
 
 class PurposeClassifier:
-    def __init__(self, keywords: dict[str, list[str]], llm: LlmClient | None, prompts: dict[str, Any]) -> None:
+    def __init__(
+        self,
+        keywords: dict[str, list[str]],
+        llm: LlmClient | None,
+        prompts: dict[str, Any],
+        profile: ProfileChecker | None = None,
+    ) -> None:
         unknown = keywords.keys() - {code.value for code in ProductCode}
         if unknown:
             raise ValueError(f"в purpose_keywords неизвестные продукты: {', '.join(sorted(unknown))}")
@@ -29,8 +36,17 @@ class PurposeClassifier:
         self.prompts = prompts
         self.prompt_version = prompt_version(prompts["purpose"], LLM_SCHEMA)
         self.rules = PurposeRules.from_config(prompts["purpose"]["rules"])
+        self.profile = profile
 
     def classify(self, request: PurposeRequest) -> PurposeResponse:
+        response = self._classify(request)
+        if request.okved is None or self.profile is None:
+            return response
+        if response.status != PurposeStatus.DECIDED or response.purpose != Purpose.MATCH:
+            return response.model_copy(update={"profile": self.profile.not_checked(request.okved)})
+        return response.model_copy(update={"profile": self.profile.check(request.okved, request.goal or "")})
+
+    def _classify(self, request: PurposeRequest) -> PurposeResponse:
         product = request.product_code.value
         if product not in self.keywords:
             return self._keywords(PurposeStatus.NOT_APPLICABLE, None, applicable=False, matched=[])

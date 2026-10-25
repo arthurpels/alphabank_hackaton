@@ -1565,6 +1565,49 @@ components:
               example: bba46b2556f0
             cached:
               type: boolean
+        profile:
+          type: object
+          nullable: true
+          description: |
+            Сверка цели с деятельностью компании (M33): основной ОКВЭД из ЕГРЮЛ против цели, только если цель подходит
+            продукту. `DOES_NOT_FIT` — ответ `PENDING`, пятно `ON_REVIEW` у специалиста с причиной (не отказ);
+            `FITS`, `UNCLEAR`, `NOT_CHECKED` (LLM выключена или не ответила) — как обычно, пятно закрыто.
+            `null` — ответ сохранён до M33.
+          required: [okved, status]
+          properties:
+            okved:
+              type: string
+              example: '56.30'
+            activity:
+              type: string
+              nullable: true
+              example: ОКВЭД 56.30 — Деятельность по предоставлению продуктов питания и напитков
+            status:
+              type: string
+              enum: [FITS, DOES_NOT_FIT, UNCLEAR, NOT_CHECKED]
+            reason:
+              type: string
+              nullable: true
+            evidence:
+              type: string
+              nullable: true
+              description: цитата из цели клиента — предмет покупки
+            violation:
+              type: string
+              nullable: true
+              description: какое правило ответа сработало (`UNIVERSAL_PURCHASE` — трата, нужная любому бизнесу)
+            llm:
+              type: object
+              nullable: true
+              properties:
+                model:
+                  type: string
+                digest:
+                  type: string
+                promptVersion:
+                  type: string
+                cached:
+                  type: boolean
 
     SpotCreate:
       type: object

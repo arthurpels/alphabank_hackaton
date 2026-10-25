@@ -93,3 +93,23 @@ def test_purpose_simple_rows_are_decided_by_keywords() -> None:
         if row["kind"] == "simple":
             assert purpose_answer(row) == row["expected"], row["id"]
 
+
+
+PROFILE = DATA_DIR / "purpose_profile_golden.jsonl"
+PROFILE_FIELDS = {"id", "productCode", "okved", "text", "expected", "kind", "note", "disputed"}
+
+
+def test_profile_set_format_and_coverage() -> None:
+    rows = load(PROFILE)
+    classes = yaml.safe_load((RULES_PATH.parent / "okved.yaml").read_text(encoding="utf-8"))["classes"]
+
+    for row in rows:
+        assert set(row) == PROFILE_FIELDS, row["id"]
+        assert row["expected"] in {"FITS", "DOES_NOT_FIT"}, row["id"]
+        assert row["okved"][:2] in classes, row["id"]
+        assert row["kind"] in KINDS and row["note"].strip(), row["id"]
+        request = PurposeRequest(product_code=row["productCode"], goal=row["text"])
+        assert purpose_classifier.classify(request).purpose.value == "MATCH", row["id"]
+    assert [row["id"] for row in rows] == [f"F{n:03d}" for n in range(1, len(rows) + 1)]
+    assert {row["expected"] for row in rows} == {"FITS", "DOES_NOT_FIT"}
+    assert len(rows) >= 30

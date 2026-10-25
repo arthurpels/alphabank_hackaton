@@ -62,6 +62,53 @@ def _clean(value: Any, limit: int) -> str | None:
     return value[:limit] or None
 
 
+PROFILE_ANSWERS = ("FITS", "DOES_NOT_FIT", "UNCLEAR")
+ProfileViolation = Literal["FORMAT", "NO_EVIDENCE", "EVIDENCE_NOT_IN_GOAL", "UNIVERSAL_PURCHASE", "UNCERTAIN_REASON"]
+
+
+@dataclass(frozen=True)
+class ProfileVerdict:
+    answer: str | None
+    reason: str | None
+    evidence: str | None
+    violation: ProfileViolation | None
+
+
+@dataclass(frozen=True)
+class ProfileRules:
+    min_evidence_chars: int
+    universal: tuple[str, ...]
+    uncertainty_markers: tuple[str, ...]
+
+    @classmethod
+    def from_config(cls, raw: dict[str, Any]) -> "ProfileRules":
+        return cls(
+            min_evidence_chars=int(raw["min_evidence_chars"]),
+            universal=tuple(normalize_text(word) for word in raw["universal"]),
+            uncertainty_markers=tuple(normalize_text(marker) for marker in raw["uncertainty_markers"]),
+        )
+
+    def check(self, content: dict[str, Any], goal: str) -> ProfileVerdict:
+        answer = content.get("fit")
+        reason = _clean(content.get("reason"), MAX_REASON_LENGTH)
+        evidence = _clean(content.get("evidence"), MAX_EVIDENCE_LENGTH)
+        if answer not in PROFILE_ANSWERS:
+            return ProfileVerdict(None, reason, evidence, "FORMAT")
+        if answer != "DOES_NOT_FIT":
+            return ProfileVerdict(answer, reason, evidence, None)
+        normalized_goal = normalize_text(goal)
+        normalized_evidence = normalize_text(evidence or "")
+        if len(normalized_evidence) < self.min_evidence_chars:
+            return ProfileVerdict("UNCLEAR", reason, evidence, "NO_EVIDENCE")
+        if locate_evidence(normalized_evidence, normalized_goal) is None:
+            return ProfileVerdict("UNCLEAR", reason, evidence, "EVIDENCE_NOT_IN_GOAL")
+        if any(word in normalized_evidence for word in self.universal):
+            return ProfileVerdict("FITS", reason, evidence, "UNIVERSAL_PURCHASE")
+        if any(marker in normalize_text(reason or "") for marker in self.uncertainty_markers):
+            return ProfileVerdict("UNCLEAR", reason, evidence, "UNCERTAIN_REASON")
+        return ProfileVerdict("DOES_NOT_FIT", reason, evidence, None)
+
+
 @dataclass(frozen=True)
 class PurposeVerdict:
     answer: str | None

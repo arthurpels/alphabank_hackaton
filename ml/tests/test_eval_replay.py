@@ -5,9 +5,10 @@ from scoring.replay import ReplayLlm
 def test_golden_sets_replay_without_ollama() -> None:
     replay = ReplayLlm(REPLAY_PATH)
 
-    purpose, answers = evaluate(local_runner(replay), runs=2)
+    results = evaluate(local_runner(replay), runs=2)
+    purpose = results[0]
 
     assert replay.misses == []
-    assert purpose.unstable() == [] and answers.unstable() == []
+    assert all(result.unstable() == [] for result in results)
     correct, total = purpose.accuracy()
     assert correct >= PURPOSE_BASELINE_ACCURACY * total

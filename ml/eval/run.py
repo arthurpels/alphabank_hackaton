@@ -11,12 +11,15 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 ML_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ML_DIR))
 
 from scoring.answers import AnswerClassifier  # noqa: E402
 from scoring.engine import Engine  # noqa: E402
 from scoring.llm import LlmAnswer, LlmClient, LlmSettings, OllamaClient, load_prompts  # noqa: E402
+from scoring.profile import ProfileChecker  # noqa: E402
 from scoring.purpose import PurposeClassifier  # noqa: E402
 from scoring.replay import RecordingLlm, ReplayLlm  # noqa: E402
 from scoring.schemas import AnswerClassifyRequest, PurposeRequest  # noqa: E402
@@ -44,7 +47,8 @@ class GoldenSet:
 PURPOSE = GoldenSet("purpose", "Цель кредита (M12)", DATA_DIR / "purpose_golden.jsonl", "/purpose")
 ANSWERS = GoldenSet("answers", "Ответы на аномалии (M13)", DATA_DIR / "anomaly_answers_golden.jsonl",
                     "/answers/classify")
-SETS = (PURPOSE, ANSWERS)
+PROFILE = GoldenSet("profile", "Цель × деятельность (M33)", DATA_DIR / "purpose_profile_golden.jsonl", "/purpose")
+SETS = (PURPOSE, ANSWERS, PROFILE)
 
 
 class TimedLlm:
@@ -89,6 +93,18 @@ def answer_value(response: dict[str, Any]) -> str:
     return response["code"] or response["status"]
 
 
+def profile_summary(response: dict[str, Any]) -> dict[str, Any]:
+    purpose = purpose_value(response)
+    profile = response.get("profile") or {}
+    if purpose != "MATCH":
+        value, status = f"цель {purpose}", response["status"]
+    else:
+        value = profile.get("status") or "NOT_CHECKED"
+        status = "UNAVAILABLE" if value == "NOT_CHECKED" else "DECIDED"
+    return {"value": value, "generatedBy": "LLM" if profile.get("llm") else "KEYWORDS", "status": status,
+            "violation": profile.get("violation"), "comparable": comparable(response)}
+
+
 def comparable(response: dict[str, Any]) -> str:
     llm = response.get("llm")
     stripped = {**response, "llm": llm and {**llm, "cached": None}}
@@ -103,7 +119,8 @@ def summarize(response: dict[str, Any], value: str) -> dict[str, Any]:
 def local_runner(llm: LlmClient | None) -> dict[str, Callable[[dict[str, Any]], dict[str, Any]]]:
     engine = Engine.from_yaml(ML_DIR / "scoring_rules.yaml")
     prompts = load_prompts(ML_DIR / "llm.yaml")
-    purpose = PurposeClassifier(engine.purpose_keywords, llm, prompts)
+    okved = yaml.safe_load((ML_DIR / "okved.yaml").read_text(encoding="utf-8"))["classes"]
+    purpose = PurposeClassifier(engine.purpose_keywords, llm, prompts, ProfileChecker(okved, llm, prompts))
     answers = AnswerClassifier(engine.answer_keywords, llm, prompts)
 
     def run_purpose(row: dict[str, Any]) -> dict[str, Any]:
@@ -116,7 +133,11 @@ def local_runner(llm: LlmClient | None) -> dict[str, Callable[[dict[str, Any]], 
         dumped = response.model_dump(mode="json", by_alias=True)
         return summarize(dumped, answer_value(dumped))
 
-    return {PURPOSE.name: run_purpose, ANSWERS.name: run_answers}
+    def run_profile(row: dict[str, Any]) -> dict[str, Any]:
+        request = PurposeRequest(product_code=row["productCode"], goal=row["text"], okved=row["okved"])
+        return profile_summary(purpose.classify(request).model_dump(mode="json", by_alias=True))
+
+    return {PURPOSE.name: run_purpose, ANSWERS.name: run_answers, PROFILE.name: run_profile}
 
 
 def http_runner(url: str) -> dict[str, Callable[[dict[str, Any]], dict[str, Any]]]:
@@ -134,11 +155,16 @@ def http_runner(url: str) -> dict[str, Callable[[dict[str, Any]], dict[str, Any]
         response = post(ANSWERS.endpoint, {"text": row["text"], "anomaly": row["anomaly"]})
         return summarize(response, answer_value(response))
 
-    return {PURPOSE.name: run_purpose, ANSWERS.name: run_answers}
+    def run_profile(row: dict[str, Any]) -> dict[str, Any]:
+        body = {"productCode": row["productCode"], "goal": row["text"], "okved": row["okved"]}
+        return profile_summary(post(PROFILE.endpoint, body))
+
+    return {PURPOSE.name: run_purpose, ANSWERS.name: run_answers, PROFILE.name: run_profile}
 
 
-def evaluate(runner: dict[str, Callable[[dict[str, Any]], dict[str, Any]]], runs: int) -> list[SetResult]:
-    results = [SetResult(golden, golden.rows()) for golden in SETS]
+def evaluate(runner: dict[str, Callable[[dict[str, Any]], dict[str, Any]]], runs: int,
+             sets: tuple[GoldenSet, ...] = SETS) -> list[SetResult]:
+    results = [SetResult(golden, golden.rows()) for golden in sets]
     for _ in range(runs):
         for result in results:
             classify = runner[result.golden.name]
@@ -229,6 +255,8 @@ def main() -> int:
     parser.add_argument("--runs", type=int, default=2, help="сколько прогонов сравнить на детерминизм")
     parser.add_argument("--replay", type=Path, default=REPLAY_PATH, help="файл записанных ответов модели")
     parser.add_argument("--record", action="store_true", help="live: записать ответы модели в файл replay")
+    parser.add_argument("--sets", nargs="+", choices=[golden.name for golden in SETS],
+                        default=[golden.name for golden in SETS], help="какие наборы прогнать")
     parser.add_argument("--report", type=Path, help="заменить блок eval в этом файле (docs/ml-quality.md)")
     parser.add_argument("--check", action="store_true",
                         help="код выхода 1, если точность цели < 90 %, есть расхождения или нет записанных ответов")
@@ -251,13 +279,16 @@ def main() -> int:
     else:
         runner = http_runner(args.url.rstrip("/"))
 
-    results = evaluate(runner, args.runs)
+    results = evaluate(runner, args.runs, tuple(golden for golden in SETS if golden.name in args.sets))
     replay_check = "—"
     if recorder is not None:
         replay_check = compare_with_replay(recorder, args.replay)
         if args.record:
+            recorded = len(recorder.entries)
+            if args.replay.is_file():
+                recorder.entries = {**ReplayLlm(args.replay).answers, **recorder.entries}
             recorder.write(args.replay)
-            replay_check += f"; записано {len(recorder.entries)} ответов в {args.replay.name}"
+            replay_check += f"; записано {recorded} ответов, всего в {args.replay.name} — {len(recorder.entries)}"
     timing = timed.seconds if timed is not None and args.mode == "live" else []
     misses = len(set(replay.misses)) if replay is not None else 0
     text = report(results, args.mode, args.runs, model, timing, replay_check, misses)
@@ -265,8 +296,8 @@ def main() -> int:
     if args.report:
         write_report(args.report, text)
 
-    purpose = results[0]
-    correct, total = purpose.accuracy()
+    purpose = next((result for result in results if result.golden is PURPOSE), None)
+    correct, total = purpose.accuracy() if purpose is not None else (0, 0)
     failed = correct < PURPOSE_MIN_ACCURACY * total or any(result.unstable() for result in results) or misses
     return 1 if args.check and failed else 0
 
