@@ -1,0 +1,25 @@
+.author { margin-top: 8px; }
+.author__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font: inherit;
+  font-size: 13px;
+  line-height: 18px;
+  background: var(--color-light-bg-primary);
+  border: 1px solid var(--color-light-border-secondary);
+  color: var(--color-light-text-secondary);
+}
+button.author__chip { cursor: pointer; }
+.author__chip--ai { color: var(--color-light-text-link); }
+.author__chip--waiting { color: var(--color-light-text-attention); }
+.author__more { text-decoration: underline; text-underline-offset: 2px; }
+.author__details {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--color-light-text-secondary);
+}

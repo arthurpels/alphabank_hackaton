@@ -1,6 +1,7 @@
 import type { ApplicationStatus } from '../types';
 
 const BASE = `${import.meta.env.VITE_API_URL ?? 'http://localhost:8080'}/api/v1`;
+const REQUEST_TIMEOUT_MS = 100_000;
 
 export type ProblemCode =
   | 'VALIDATION_ERROR'
@@ -9,7 +10,8 @@ export type ProblemCode =
   | 'NOT_FOUND'
   | 'INVALID_TRANSITION'
   | 'SOURCE_UNAVAILABLE'
-  | 'NETWORK';
+  | 'NETWORK'
+  | 'TIMEOUT';
 
 export class ApiError extends Error {
   status: number;
@@ -58,8 +60,12 @@ async function send(method: string, path: string, body?: unknown): Promise<Respo
       method,
       headers,
       body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
-  } catch {
+  } catch (e) {
+    if (e instanceof DOMException && e.name === 'TimeoutError') {
+      throw new ApiError(0, 'TIMEOUT', 'Сервер слишком долго отвечает. Обновите страницу: ответ мог сохраниться.');
+    }
     throw new ApiError(0, 'NETWORK', 'Нет связи с сервером');
   }
 

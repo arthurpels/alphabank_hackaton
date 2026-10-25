@@ -28,6 +28,8 @@ export interface Spot {
 export interface Fork {
   rateFrom: number;
   rateTo: number;
+  rulesVersion?: string | null;
+  asOf?: string | null;
   zone: DecisionZone;
   thresholds: { approveMax: number; rejectMin: number };
 }
@@ -141,6 +143,9 @@ export interface Decision {
   comment?: string | null;
   reasonSpotId?: string | null;
   decidedAt: string;
+  rulesVersion?: string | null;
+  forkSnapshotId?: string | null;
+  requestHash?: string | null;
 }
 
 export interface PaymentScheduleItem {
@@ -182,6 +187,7 @@ export interface SpotAnswer {
   reviewComment?: string | null;
   createdAt: string;
   reviewedAt?: string | null;
+  purposeVerdict?: PurposeVerdict | null;
 }
 
 export type ScoringFactor = 'debt_load' | 'revenue_stability' | 'purpose' | 'collateral';
@@ -241,8 +247,11 @@ export interface SummaryItem {
 }
 
 export interface UnderwritingSummary {
+  status?: 'ready' | 'generating';
   generatedBy: 'LLM' | 'TEMPLATE';
   items: SummaryItem[];
+  llm?: LlmMeta | null;
+  generatedAt?: string;
 }
 
 export type CheckStatus = 'OK' | 'WARNING' | 'BLOCKED';
@@ -264,4 +273,45 @@ export interface Document {
   kind: string;
   fileName: string;
   uploadedAt: string;
+}
+
+export interface LlmMeta {
+  model: string;
+  digest: string;
+  promptVersion: string;
+  cached: boolean;
+}
+
+export interface PurposeVerdict {
+  productCode: ProductCode;
+  status: 'DECIDED' | 'UNCLEAR' | 'UNAVAILABLE' | 'NOT_APPLICABLE';
+  purpose?: 'MATCH' | 'MISMATCH' | null;
+  generatedBy: 'KEYWORDS' | 'LLM';
+  matchedKeywords: string[];
+  reason?: string | null;
+  llm?: LlmMeta | null;
+}
+
+export interface FieldDiff {
+  path: string;
+  expected?: unknown;
+  actual?: unknown;
+}
+
+export interface UsedVerdict {
+  spotId: string;
+  scoringFactor?: string | null;
+  verdict: PurposeVerdict;
+}
+
+export interface ForkVerification {
+  snapshotId: string;
+  reproducible: boolean;
+  rulesVersion: string;
+  engineVersion?: string | null;
+  currentEngineVersion?: string | null;
+  requestHash: string;
+  calculatedAt: string;
+  verdicts: UsedVerdict[];
+  diff: FieldDiff[];
 }

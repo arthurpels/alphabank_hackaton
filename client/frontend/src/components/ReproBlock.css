@@ -1,0 +1,7 @@
+.repro__result { display: flex; align-items: flex-start; gap: 12px; }
+.repro__icon { flex-shrink: 0; margin-top: 2px; }
+.repro__diff { width: 100%; margin-top: 12px; border-collapse: collapse; font-size: 14px; line-height: 20px; }
+.repro__diff th { text-align: left; font-weight: 400; color: var(--color-light-text-secondary); padding: 6px 12px 6px 0; }
+.repro__diff td { padding: 6px 12px 6px 0; border-top: 1px solid var(--color-light-border-secondary); }
+.repro__verdicts { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.repro__verdict { font-size: 15px; }

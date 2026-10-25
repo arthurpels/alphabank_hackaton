@@ -10,6 +10,7 @@ import type {
   SpotReviewRequest,
   UnderwritingSummary,
   DemoUser,
+  ForkVerification,
   Product,
   SourceChecks,
   SpotCloseRequest,
@@ -32,11 +33,11 @@ export interface Api {
   closeSpot(id: string, spotId: string, body: SpotCloseRequest): Promise<ApplicationDetails>;
   uploadDocument(id: string, file: File, kind: string): Promise<Document>;
   downloadDocument(id: string, documentId: string): Promise<Blob>;
+  verifyFork(id: string): Promise<ForkVerification>;
   submitApplication(id: string): Promise<ApplicationDetails>;
   acceptOffer(id: string, offerId: string): Promise<ApplicationDetails>;
   signContract(id: string): Promise<ApplicationDetails>;
   cancelApplication(id: string, reason?: string): Promise<ApplicationDetails>;
-  // кабинет андеррайтера (T39)
   getUnderwritingQueue(statuses?: ApplicationStatus[]): Promise<QueueItem[]>;
   getUnderwritingSummary(id: string): Promise<UnderwritingSummary>;
   reviewSpot(id: string, spotId: string, body: SpotReviewRequest): Promise<ApplicationDetails>;
@@ -61,6 +62,7 @@ const realApi: Api = {
     return request('POST', `/applications/${id}/documents`, form);
   },
   downloadDocument: (id, documentId) => requestBlob(`/applications/${id}/documents/${documentId}`),
+  verifyFork: (id) => request('POST', `/applications/${id}/fork/verify`),
   submitApplication: (id) => request('POST', `/applications/${id}/submit`),
   acceptOffer: (id, offerId) => request('POST', `/applications/${id}/accept`, { offerId }),
   signContract: (id) => request('POST', `/applications/${id}/sign`),

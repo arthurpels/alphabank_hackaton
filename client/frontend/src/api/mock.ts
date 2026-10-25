@@ -7,6 +7,7 @@ import type {
   ApplicationStatus,
   Contract,
   Offer,
+  PurposeVerdict,
   Spot,
   SpotCloseRequest,
 } from '../types';
@@ -211,6 +212,47 @@ function checkCloseBody(b: SpotCloseRequest): string | null {
   return null;
 }
 
+const MOCK_LLM = {
+  model: 'qwen3:4b',
+  digest: '359d7dd4bcdab3d86b87d73ac27966f4dbb9f5efdfcc75d34a8764a09474fae7',
+  promptVersion: 'bba46b2556f0',
+  cached: false,
+};
+const PURPOSE_WORDS = ['кофемашин', 'оборудован', 'станок', 'техник', 'витрин', 'холодильник', 'принтер'];
+const LLM_DELAY_MS = 1200;
+
+const llmIsOff = () => new URLSearchParams(window.location.search).get('mockLlm') === 'off';
+
+function judgePurpose(text: string): PurposeVerdict {
+  const goal = text.toLowerCase().replace(/ё/g, 'е');
+  const matched = PURPOSE_WORDS.filter((w) => goal.includes(w));
+  const base = { productCode: 'EQUIPMENT' as const, matchedKeywords: matched };
+  if (matched.length > 0) {
+    return { ...base, status: 'DECIDED', purpose: 'MATCH', generatedBy: 'KEYWORDS', reason: null, llm: null };
+  }
+  if (llmIsOff()) {
+    return { ...base, status: 'UNAVAILABLE', purpose: null, generatedBy: 'KEYWORDS', reason: null, llm: null };
+  }
+  if (goal.trim().length < 25 || goal.includes('развитие')) {
+    return {
+      ...base,
+      status: 'UNCLEAR',
+      purpose: null,
+      generatedBy: 'LLM',
+      reason: 'Формулировка слишком общая: не названо, что именно покупаете.',
+      llm: MOCK_LLM,
+    };
+  }
+  return {
+    ...base,
+    status: 'DECIDED',
+    purpose: 'MATCH',
+    generatedBy: 'LLM',
+    reason: 'В тексте назван предмет покупки, он подходит под выбранный продукт.',
+    llm: MOCK_LLM,
+  };
+}
+
 const wait = <T>(v: T) => new Promise<T>((r) => setTimeout(() => r(structuredClone(v)), 150));
 
 export const mockApi: Api = {
@@ -297,7 +339,26 @@ export const mockApi: Api = {
     let status: Spot['status'] = 'CLOSED';
     let lastAnswer: Spot['lastAnswer'] = null;
     const answer = { id: `a-${spotId}`, optionCode: body.optionCode, text: body.text, documentId: body.documentId, contractAmount: body.contractAmount, contractTermMonths: body.contractTermMonths, createdAt: new Date().toISOString() };
-    if (body.method === 'UPLOAD' || (body.method === 'ANSWER' && spot.answerOptions?.length) || (body.method === 'ADD_COLLATERAL' && body.collateralType === 'PLEDGE')) {
+    let delay = 150;
+    if ((spot.scoringFactor === 'purpose' || spot.id === 's3') && body.method === 'ANSWER') {
+      const verdict = judgePurpose(body.text ?? body.optionCode ?? '');
+      if (verdict.generatedBy === 'LLM') delay = LLM_DELAY_MS;
+      if (verdict.status === 'UNAVAILABLE') {
+        status = 'ON_REVIEW';
+        lastAnswer = { ...answer, verdict: 'PENDING', purposeVerdict: verdict };
+      } else if (verdict.status === 'UNCLEAR') {
+        status = 'OPEN';
+        lastAnswer = {
+          ...answer,
+          verdict: 'REJECTED',
+          reviewedBy: 'SYSTEM',
+          reviewComment: 'Не удалось понять цель — напишите подробнее, что именно покупаете',
+          purposeVerdict: verdict,
+        };
+      } else {
+        lastAnswer = { ...answer, verdict: 'ACCEPTED', reviewedBy: 'SYSTEM', purposeVerdict: verdict };
+      }
+    } else if (body.method === 'UPLOAD' || (body.method === 'ANSWER' && spot.answerOptions?.length) || (body.method === 'ADD_COLLATERAL' && body.collateralType === 'PLEDGE')) {
       status = 'ON_REVIEW';
       lastAnswer = { ...answer, verdict: 'PENDING' };
     } else if (body.method === 'ANSWER' && (body.text ?? '').trim().length < 10) {
@@ -311,7 +372,7 @@ export const mockApi: Api = {
     if (state.application.status === 'INFO_REQUESTED' && state.spots.every((s) => s.status !== 'OPEN')) {
       setStatus('UNDERWRITING');
     }
-    return wait(state);
+    return new Promise((resolve) => setTimeout(() => resolve(structuredClone(state)), delay));
   },
 
   uploadDocument: (_appId, file, kind) =>

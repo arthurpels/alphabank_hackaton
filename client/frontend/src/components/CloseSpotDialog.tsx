@@ -9,6 +9,7 @@ import { RadioGroup } from '@alfalab/core-components/radio-group';
 import { Textarea } from '@alfalab/core-components/textarea';
 import { SOURCE_LABELS } from '../constants';
 import type { CollateralType, SourceCode, Spot, SpotCloseRequest } from '../types';
+import { WAIT_TEXT } from '../verdictLabels';
 import './CloseSpotDialog.css';
 
 // окно закрытия пятна (T37) поля — по описанию closeSpot в docs/openapi.yaml
@@ -247,6 +248,7 @@ export function CloseSpotDialog({ spot, onDismiss, onSubmit }: Props) {
             </>
           )}
 
+          {loading && method === 'ANSWER' && <p className="close-dialog__hint">{WAIT_TEXT.checkingAnswer}</p>}
           {serverError && <div className="notice notice--bad">{serverError}</div>}
         </div>
       </Modal.Content>
