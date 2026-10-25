@@ -162,25 +162,61 @@ class Engine:
 
     # --- решение ------------------------------------------------------------
     def decide(self, c, product, amount, term):
-        stops = self.stop_factors(c)
-        hard = [s for s, rem in stops if not rem]
-        soft = [s for s, rem in stops if rem]
-        if hard:
-            return "REJECTED", f"неустранимый стоп-фактор: {', '.join(hard)}", None
-        if soft:
-            return "REJECTED", f"открыт устранимый стоп-фактор: {', '.join(soft)}", None
         p = self.r["products"][product]
         fk = self.fork(c, product, amount, term)
-        if fk["policy_ok"] and fk["hi"] <= p["approve_max"]:
-            return "APPROVED", "правый край ≤ порога одобрения", fk
-        if fk["lo"] >= p["reject_min"]:
-            return "REJECTED", "левый край ≥ порога отказа", fk
-        if not fk["policy_ok"] or fk["lo"] > p["approve_max"]:
-            offers = self.grid(c, product, amount, term)
-            if offers:
-                return "COUNTER_OFFER", offers, fk
-            return "REJECTED", "ни один вариант сетки не прошёл", fk
-        return "UNDERWRITING", "вилка пересекает порог одобрения", fk
+        spots = [{"id": code.lower(), "type": "STOP_FACTOR", "status": "OPEN", "pricePp": None, "removable": rem,
+                  "scoringFactor": None} for code, rem in self.stop_factors(c)]
+        spots += [{"id": name, "type": SPOT_FACTORS[name], "status": "OPEN" if fk["vals"][name] is None else "CLOSED",
+                   "pricePp": worst - best, "removable": None, "scoringFactor": name}
+                  for name in SPOT_FACTORS if name not in p.get("skip_factors", [])
+                  for best, worst in [self.f[name]["unknown"]]]
+        needs_grid = not (fk["policy_ok"] and fk["hi"] <= p["approve_max"])
+        offers = self.grid(c, product, amount, term) if needs_grid and not any(
+            s["type"] == "STOP_FACTOR" for s in spots) else []
+        status, reason_spot, rule = decision(fk["lo"], fk["hi"], p["approve_max"], fk["policy_ok"], len(offers),
+                                             spots)
+        why = offers if status == "COUNTER_OFFER" else f"{rule}: {RULE_TEXT[rule]}" + (
+            f", причина — {reason_spot}" if reason_spot else "")
+        return status, why, fk
+
+
+SPOT_FACTORS = {"debt_load": "NO_DATA", "revenue_stability": "NO_DATA", "purpose": "NO_DATA",
+                "collateral": "COLLATERAL"}
+RULE_TEXT = {
+    "R1": "неустранимый стоп-фактор",
+    "R2": "открыт устранимый стоп-фактор",
+    "R3": "политика выполнена и правый край ≤ порога одобрения",
+    "R4": "запрошенное не проходит, в сетке есть проходящий вариант",
+    "R5": "запрошенное не проходит, ни один вариант сетки не прошёл",
+    "R6": "вилка пересекает порог одобрения",
+}
+
+
+def decision(rate_from, rate_to, approve_max, policy_ok, grid_offers, spots):
+    for removable, rule in ((False, "R1"), (True, "R2")):
+        stop = next((s for s in spots if s["type"] == "STOP_FACTOR" and s["status"] != "CLOSED"
+                     and bool(s["removable"]) == removable), None)
+        if stop:
+            return "REJECTED", stop["id"], rule
+    if policy_ok and rate_to <= approve_max:
+        return "APPROVED", None, "R3"
+    if not policy_ok or rate_from > approve_max:
+        if grid_offers:
+            return "COUNTER_OFFER", None, "R4"
+        return "REJECTED", reason_spot(spots), "R5"
+    return "UNDERWRITING", None, "R6"
+
+
+def reason_spot(spots):
+    candidates = [s for s in spots if s["status"] != "CLOSED" and s["pricePp"] is not None]
+    if candidates:
+        return max(enumerate(candidates), key=lambda item: (item[1]["pricePp"], -item[0]))[1]["id"]
+    debt = next((s for s in spots if s["scoringFactor"] == "debt_load"), None)
+    if debt:
+        return debt["id"]
+    if not spots:
+        raise ValueError("у заявки нет пятен — отказ без причины невозможен")
+    return spots[0]["id"]
 
 
 if __name__ == "__main__":

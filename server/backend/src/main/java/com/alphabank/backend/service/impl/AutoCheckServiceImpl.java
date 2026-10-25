@@ -73,7 +73,7 @@ public class AutoCheckServiceImpl implements AutoCheckService {
         return switch (decision.outcome()) {
             case APPROVE -> approve(application, product, calculation, snapshot, decision.reason());
             case REJECT -> reject(application, snapshot, decision.reasonSpotId(), decision.reason());
-            case OFFER_GRID -> counterOffer(application, calculation, snapshot, spots);
+            case OFFER_GRID -> counterOffer(application, calculation, snapshot, spots, decision.reason());
             case UNDERWRITING -> underwriting(application, calculation, decision.reason());
         };
     }
@@ -93,14 +93,12 @@ public class AutoCheckServiceImpl implements AutoCheckService {
     }
 
     private ApplicationStatus counterOffer(ApplicationRecord application, ForkCalculation calculation,
-                                           ForkSnapshotRecord snapshot, List<SpotRecord> spots) {
+                                           ForkSnapshotRecord snapshot, List<SpotRecord> spots,
+                                           String notPassingReason) {
         int saved = gridOfferWriter.save(application.id(), calculation.request(), OfferStatus.OFFERED);
         if (saved == 0) {
-            String reason = "Ни один вариант иных условий не проходит";
-            UUID reasonSpotId = decisionRule.reasonSpotId(spots);
-            return reasonSpotId == null
-                    ? moveTo(application, ApplicationStatus.UNDERWRITING, reason + ", пятна-причины нет")
-                    : reject(application, snapshot, reasonSpotId, reason);
+            return reject(application, snapshot, decisionRule.reasonSpotId(spots),
+                    notPassingReason + ", ни один вариант иных условий не проходит");
         }
         String reason = "Система предлагает иные условия: вариантов " + saved;
         decisionWriter.bySystem(application.id(), DecisionType.ALTERNATIVE, snapshot, null, reason);

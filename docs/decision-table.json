@@ -2479,7 +2479,7 @@
       "id": "T44",
       "group": "Персонажи (synthetic-data.md)",
       "rule": "R1",
-      "why": "ООО «Однодневка»: массовый адрес и новый директор — автоотказ",
+      "why": "ООО «Однодневка»: новый директор и массовый адрес — автоотказ; причина — первый по порядку проверки",
       "input": {
         "productCode": "WORKING_CAPITAL",
         "rateFrom": 17.0,
@@ -2490,7 +2490,7 @@
         "gridOffers": 0,
         "spots": [
           {
-            "id": "mass_address",
+            "id": "new_director",
             "type": "STOP_FACTOR",
             "scoringFactor": null,
             "status": "OPEN",
@@ -2498,7 +2498,7 @@
             "removable": false
           },
           {
-            "id": "new_director",
+            "id": "mass_address",
             "type": "STOP_FACTOR",
             "scoringFactor": null,
             "status": "OPEN",
@@ -2511,7 +2511,7 @@
         "status": "REJECTED",
         "decisionType": "REJECTED",
         "decidedBy": "SYSTEM",
-        "reasonSpotId": "mass_address",
+        "reasonSpotId": "new_director",
         "offers": {
           "status": null,
           "count": 0,

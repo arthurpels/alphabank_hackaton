@@ -1,6 +1,7 @@
 package com.alphabank.backend.decision;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -34,23 +35,42 @@ class AutoDecisionRuleTest {
     }
 
     @Test
-    void leftEdgeInRejectZoneRejectsWithMostExpensiveOpenSpot() {
+    void leftEdgeInRejectZoneLooksForOtherConditionsFirst() {
+        AutoDecision decision = rule.decide(List.of(spot(SpotType.NO_DATA, SpotStatus.OPEN, 3.5, null)),
+                score(24.0, 27.0, true));
+
+        assertThat(decision.outcome()).isEqualTo(AutoDecisionOutcome.OFFER_GRID);
+        assertThat(decision.reasonSpotId()).isNull();
+        assertThat(decision.reason()).isEqualTo("Левый край вилки 24.0 % ≥ порога отказа 24.0 %");
+    }
+
+    @Test
+    void reasonSpotIsMostExpensiveNotClosedSpot() {
         SpotRecord cheap = spot(SpotType.NO_DATA, SpotStatus.OPEN, 0.5, null);
-        SpotRecord expensive = spot(SpotType.NO_DATA, SpotStatus.OPEN, 3.5, null);
+        SpotRecord expensive = spot(SpotType.NO_DATA, SpotStatus.ON_REVIEW, 3.5, null);
         SpotRecord closed = spot(SpotType.NO_DATA, SpotStatus.CLOSED, 9.0, null);
 
-        AutoDecision decision = rule.decide(List.of(cheap, expensive, closed), score(24.0, 27.0, true));
+        assertThat(rule.reasonSpotId(List.of(cheap, expensive, closed))).isEqualTo(expensive.id());
+    }
 
-        assertThat(decision.outcome()).isEqualTo(AutoDecisionOutcome.REJECT);
-        assertThat(decision.reasonSpotId()).isEqualTo(expensive.id());
+    @Test
+    void equalPriceReasonSpotIsTheFirstOne() {
+        SpotRecord first = spot(SpotType.NO_DATA, SpotStatus.OPEN, 1.5, null);
+        SpotRecord second = spot(SpotType.COLLATERAL, SpotStatus.OPEN, 1.5, null);
+
+        assertThat(rule.reasonSpotId(List.of(first, second))).isEqualTo(first.id());
+        assertThat(rule.reasonSpotId(List.of(second, first))).isEqualTo(second.id());
     }
 
     @Test
     void failedPolicyLooksForOtherConditions() {
-        assertThat(rule.decide(List.of(), score(18.0, 19.5, false)).outcome())
-                .isEqualTo(AutoDecisionOutcome.OFFER_GRID);
-        assertThat(rule.decide(List.of(), score(21.0, 23.0, true)).outcome())
-                .isEqualTo(AutoDecisionOutcome.OFFER_GRID);
+        AutoDecision policy = rule.decide(List.of(), score(18.0, 19.5, false));
+        AutoDecision leftEdge = rule.decide(List.of(), score(21.0, 23.0, true));
+
+        assertThat(policy.outcome()).isEqualTo(AutoDecisionOutcome.OFFER_GRID);
+        assertThat(policy.reason()).isEqualTo("Политика продукта не выполнена");
+        assertThat(leftEdge.outcome()).isEqualTo(AutoDecisionOutcome.OFFER_GRID);
+        assertThat(leftEdge.reason()).isEqualTo("Левый край вилки 21.0 % > порога одобрения 20.0 %");
     }
 
     @Test
@@ -73,21 +93,19 @@ class AutoDecisionRuleTest {
     }
 
     @Test
-    void rejectZoneWithoutAnySpotGoesToUnderwriter() {
-        AutoDecision decision = rule.decide(List.of(), score(24.0, 27.0, true));
-
-        assertThat(decision.outcome()).isEqualTo(AutoDecisionOutcome.UNDERWRITING);
-        assertThat(decision.reasonSpotId()).isNull();
+    void applicationWithoutSpotsCannotBeRejectedWithoutReason() {
+        assertThatThrownBy(() -> rule.reasonSpotId(List.of())).isInstanceOf(IllegalStateException.class);
     }
 
     @Test
-    void rejectZoneFallsBackToAnySpotAsReason() {
-        SpotRecord closed = spot(SpotType.COLLATERAL, SpotStatus.CLOSED, null, null);
+    void allClosedReasonSpotIsDebtLoadThenFirstSpot() {
+        SpotRecord collateral = spot(SpotType.COLLATERAL, SpotStatus.CLOSED, 1.5, null);
+        SpotRecord debtLoad = new SpotRecord(UUID.randomUUID(), UUID.randomUUID(), SpotType.NO_DATA, "пятно", null,
+                "debt_load", 3.5, null, SpotStatus.CLOSED, DecidedBy.SYSTEM, null, null, List.of(),
+                OffsetDateTime.now(), null);
 
-        AutoDecision decision = rule.decide(List.of(closed), score(24.0, 27.0, true));
-
-        assertThat(decision.outcome()).isEqualTo(AutoDecisionOutcome.REJECT);
-        assertThat(decision.reasonSpotId()).isEqualTo(closed.id());
+        assertThat(rule.reasonSpotId(List.of(collateral, debtLoad))).isEqualTo(debtLoad.id());
+        assertThat(rule.reasonSpotId(List.of(collateral))).isEqualTo(collateral.id());
     }
 
     private static ScoreResponse score(double from, double to, boolean policyOk) {

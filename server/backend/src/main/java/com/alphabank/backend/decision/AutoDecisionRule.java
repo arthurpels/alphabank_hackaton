@@ -30,17 +30,8 @@ public class AutoDecisionRule {
             return new AutoDecision(AutoDecisionOutcome.APPROVE, null,
                     "Правый край вилки " + score.rateTo() + " % ≤ порога одобрения " + approveMax + " %");
         }
-        if (score.rateFrom() >= score.thresholds().rejectMin()) {
-            String reason = "Левый край вилки " + score.rateFrom() + " % ≥ порога отказа "
-                    + score.thresholds().rejectMin() + " %";
-            UUID reasonSpotId = reasonSpotId(spots);
-            return reasonSpotId == null
-                    ? new AutoDecision(AutoDecisionOutcome.UNDERWRITING, null, reason + ", пятна-причины нет")
-                    : new AutoDecision(AutoDecisionOutcome.REJECT, reasonSpotId, reason);
-        }
         if (!score.policy().ok() || score.rateFrom() > approveMax) {
-            return new AutoDecision(AutoDecisionOutcome.OFFER_GRID, null,
-                    "Запрошенные условия не проходят — ищем иные условия");
+            return new AutoDecision(AutoDecisionOutcome.OFFER_GRID, null, notPassingReason(score));
         }
         return new AutoDecision(AutoDecisionOutcome.UNDERWRITING, null,
                 "Вилка пересекает порог одобрения " + approveMax + " %");
@@ -49,11 +40,25 @@ public class AutoDecisionRule {
     public UUID reasonSpotId(List<SpotRecord> spots) {
         return spots.stream()
                 .filter(spot -> spot.status() != SpotStatus.CLOSED && spot.pricePp() != null)
-                .max(Comparator.comparingDouble(SpotRecord::pricePp))
-                .or(() -> spots.stream().filter(spot -> FactorStateServiceImpl.DEBT_LOAD.equals(spot.scoringFactor())).findFirst())
+                .max(Comparator.comparingDouble(SpotRecord::pricePp).thenComparing(spot -> -spots.indexOf(spot)))
+                .or(() -> spots.stream()
+                        .filter(spot -> FactorStateServiceImpl.DEBT_LOAD.equals(spot.scoringFactor()))
+                        .findFirst())
                 .or(() -> spots.stream().findFirst())
                 .map(SpotRecord::id)
-                .orElse(null);
+                .orElseThrow(() -> new IllegalStateException("У заявки нет пятен — отказ без причины невозможен"));
+    }
+
+    private static String notPassingReason(ScoreResponse score) {
+        if (score.rateFrom() >= score.thresholds().rejectMin()) {
+            return "Левый край вилки " + score.rateFrom() + " % ≥ порога отказа " + score.thresholds().rejectMin()
+                    + " %";
+        }
+        if (score.rateFrom() > score.thresholds().approveMax()) {
+            return "Левый край вилки " + score.rateFrom() + " % > порога одобрения "
+                    + score.thresholds().approveMax() + " %";
+        }
+        return "Политика продукта не выполнена";
     }
 
     private static Optional<SpotRecord> openStopFactor(List<SpotRecord> spots, boolean removable) {
