@@ -1,4 +1,4 @@
-CREATE TABLE underwriting_summary (
+CREATE TABLE IF NOT EXISTS underwriting_summary (
     application_id uuid PRIMARY KEY REFERENCES application (id),
     status         varchar(10) NOT NULL,
     generated_by   varchar(8)  NOT NULL,

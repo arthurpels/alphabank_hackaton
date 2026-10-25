@@ -54,6 +54,7 @@ import com.alphabank.backend.scoringclient.dto.ScoreResponse;
 import com.alphabank.backend.scoringclient.dto.Thresholds;
 import com.alphabank.backend.service.ForkCalculationService;
 import com.alphabank.backend.service.StatusTransitionService;
+import com.alphabank.backend.service.SummaryGenerationService;
 import com.alphabank.backend.service.impl.AutoCheckServiceImpl;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -123,6 +124,7 @@ class DecisionTableTest {
         AutoCheckServiceImpl autoCheck = new AutoCheckServiceImpl(forkCalculationService,
                 mock(EnrichmentService.class), mock(StopFactorSync.class), new AutoDecisionRule(), gridOfferWriter,
                 spotRepository, offerWriter, decisionWriter, statusTransitionService,
+                mock(SummaryGenerationService.class),
                 Clock.fixed(Instant.parse("2026-10-23T10:00:00Z"), ZoneOffset.UTC));
 
         ApplicationStatus status = autoCheck.run(application, product, "7701234560");
