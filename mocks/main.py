@@ -84,7 +84,7 @@ def ofd_connect(request: ConnectRequest) -> dict:
 
 
 @app.get("/mock/ofd/v1/revenue")
-def ofd_revenue(inn: str, months: int = Query(default=12, ge=1, le=12)) -> dict:
+def ofd_revenue(inn: str, months: int = Query(default=12, ge=1, le=24)) -> dict:
     return last_months(resolve_source(inn, "OFD"), months)
 
 
@@ -110,7 +110,7 @@ def acquiring_connect(request: ConnectRequest) -> dict:
 
 
 @app.get("/mock/acquiring/v1/turnover")
-def acquiring_turnover(inn: str, months: int = Query(default=12, ge=1, le=12)) -> dict:
+def acquiring_turnover(inn: str, months: int = Query(default=12, ge=1, le=24)) -> dict:
     return last_months(resolve_source(inn, "ACQUIRING"), months)
 
 

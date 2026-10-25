@@ -24,8 +24,9 @@ import com.alphabank.backend.enrichment.dto.MarketplaceResponse;
 import com.alphabank.backend.enrichment.dto.OfdResponse;
 import com.alphabank.backend.enums.ProductCode;
 import com.alphabank.backend.scoringclient.AnomalyClient;
+import com.alphabank.backend.scoringclient.MlVersionClient;
 import com.alphabank.backend.scoringclient.OfferGridClient;
-import com.alphabank.backend.scoringclient.PurposeClient;
+import com.alphabank.backend.scoringclient.RulesClient;
 import com.alphabank.backend.scoringclient.ScoringClient;
 import com.alphabank.backend.scoringclient.SummaryClient;
 import com.alphabank.backend.scoringclient.dto.AnomaliesResponse;
@@ -34,7 +35,6 @@ import com.alphabank.backend.scoringclient.dto.Factor;
 import com.alphabank.backend.scoringclient.dto.Offer;
 import com.alphabank.backend.scoringclient.dto.OfferGridResponse;
 import com.alphabank.backend.scoringclient.dto.Policy;
-import com.alphabank.backend.scoringclient.dto.PurposeResponse;
 import com.alphabank.backend.scoringclient.dto.ScoreRequest;
 import com.alphabank.backend.scoringclient.dto.ScoreResponse;
 import com.alphabank.backend.scoringclient.dto.SeriesPoint;
@@ -60,6 +60,7 @@ public class FakeExternalServicesConfig {
             1490000L, 1470000L, 1430000L, 1400000L, 1460000L, 1480000L);
 
     public static final long POLICY_MAX_AMOUNT = 500_000_000L;
+    public static final String ENGINE_VERSION = "test-engine";
 
     private final Set<String> paidInns = new HashSet<>();
 
@@ -90,7 +91,7 @@ public class FakeExternalServicesConfig {
                 if (SHELL_INN.equals(inn)) {
                     return new EgrulResponse("EGRUL", inn, "ООО «Однодневка»", "OOO", "ACTIVE",
                             LocalDate.of(2025, 8, 1),
-                            new EgrulResponse.Director("Иванов И. И.", LocalDate.now().minusMonths(1), false),
+                            new EgrulResponse.Director("Иванов И. И.", LocalDate.of(2026, 9, 1), false),
                             new EgrulResponse.Address("г. Москва, ул. Тверская, 7", true), "46.90", 1);
                 }
                 throw new MockNotFoundException("ИНН " + inn + " не найден в источнике");
@@ -110,24 +111,24 @@ public class FakeExternalServicesConfig {
             }
 
             @Override
-            public Optional<OfdResponse> ofdRevenue(String inn) {
+            public Optional<OfdResponse> ofdRevenue(String inn, int requestedMonths) {
                 if (!COFFEE_INN.equals(inn)) {
                     return Optional.empty();
                 }
                 List<OfdResponse.MonthRevenue> months = new ArrayList<>();
-                for (int i = 0; i < MONTHS.size(); i++) {
+                for (int i = Math.max(0, MONTHS.size() - requestedMonths); i < MONTHS.size(); i++) {
                     months.add(new OfdResponse.MonthRevenue(MONTHS.get(i), COFFEE_OFD.get(i)));
                 }
                 return Optional.of(new OfdResponse("OFD", inn, months, 0.7));
             }
 
             @Override
-            public Optional<MarketplaceResponse> marketplaceSales(String inn) {
+            public Optional<MarketplaceResponse> marketplaceSales(String inn, int months) {
                 return Optional.empty();
             }
 
             @Override
-            public Optional<AcquiringResponse> acquiringTurnover(String inn) {
+            public Optional<AcquiringResponse> acquiringTurnover(String inn, int months) {
                 return Optional.empty();
             }
 
@@ -177,10 +178,8 @@ public class FakeExternalServicesConfig {
 
     @Bean
     @Primary
-    public SummaryClient fakeSummaryClient() {
-        return request -> new UnderwritingSummaryDto("TEMPLATE", request.facts().stream()
-                .map(fact -> new SummaryItemDto(fact.label(), List.of(fact)))
-                .toList());
+    public CountingSummaryClient fakeSummaryClient() {
+        return new CountingSummaryClient();
     }
 
     @Bean
@@ -210,13 +209,35 @@ public class FakeExternalServicesConfig {
 
     @Bean
     @Primary
-    public PurposeClient fakePurposeClient() {
-        return request -> {
-            String goal = request.goal() == null ? "" : request.goal().toLowerCase();
-            Purpose purpose = goal.contains("кофемашин") || goal.contains("витрин") ? Purpose.MATCH
-                    : goal.contains("станок") ? Purpose.MISMATCH : null;
-            return new PurposeResponse(purpose, true, "KEYWORDS", List.of(), null);
+    public MlVersionClient fakeMlVersionClient() {
+        return () -> Optional.of(ENGINE_VERSION);
+    }
+
+    @Bean
+    @Primary
+    public RulesClient fakeRulesClient() {
+        return () -> {
+            com.fasterxml.jackson.databind.node.ObjectNode rules =
+                    com.fasterxml.jackson.databind.node.JsonNodeFactory.instance.objectNode();
+            rules.put("rulesVersion", "2026-10-23.draft1");
+            rules.put("calcRatePct", 15.0);
+            rules.putArray("products");
+            rules.putArray("factors");
+            rules.putArray("stopFactors");
+            return rules;
         };
+    }
+
+    @Bean
+    @Primary
+    public CountingAnswerClient fakeAnswerClient() {
+        return new CountingAnswerClient();
+    }
+
+    @Bean
+    @Primary
+    public CountingPurposeClient fakePurposeClient() {
+        return new CountingPurposeClient();
     }
 
     private static ScoreResponse score(ScoreRequest request) {

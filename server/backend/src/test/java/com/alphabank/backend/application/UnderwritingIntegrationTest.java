@@ -80,9 +80,13 @@ class UnderwritingIntegrationTest {
         mvc.perform(get(API + "/underwriting/applications/" + id + "/summary")
                         .header(DemoUserAuthFilter.HEADER, UNDERWRITER))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ready"))
                 .andExpect(jsonPath("$.generatedBy").value("TEMPLATE"))
-                .andExpect(jsonPath("$.items[0].text").value("кредитный рейтинг 655, просрочек за 12 мес. нет"))
-                .andExpect(jsonPath("$.items[1].text").value("ИП зарегистрирован 01.03.2024"));
+                .andExpect(jsonPath("$.items[0].text").value(
+                        "Вилка 18,0–27,0 % пересекает порог одобрения 20,0 % — решение зависит от открытых пятен."))
+                .andExpect(jsonPath("$.items[1].text").value(
+                        "«Не видим выручку: подключите кассу, маркетплейс или эквайринг» — не закрыто, до 3,5 п.п."))
+                .andExpect(jsonPath("$.generatedAt").isNotEmpty());
 
         String json = addSpot(id, CONTRACT_SPOT)
                 .andExpect(status().isCreated())

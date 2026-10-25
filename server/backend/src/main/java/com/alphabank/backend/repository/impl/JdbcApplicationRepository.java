@@ -2,6 +2,7 @@ package com.alphabank.backend.repository.impl;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -20,7 +21,7 @@ public class JdbcApplicationRepository implements ApplicationRepository {
 
     private static final String COLUMNS = """
             SELECT id, company_id, user_id, product_id, amount, term_months, goal, status,
-                   created_at, submitted_at, info_requested_at
+                   as_of, created_at, submitted_at, info_requested_at
             FROM application
             """;
 
@@ -105,6 +106,14 @@ public class JdbcApplicationRepository implements ApplicationRepository {
                 .update();
     }
 
+    @Override
+    public void fixAsOf(UUID id, LocalDate asOf) {
+        jdbc.sql("UPDATE application SET as_of = :asOf WHERE id = :id AND as_of IS NULL")
+                .param("asOf", asOf)
+                .param("id", id)
+                .update();
+    }
+
     private static ApplicationRecord map(ResultSet rs) throws SQLException {
         return new ApplicationRecord(
                 rs.getObject("id", UUID.class),
@@ -115,6 +124,7 @@ public class JdbcApplicationRepository implements ApplicationRepository {
                 rs.getInt("term_months"),
                 rs.getString("goal"),
                 ApplicationStatus.valueOf(rs.getString("status")),
+                rs.getObject("as_of", LocalDate.class),
                 rs.getObject("created_at", OffsetDateTime.class),
                 rs.getObject("submitted_at", OffsetDateTime.class),
                 rs.getObject("info_requested_at", OffsetDateTime.class));

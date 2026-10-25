@@ -20,6 +20,8 @@ import type {
   SpotType,
   UnderwritingSummary,
 } from '../types';
+import { answerAuthor, summaryAuthor, WAIT_TEXT } from '../verdictLabels';
+import { AuthorBadge } from './AuthorBadge';
 import './UnderwriterBlocks.css';
 
 const FACTOR_LABELS: Record<ScoringFactor, string> = {
@@ -64,14 +66,15 @@ function Chips<T extends string>(props: {
   );
 }
 
-export function SummaryBlock({ summary, error }: { summary: UnderwritingSummary | null; error: string | null }) {
+export function SummaryBlock(props: { summary: UnderwritingSummary | null; error: string | null; waiting?: boolean; gaveUp?: boolean }) {
+  const { summary, error, waiting = false, gaveUp = false } = props;
   return (
     <section className="card__section">
-      <h2 className="uw__title">
-        Сводка
-        {summary && <span className="uw__badge">{summary.generatedBy === 'LLM' ? 'сформирована ИИ' : 'по шаблону'}</span>}
-      </h2>
-      {!summary && <p className="uw__muted">{error ?? 'Загружаем сводку…'}</p>}
+      <h2 className="uw__title">Сводка</h2>
+      {summary && <AuthorBadge author={summaryAuthor(summary)} />}
+      {waiting && <p className="uw__muted">{WAIT_TEXT.generatingSummary}</p>}
+      {gaveUp && <p className="uw__muted">{WAIT_TEXT.summaryGaveUp}</p>}
+      {!summary && <p className="uw__muted">{error ?? 'Готовим сводку…'}</p>}
       {summary && (
         <ol className="summary">
           {summary.items.map((it, i) => (
@@ -98,6 +101,7 @@ function AnswerView({ spot, onOpenDocument }: { spot: Spot; onOpenDocument: (doc
   const a = spot.lastAnswer;
   if (!a) return null;
   const option = spot.answerOptions?.find((o) => o.code === a.optionCode)?.label ?? a.optionCode;
+  const author = answerAuthor(spot, a);
   return (
     <div className="answer">
       <div className="answer__label">Ответ клиента</div>
@@ -119,6 +123,7 @@ function AnswerView({ spot, onOpenDocument }: { spot: Spot; onOpenDocument: (doc
       {a.verdict === 'REJECTED' && a.reviewComment && (
         <div className="answer__row answer__row--bad">Не принято: {a.reviewComment}</div>
       )}
+      {author && <AuthorBadge author={author} />}
     </div>
   );
 }
@@ -217,11 +222,15 @@ export function SpotsReview(props: {
         <details className="uw-closed">
           <summary>Закрытые пятна ({closed.length})</summary>
           <ul>
-            {closed.map((s) => (
-              <li key={s.id}>
-                <CheckmarkCircleMIcon className="uw-closed__check" /> {s.title}
-              </li>
-            ))}
+            {closed.map((s) => {
+              const author = answerAuthor(s);
+              return (
+                <li key={s.id}>
+                  <CheckmarkCircleMIcon className="uw-closed__check" /> {s.title}
+                  {author && <AuthorBadge author={author} />}
+                </li>
+              );
+            })}
           </ul>
         </details>
       )}

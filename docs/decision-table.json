@@ -1,0 +1,2523 @@
+{
+  "rulesVersion": "2026-10-23.draft1",
+  "description": "Таблица решений автопроверки (M09). Человеческое описание — docs/decision-table.md.",
+  "rules": {
+    "R1": "открыт неустранимый стоп-фактор → REJECTED, причина — первый такой стоп-фактор",
+    "R2": "открыт устранимый стоп-фактор → REJECTED, причина — первый такой стоп-фактор",
+    "R3": "политика выполнена и rateTo ≤ approveMax → APPROVED, оффер на запрошенных условиях",
+    "R4": "политика не выполнена или rateFrom > approveMax, сетка не пустая → COUNTER_OFFER, варианты OFFERED",
+    "R5": "политика не выполнена или rateFrom > approveMax, сетка пустая → REJECTED, причина — пятно по R5-выбору",
+    "R6": "иначе (вилка пересекает approveMax) → UNDERWRITING, варианты сетки CALCULATED"
+  },
+  "reasonSpot": [
+    "незакрытое пятно (status ≠ CLOSED) с наибольшей pricePp; при равенстве — первое по порядку",
+    "иначе пятно фактора debt_load",
+    "иначе первое пятно заявки"
+  ],
+  "rows": [
+    {
+      "id": "T01",
+      "group": "Стоп-факторы",
+      "rule": "R1",
+      "why": "неустранимый стоп-фактор отказывает даже при вилке в зоне одобрения",
+      "input": {
+        "productCode": "EQUIPMENT",
+        "rateFrom": 18.0,
+        "rateTo": 19.5,
+        "approveMax": 20.0,
+        "rejectMin": 24.0,
+        "policyOk": true,
+        "gridOffers": 0,
+        "spots": [
+          {
+            "id": "mass_address",
+            "type": "STOP_FACTOR",
+            "scoringFactor": null,
+            "status": "OPEN",
+            "pricePp": null,
+            "removable": false
+          },
+          {
+            "id": "debt_load",
+            "type": "NO_DATA",
+            "scoringFactor": "debt_load",
+            "status": "CLOSED",
+            "pricePp": 3.5,
+            "removable": null
+          },
+          {
+            "id": "purpose",
+            "type": "NO_DATA",
+            "scoringFactor": "purpose",
+            "status": "CLOSED",
+            "pricePp": 1.5,
+            "removable": null
+          },
+          {
+            "id": "collateral",
+            "type": "COLLATERAL",
+            "scoringFactor": "collateral",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "REJECTED",
+        "decisionType": "REJECTED",
+        "decidedBy": "SYSTEM",
+        "reasonSpotId": "mass_address",
+        "offers": {
+          "status": null,
+          "count": 0,
+          "requested": false
+        }
+      }
+    },
+    {
+      "id": "T02",
+      "group": "Стоп-факторы",
+      "rule": "R1",
+      "why": "неустранимый важнее устранимого, даже если устранимый стоит первым; из двух неустранимых — первый по порядку",
+      "input": {
+        "productCode": "WORKING_CAPITAL",
+        "rateFrom": 17.0,
+        "rateTo": 26.0,
+        "approveMax": 21.0,
+        "rejectMin": 25.0,
+        "policyOk": true,
+        "gridOffers": 0,
+        "spots": [
+          {
+            "id": "tax_debt",
+            "type": "STOP_FACTOR",
+            "scoringFactor": null,
+            "status": "OPEN",
+            "pricePp": null,
+            "removable": true
+          },
+          {
+            "id": "mass_address",
+            "type": "STOP_FACTOR",
+            "scoringFactor": null,
+            "status": "OPEN",
+            "pricePp": null,
+            "removable": false
+          },
+          {
+            "id": "new_director",
+            "type": "STOP_FACTOR",
+            "scoringFactor": null,
+            "status": "OPEN",
+            "pricePp": null,
+            "removable": false
+          },
+          {
+            "id": "debt_load",
+            "type": "NO_DATA",
+            "scoringFactor": "debt_load",
+            "status": "OPEN",
+            "pricePp": 3.5,
+            "removable": null
+          },
+          {
+            "id": "revenue_stability",
+            "type": "NO_DATA",
+            "scoringFactor": "revenue_stability",
+            "status": "OPEN",
+            "pricePp": 2.5,
+            "removable": null
+          },
+          {
+            "id": "purpose",
+            "type": "NO_DATA",
+            "scoringFactor": "purpose",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          },
+          {
+            "id": "collateral",
+            "type": "COLLATERAL",
+            "scoringFactor": "collateral",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "REJECTED",
+        "decisionType": "REJECTED",
+        "decidedBy": "SYSTEM",
+        "reasonSpotId": "mass_address",
+        "offers": {
+          "status": null,
+          "count": 0,
+          "requested": false
+        }
+      }
+    },
+    {
+      "id": "T03",
+      "group": "Стоп-факторы",
+      "rule": "R1",
+      "why": "стоп-фактор проверяется до сетки: проходящие варианты не спасают",
+      "input": {
+        "productCode": "EQUIPMENT",
+        "rateFrom": 18.0,
+        "rateTo": 22.0,
+        "approveMax": 20.0,
+        "rejectMin": 24.0,
+        "policyOk": false,
+        "gridOffers": 2,
+        "spots": [
+          {
+            "id": "new_director",
+            "type": "STOP_FACTOR",
+            "scoringFactor": null,
+            "status": "OPEN",
+            "pricePp": null,
+            "removable": false
+          },
+          {
+            "id": "debt_load",
+            "type": "NO_DATA",
+            "scoringFactor": "debt_load",
+            "status": "OPEN",
+            "pricePp": 3.5,
+            "removable": null
+          },
+          {
+            "id": "revenue_stability",
+            "type": "NO_DATA",
+            "scoringFactor": "revenue_stability",
+            "status": "OPEN",
+            "pricePp": 2.5,
+            "removable": null
+          },
+          {
+            "id": "purpose",
+            "type": "NO_DATA",
+            "scoringFactor": "purpose",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          },
+          {
+            "id": "collateral",
+            "type": "COLLATERAL",
+            "scoringFactor": "collateral",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "REJECTED",
+        "decisionType": "REJECTED",
+        "decidedBy": "SYSTEM",
+        "reasonSpotId": "new_director",
+        "offers": {
+          "status": null,
+          "count": 0,
+          "requested": false
+        }
+      }
+    },
+    {
+      "id": "T04",
+      "group": "Стоп-факторы",
+      "rule": "R1",
+      "why": "причина — стоп-фактор, а не самое дорогое открытое пятно",
+      "input": {
+        "productCode": "EQUIPMENT",
+        "rateFrom": 25.0,
+        "rateTo": 27.0,
+        "approveMax": 20.0,
+        "rejectMin": 24.0,
+        "policyOk": true,
+        "gridOffers": 0,
+        "spots": [
+          {
+            "id": "debt_load",
+            "type": "NO_DATA",
+            "scoringFactor": "debt_load",
+            "status": "OPEN",
+            "pricePp": 3.5,
+            "removable": null
+          },
+          {
+            "id": "revenue_stability",
+            "type": "NO_DATA",
+            "scoringFactor": "revenue_stability",
+            "status": "OPEN",
+            "pricePp": 2.5,
+            "removable": null
+          },
+          {
+            "id": "purpose",
+            "type": "NO_DATA",
+            "scoringFactor": "purpose",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          },
+          {
+            "id": "collateral",
+            "type": "COLLATERAL",
+            "scoringFactor": "collateral",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          },
+          {
+            "id": "mass_address",
+            "type": "STOP_FACTOR",
+            "scoringFactor": null,
+            "status": "OPEN",
+            "pricePp": null,
+            "removable": false
+          }
+        ]
+      },
+      "expected": {
+        "status": "REJECTED",
+        "decisionType": "REJECTED",
+        "decidedBy": "SYSTEM",
+        "reasonSpotId": "mass_address",
+        "offers": {
+          "status": null,
+          "count": 0,
+          "requested": false
+        }
+      }
+    },
+    {
+      "id": "T05",
+      "group": "Стоп-факторы",
+      "rule": "R2",
+      "why": "непогашенный долг ФНС отказывает в зоне одобрения (подачу не блокируем, Р-06)",
+      "input": {
+        "productCode": "WORKING_CAPITAL",
+        "rateFrom": 16.0,
+        "rateTo": 17.5,
+        "approveMax": 21.0,
+        "rejectMin": 25.0,
+        "policyOk": true,
+        "gridOffers": 0,
+        "spots": [
+          {
+            "id": "tax_debt",
+            "type": "STOP_FACTOR",
+            "scoringFactor": null,
+            "status": "OPEN",
+            "pricePp": null,
+            "removable": true
+          },
+          {
+            "id": "debt_load",
+            "type": "NO_DATA",
+            "scoringFactor": "debt_load",
+            "status": "CLOSED",
+            "pricePp": 3.5,
+            "removable": null
+          },
+          {
+            "id": "purpose",
+            "type": "NO_DATA",
+            "scoringFactor": "purpose",
+            "status": "CLOSED",
+            "pricePp": 1.5,
+            "removable": null
+          },
+          {
+            "id": "collateral",
+            "type": "COLLATERAL",
+            "scoringFactor": "collateral",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "REJECTED",
+        "decisionType": "REJECTED",
+        "decidedBy": "SYSTEM",
+        "reasonSpotId": "tax_debt",
+        "offers": {
+          "status": null,
+          "count": 0,
+          "requested": false
+        }
+      }
+    },
+    {
+      "id": "T06",
+      "group": "Стоп-факторы",
+      "rule": "R2",
+      "why": "открытый = любой статус, кроме CLOSED; ON_REVIEW тоже открыт",
+      "input": {
+        "productCode": "WORKING_CAPITAL",
+        "rateFrom": 16.0,
+        "rateTo": 17.5,
+        "approveMax": 21.0,
+        "rejectMin": 25.0,
+        "policyOk": true,
+        "gridOffers": 0,
+        "spots": [
+          {
+            "id": "tax_debt",
+            "type": "STOP_FACTOR",
+            "scoringFactor": null,
+            "status": "ON_REVIEW",
+            "pricePp": null,
+            "removable": true
+          },
+          {
+            "id": "debt_load",
+            "type": "NO_DATA",
+            "scoringFactor": "debt_load",
+            "status": "CLOSED",
+            "pricePp": 3.5,
+            "removable": null
+          },
+          {
+            "id": "purpose",
+            "type": "NO_DATA",
+            "scoringFactor": "purpose",
+            "status": "CLOSED",
+            "pricePp": 1.5,
+            "removable": null
+          },
+          {
+            "id": "collateral",
+            "type": "COLLATERAL",
+            "scoringFactor": "collateral",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "REJECTED",
+        "decisionType": "REJECTED",
+        "decidedBy": "SYSTEM",
+        "reasonSpotId": "tax_debt",
+        "offers": {
+          "status": null,
+          "count": 0,
+          "requested": false
+        }
+      }
+    },
+    {
+      "id": "T07",
+      "group": "Стоп-факторы",
+      "rule": "R3",
+      "why": "погашенный долг (пятно CLOSED) решению не мешает",
+      "input": {
+        "productCode": "WORKING_CAPITAL",
+        "rateFrom": 16.0,
+        "rateTo": 17.5,
+        "approveMax": 21.0,
+        "rejectMin": 25.0,
+        "policyOk": true,
+        "gridOffers": 0,
+        "spots": [
+          {
+            "id": "tax_debt",
+            "type": "STOP_FACTOR",
+            "scoringFactor": null,
+            "status": "CLOSED",
+            "pricePp": null,
+            "removable": true
+          },
+          {
+            "id": "debt_load",
+            "type": "NO_DATA",
+            "scoringFactor": "debt_load",
+            "status": "CLOSED",
+            "pricePp": 3.5,
+            "removable": null
+          },
+          {
+            "id": "purpose",
+            "type": "NO_DATA",
+            "scoringFactor": "purpose",
+            "status": "CLOSED",
+            "pricePp": 1.5,
+            "removable": null
+          },
+          {
+            "id": "collateral",
+            "type": "COLLATERAL",
+            "scoringFactor": "collateral",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "APPROVED",
+        "decisionType": "APPROVED",
+        "decidedBy": "SYSTEM",
+        "reasonSpotId": null,
+        "offers": {
+          "status": "OFFERED",
+          "count": 1,
+          "requested": true
+        }
+      }
+    },
+    {
+      "id": "T08",
+      "group": "Стоп-факторы",
+      "rule": "R2",
+      "why": "устранимый стоп-фактор проверяется до сетки и до андеррайтера",
+      "input": {
+        "productCode": "EQUIPMENT",
+        "rateFrom": 18.0,
+        "rateTo": 22.0,
+        "approveMax": 20.0,
+        "rejectMin": 24.0,
+        "policyOk": true,
+        "gridOffers": 2,
+        "spots": [
+          {
+            "id": "tax_debt",
+            "type": "STOP_FACTOR",
+            "scoringFactor": null,
+            "status": "OPEN",
+            "pricePp": null,
+            "removable": true
+          },
+          {
+            "id": "debt_load",
+            "type": "NO_DATA",
+            "scoringFactor": "debt_load",
+            "status": "OPEN",
+            "pricePp": 3.5,
+            "removable": null
+          },
+          {
+            "id": "revenue_stability",
+            "type": "NO_DATA",
+            "scoringFactor": "revenue_stability",
+            "status": "OPEN",
+            "pricePp": 2.5,
+            "removable": null
+          },
+          {
+            "id": "purpose",
+            "type": "NO_DATA",
+            "scoringFactor": "purpose",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          },
+          {
+            "id": "collateral",
+            "type": "COLLATERAL",
+            "scoringFactor": "collateral",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "REJECTED",
+        "decisionType": "REJECTED",
+        "decidedBy": "SYSTEM",
+        "reasonSpotId": "tax_debt",
+        "offers": {
+          "status": null,
+          "count": 0,
+          "requested": false
+        }
+      }
+    },
+    {
+      "id": "T09",
+      "group": "Порог одобрения: правый край",
+      "rule": "R3",
+      "why": "правый край ровно на пороге — одобрение (≤)",
+      "input": {
+        "productCode": "EQUIPMENT",
+        "rateFrom": 18.0,
+        "rateTo": 20.0,
+        "approveMax": 20.0,
+        "rejectMin": 24.0,
+        "policyOk": true,
+        "gridOffers": 0,
+        "spots": [
+          {
+            "id": "debt_load",
+            "type": "NO_DATA",
+            "scoringFactor": "debt_load",
+            "status": "CLOSED",
+            "pricePp": 3.5,
+            "removable": null
+          },
+          {
+            "id": "purpose",
+            "type": "NO_DATA",
+            "scoringFactor": "purpose",
+            "status": "CLOSED",
+            "pricePp": 1.5,
+            "removable": null
+          },
+          {
+            "id": "collateral",
+            "type": "COLLATERAL",
+            "scoringFactor": "collateral",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "APPROVED",
+        "decisionType": "APPROVED",
+        "decidedBy": "SYSTEM",
+        "reasonSpotId": null,
+        "offers": {
+          "status": "OFFERED",
+          "count": 1,
+          "requested": true
+        }
+      }
+    },
+    {
+      "id": "T10",
+      "group": "Порог одобрения: правый край",
+      "rule": "R3",
+      "why": "на 0,01 ниже порога — одобрение",
+      "input": {
+        "productCode": "EQUIPMENT",
+        "rateFrom": 18.0,
+        "rateTo": 19.99,
+        "approveMax": 20.0,
+        "rejectMin": 24.0,
+        "policyOk": true,
+        "gridOffers": 0,
+        "spots": [
+          {
+            "id": "debt_load",
+            "type": "NO_DATA",
+            "scoringFactor": "debt_load",
+            "status": "CLOSED",
+            "pricePp": 3.5,
+            "removable": null
+          },
+          {
+            "id": "purpose",
+            "type": "NO_DATA",
+            "scoringFactor": "purpose",
+            "status": "CLOSED",
+            "pricePp": 1.5,
+            "removable": null
+          },
+          {
+            "id": "collateral",
+            "type": "COLLATERAL",
+            "scoringFactor": "collateral",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "APPROVED",
+        "decisionType": "APPROVED",
+        "decidedBy": "SYSTEM",
+        "reasonSpotId": null,
+        "offers": {
+          "status": "OFFERED",
+          "count": 1,
+          "requested": true
+        }
+      }
+    },
+    {
+      "id": "T11",
+      "group": "Порог одобрения: правый край",
+      "rule": "R6",
+      "why": "на 0,01 выше порога, левый край в зоне одобрения — андеррайтер, сетка сохраняется как CALCULATED",
+      "input": {
+        "productCode": "EQUIPMENT",
+        "rateFrom": 18.0,
+        "rateTo": 20.01,
+        "approveMax": 20.0,
+        "rejectMin": 24.0,
+        "policyOk": true,
+        "gridOffers": 2,
+        "spots": [
+          {
+            "id": "debt_load",
+            "type": "NO_DATA",
+            "scoringFactor": "debt_load",
+            "status": "CLOSED",
+            "pricePp": 3.5,
+            "removable": null
+          },
+          {
+            "id": "purpose",
+            "type": "NO_DATA",
+            "scoringFactor": "purpose",
+            "status": "CLOSED",
+            "pricePp": 1.5,
+            "removable": null
+          },
+          {
+            "id": "collateral",
+            "type": "COLLATERAL",
+            "scoringFactor": "collateral",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "UNDERWRITING",
+        "decisionType": null,
+        "decidedBy": null,
+        "reasonSpotId": null,
+        "offers": {
+          "status": "CALCULATED",
+          "count": 2,
+          "requested": false
+        }
+      }
+    },
+    {
+      "id": "T12",
+      "group": "Порог одобрения: правый край",
+      "rule": "R3",
+      "why": "вилка схлопнулась в точку на пороге — одобрение",
+      "input": {
+        "productCode": "EQUIPMENT",
+        "rateFrom": 20.0,
+        "rateTo": 20.0,
+        "approveMax": 20.0,
+        "rejectMin": 24.0,
+        "policyOk": true,
+        "gridOffers": 0,
+        "spots": [
+          {
+            "id": "debt_load",
+            "type": "NO_DATA",
+            "scoringFactor": "debt_load",
+            "status": "CLOSED",
+            "pricePp": 3.5,
+            "removable": null
+          },
+          {
+            "id": "purpose",
+            "type": "NO_DATA",
+            "scoringFactor": "purpose",
+            "status": "CLOSED",
+            "pricePp": 1.5,
+            "removable": null
+          },
+          {
+            "id": "collateral",
+            "type": "COLLATERAL",
+            "scoringFactor": "collateral",
+            "status": "CLOSED",
+            "pricePp": 1.5,
+            "removable": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "APPROVED",
+        "decisionType": "APPROVED",
+        "decidedBy": "SYSTEM",
+        "reasonSpotId": null,
+        "offers": {
+          "status": "OFFERED",
+          "count": 1,
+          "requested": true
+        }
+      }
+    },
+    {
+      "id": "T13",
+      "group": "Порог одобрения: правый край",
+      "rule": "R4",
+      "why": "вилка в зоне одобрения, но политика не выполнена — система предлагает иные условия",
+      "input": {
+        "productCode": "EQUIPMENT",
+        "rateFrom": 18.0,
+        "rateTo": 19.5,
+        "approveMax": 20.0,
+        "rejectMin": 24.0,
+        "policyOk": false,
+        "gridOffers": 2,
+        "spots": [
+          {
+            "id": "debt_load",
+            "type": "NO_DATA",
+            "scoringFactor": "debt_load",
+            "status": "CLOSED",
+            "pricePp": 3.5,
+            "removable": null
+          },
+          {
+            "id": "purpose",
+            "type": "NO_DATA",
+            "scoringFactor": "purpose",
+            "status": "CLOSED",
+            "pricePp": 1.5,
+            "removable": null
+          },
+          {
+            "id": "collateral",
+            "type": "COLLATERAL",
+            "scoringFactor": "collateral",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "COUNTER_OFFER",
+        "decisionType": "ALTERNATIVE",
+        "decidedBy": "SYSTEM",
+        "reasonSpotId": null,
+        "offers": {
+          "status": "OFFERED",
+          "count": 2,
+          "requested": false
+        }
+      }
+    },
+    {
+      "id": "T14",
+      "group": "Порог одобрения: правый край",
+      "rule": "R5",
+      "why": "политика не выполнена и сетка пустая — отказ с самым дорогим открытым пятном",
+      "input": {
+        "productCode": "EQUIPMENT",
+        "rateFrom": 18.0,
+        "rateTo": 19.5,
+        "approveMax": 20.0,
+        "rejectMin": 24.0,
+        "policyOk": false,
+        "gridOffers": 0,
+        "spots": [
+          {
+            "id": "debt_load",
+            "type": "NO_DATA",
+            "scoringFactor": "debt_load",
+            "status": "CLOSED",
+            "pricePp": 3.5,
+            "removable": null
+          },
+          {
+            "id": "purpose",
+            "type": "NO_DATA",
+            "scoringFactor": "purpose",
+            "status": "CLOSED",
+            "pricePp": 1.5,
+            "removable": null
+          },
+          {
+            "id": "collateral",
+            "type": "COLLATERAL",
+            "scoringFactor": "collateral",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "REJECTED",
+        "decisionType": "REJECTED",
+        "decidedBy": "SYSTEM",
+        "reasonSpotId": "collateral",
+        "offers": {
+          "status": null,
+          "count": 0,
+          "requested": false
+        }
+      }
+    },
+    {
+      "id": "T15",
+      "group": "Порог одобрения: правый край",
+      "rule": "R3",
+      "why": "у каждого продукта свой порог: оборотка — 21",
+      "input": {
+        "productCode": "WORKING_CAPITAL",
+        "rateFrom": 19.0,
+        "rateTo": 21.0,
+        "approveMax": 21.0,
+        "rejectMin": 25.0,
+        "policyOk": true,
+        "gridOffers": 0,
+        "spots": [
+          {
+            "id": "debt_load",
+            "type": "NO_DATA",
+            "scoringFactor": "debt_load",
+            "status": "CLOSED",
+            "pricePp": 3.5,
+            "removable": null
+          },
+          {
+            "id": "purpose",
+            "type": "NO_DATA",
+            "scoringFactor": "purpose",
+            "status": "CLOSED",
+            "pricePp": 1.5,
+            "removable": null
+          },
+          {
+            "id": "collateral",
+            "type": "COLLATERAL",
+            "scoringFactor": "collateral",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "APPROVED",
+        "decisionType": "APPROVED",
+        "decidedBy": "SYSTEM",
+        "reasonSpotId": null,
+        "offers": {
+          "status": "OFFERED",
+          "count": 1,
+          "requested": true
+        }
+      }
+    },
+    {
+      "id": "T16",
+      "group": "Порог одобрения: правый край",
+      "rule": "R3",
+      "why": "овердрафт — порог 22",
+      "input": {
+        "productCode": "OVERDRAFT",
+        "rateFrom": 20.0,
+        "rateTo": 22.0,
+        "approveMax": 22.0,
+        "rejectMin": 26.0,
+        "policyOk": true,
+        "gridOffers": 0,
+        "spots": [
+          {
+            "id": "debt_load",
+            "type": "NO_DATA",
+            "scoringFactor": "debt_load",
+            "status": "CLOSED",
+            "pricePp": 3.5,
+            "removable": null
+          },
+          {
+            "id": "purpose",
+            "type": "NO_DATA",
+            "scoringFactor": "purpose",
+            "status": "CLOSED",
+            "pricePp": 1.5,
+            "removable": null
+          },
+          {
+            "id": "collateral",
+            "type": "COLLATERAL",
+            "scoringFactor": "collateral",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "APPROVED",
+        "decisionType": "APPROVED",
+        "decidedBy": "SYSTEM",
+        "reasonSpotId": null,
+        "offers": {
+          "status": "OFFERED",
+          "count": 1,
+          "requested": true
+        }
+      }
+    },
+    {
+      "id": "T17",
+      "group": "Порог одобрения: правый край",
+      "rule": "R6",
+      "why": "оборотка на 0,01 выше порога — андеррайтер, даже если сетка пустая",
+      "input": {
+        "productCode": "WORKING_CAPITAL",
+        "rateFrom": 20.0,
+        "rateTo": 21.01,
+        "approveMax": 21.0,
+        "rejectMin": 25.0,
+        "policyOk": true,
+        "gridOffers": 0,
+        "spots": [
+          {
+            "id": "debt_load",
+            "type": "NO_DATA",
+            "scoringFactor": "debt_load",
+            "status": "CLOSED",
+            "pricePp": 3.5,
+            "removable": null
+          },
+          {
+            "id": "purpose",
+            "type": "NO_DATA",
+            "scoringFactor": "purpose",
+            "status": "CLOSED",
+            "pricePp": 1.5,
+            "removable": null
+          },
+          {
+            "id": "collateral",
+            "type": "COLLATERAL",
+            "scoringFactor": "collateral",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "UNDERWRITING",
+        "decisionType": null,
+        "decidedBy": null,
+        "reasonSpotId": null,
+        "offers": {
+          "status": null,
+          "count": 0,
+          "requested": false
+        }
+      }
+    },
+    {
+      "id": "T18",
+      "group": "Порог одобрения: левый край",
+      "rule": "R6",
+      "why": "левый край ровно на пороге — ещё не «точно не проходит» (строго >), андеррайтер",
+      "input": {
+        "productCode": "EQUIPMENT",
+        "rateFrom": 20.0,
+        "rateTo": 22.0,
+        "approveMax": 20.0,
+        "rejectMin": 24.0,
+        "policyOk": true,
+        "gridOffers": 2,
+        "spots": [
+          {
+            "id": "debt_load",
+            "type": "NO_DATA",
+            "scoringFactor": "debt_load",
+            "status": "OPEN",
+            "pricePp": 3.5,
+            "removable": null
+          },
+          {
+            "id": "revenue_stability",
+            "type": "NO_DATA",
+            "scoringFactor": "revenue_stability",
+            "status": "OPEN",
+            "pricePp": 2.5,
+            "removable": null
+          },
+          {
+            "id": "purpose",
+            "type": "NO_DATA",
+            "scoringFactor": "purpose",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          },
+          {
+            "id": "collateral",
+            "type": "COLLATERAL",
+            "scoringFactor": "collateral",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "UNDERWRITING",
+        "decisionType": null,
+        "decidedBy": null,
+        "reasonSpotId": null,
+        "offers": {
+          "status": "CALCULATED",
+          "count": 2,
+          "requested": false
+        }
+      }
+    },
+    {
+      "id": "T19",
+      "group": "Порог одобрения: левый край",
+      "rule": "R4",
+      "why": "левый край на 0,01 выше порога — запрошенное не проходит даже в лучшем случае, иные условия",
+      "input": {
+        "productCode": "EQUIPMENT",
+        "rateFrom": 20.01,
+        "rateTo": 22.0,
+        "approveMax": 20.0,
+        "rejectMin": 24.0,
+        "policyOk": true,
+        "gridOffers": 2,
+        "spots": [
+          {
+            "id": "debt_load",
+            "type": "NO_DATA",
+            "scoringFactor": "debt_load",
+            "status": "OPEN",
+            "pricePp": 3.5,
+            "removable": null
+          },
+          {
+            "id": "revenue_stability",
+            "type": "NO_DATA",
+            "scoringFactor": "revenue_stability",
+            "status": "OPEN",
+            "pricePp": 2.5,
+            "removable": null
+          },
+          {
+            "id": "purpose",
+            "type": "NO_DATA",
+            "scoringFactor": "purpose",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          },
+          {
+            "id": "collateral",
+            "type": "COLLATERAL",
+            "scoringFactor": "collateral",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "COUNTER_OFFER",
+        "decisionType": "ALTERNATIVE",
+        "decidedBy": "SYSTEM",
+        "reasonSpotId": null,
+        "offers": {
+          "status": "OFFERED",
+          "count": 2,
+          "requested": false
+        }
+      }
+    },
+    {
+      "id": "T20",
+      "group": "Порог одобрения: левый край",
+      "rule": "R5",
+      "why": "то же, но сетка пустая — отказ, причина — самое дорогое открытое пятно",
+      "input": {
+        "productCode": "EQUIPMENT",
+        "rateFrom": 20.01,
+        "rateTo": 22.0,
+        "approveMax": 20.0,
+        "rejectMin": 24.0,
+        "policyOk": true,
+        "gridOffers": 0,
+        "spots": [
+          {
+            "id": "debt_load",
+            "type": "NO_DATA",
+            "scoringFactor": "debt_load",
+            "status": "OPEN",
+            "pricePp": 3.5,
+            "removable": null
+          },
+          {
+            "id": "revenue_stability",
+            "type": "NO_DATA",
+            "scoringFactor": "revenue_stability",
+            "status": "OPEN",
+            "pricePp": 2.5,
+            "removable": null
+          },
+          {
+            "id": "purpose",
+            "type": "NO_DATA",
+            "scoringFactor": "purpose",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          },
+          {
+            "id": "collateral",
+            "type": "COLLATERAL",
+            "scoringFactor": "collateral",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "REJECTED",
+        "decisionType": "REJECTED",
+        "decidedBy": "SYSTEM",
+        "reasonSpotId": "debt_load",
+        "offers": {
+          "status": null,
+          "count": 0,
+          "requested": false
+        }
+      }
+    },
+    {
+      "id": "T21",
+      "group": "Порог одобрения: левый край",
+      "rule": "R6",
+      "why": "широкая вилка внутри порогов — андеррайтер",
+      "input": {
+        "productCode": "EQUIPMENT",
+        "rateFrom": 19.99,
+        "rateTo": 23.99,
+        "approveMax": 20.0,
+        "rejectMin": 24.0,
+        "policyOk": true,
+        "gridOffers": 1,
+        "spots": [
+          {
+            "id": "debt_load",
+            "type": "NO_DATA",
+            "scoringFactor": "debt_load",
+            "status": "OPEN",
+            "pricePp": 3.5,
+            "removable": null
+          },
+          {
+            "id": "revenue_stability",
+            "type": "NO_DATA",
+            "scoringFactor": "revenue_stability",
+            "status": "OPEN",
+            "pricePp": 2.5,
+            "removable": null
+          },
+          {
+            "id": "purpose",
+            "type": "NO_DATA",
+            "scoringFactor": "purpose",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          },
+          {
+            "id": "collateral",
+            "type": "COLLATERAL",
+            "scoringFactor": "collateral",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "UNDERWRITING",
+        "decisionType": null,
+        "decidedBy": null,
+        "reasonSpotId": null,
+        "offers": {
+          "status": "CALCULATED",
+          "count": 1,
+          "requested": false
+        }
+      }
+    },
+    {
+      "id": "T22",
+      "group": "Порог одобрения: левый край",
+      "rule": "R4",
+      "why": "политика не выполнена при пересекающей вилке — сначала сетка, а не андеррайтер",
+      "input": {
+        "productCode": "EQUIPMENT",
+        "rateFrom": 18.0,
+        "rateTo": 22.0,
+        "approveMax": 20.0,
+        "rejectMin": 24.0,
+        "policyOk": false,
+        "gridOffers": 1,
+        "spots": [
+          {
+            "id": "debt_load",
+            "type": "NO_DATA",
+            "scoringFactor": "debt_load",
+            "status": "OPEN",
+            "pricePp": 3.5,
+            "removable": null
+          },
+          {
+            "id": "revenue_stability",
+            "type": "NO_DATA",
+            "scoringFactor": "revenue_stability",
+            "status": "OPEN",
+            "pricePp": 2.5,
+            "removable": null
+          },
+          {
+            "id": "purpose",
+            "type": "NO_DATA",
+            "scoringFactor": "purpose",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          },
+          {
+            "id": "collateral",
+            "type": "COLLATERAL",
+            "scoringFactor": "collateral",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "COUNTER_OFFER",
+        "decisionType": "ALTERNATIVE",
+        "decidedBy": "SYSTEM",
+        "reasonSpotId": null,
+        "offers": {
+          "status": "OFFERED",
+          "count": 1,
+          "requested": false
+        }
+      }
+    },
+    {
+      "id": "T23",
+      "group": "Порог одобрения: левый край",
+      "rule": "R5",
+      "why": "политика не выполнена, сетка пустая — отказ",
+      "input": {
+        "productCode": "EQUIPMENT",
+        "rateFrom": 18.0,
+        "rateTo": 22.0,
+        "approveMax": 20.0,
+        "rejectMin": 24.0,
+        "policyOk": false,
+        "gridOffers": 0,
+        "spots": [
+          {
+            "id": "debt_load",
+            "type": "NO_DATA",
+            "scoringFactor": "debt_load",
+            "status": "OPEN",
+            "pricePp": 3.5,
+            "removable": null
+          },
+          {
+            "id": "revenue_stability",
+            "type": "NO_DATA",
+            "scoringFactor": "revenue_stability",
+            "status": "OPEN",
+            "pricePp": 2.5,
+            "removable": null
+          },
+          {
+            "id": "purpose",
+            "type": "NO_DATA",
+            "scoringFactor": "purpose",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          },
+          {
+            "id": "collateral",
+            "type": "COLLATERAL",
+            "scoringFactor": "collateral",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "REJECTED",
+        "decisionType": "REJECTED",
+        "decidedBy": "SYSTEM",
+        "reasonSpotId": "debt_load",
+        "offers": {
+          "status": null,
+          "count": 0,
+          "requested": false
+        }
+      }
+    },
+    {
+      "id": "T24",
+      "group": "Зона отказа: сначала сетка",
+      "rule": "R5",
+      "why": "левый край ровно на пороге отказа, сетка пустая — отказ",
+      "input": {
+        "productCode": "EQUIPMENT",
+        "rateFrom": 24.0,
+        "rateTo": 26.0,
+        "approveMax": 20.0,
+        "rejectMin": 24.0,
+        "policyOk": true,
+        "gridOffers": 0,
+        "spots": [
+          {
+            "id": "debt_load",
+            "type": "NO_DATA",
+            "scoringFactor": "debt_load",
+            "status": "OPEN",
+            "pricePp": 3.5,
+            "removable": null
+          },
+          {
+            "id": "revenue_stability",
+            "type": "NO_DATA",
+            "scoringFactor": "revenue_stability",
+            "status": "OPEN",
+            "pricePp": 2.5,
+            "removable": null
+          },
+          {
+            "id": "purpose",
+            "type": "NO_DATA",
+            "scoringFactor": "purpose",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          },
+          {
+            "id": "collateral",
+            "type": "COLLATERAL",
+            "scoringFactor": "collateral",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "REJECTED",
+        "decisionType": "REJECTED",
+        "decidedBy": "SYSTEM",
+        "reasonSpotId": "debt_load",
+        "offers": {
+          "status": null,
+          "count": 0,
+          "requested": false
+        }
+      }
+    },
+    {
+      "id": "T25",
+      "group": "Зона отказа: сначала сетка",
+      "rule": "R4",
+      "why": "решение Р-17: зона отказа тоже сначала идёт в сетку; проходящий вариант — иные условия",
+      "input": {
+        "productCode": "EQUIPMENT",
+        "rateFrom": 24.0,
+        "rateTo": 26.0,
+        "approveMax": 20.0,
+        "rejectMin": 24.0,
+        "policyOk": true,
+        "gridOffers": 1,
+        "spots": [
+          {
+            "id": "debt_load",
+            "type": "NO_DATA",
+            "scoringFactor": "debt_load",
+            "status": "OPEN",
+            "pricePp": 3.5,
+            "removable": null
+          },
+          {
+            "id": "revenue_stability",
+            "type": "NO_DATA",
+            "scoringFactor": "revenue_stability",
+            "status": "OPEN",
+            "pricePp": 2.5,
+            "removable": null
+          },
+          {
+            "id": "purpose",
+            "type": "NO_DATA",
+            "scoringFactor": "purpose",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          },
+          {
+            "id": "collateral",
+            "type": "COLLATERAL",
+            "scoringFactor": "collateral",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "COUNTER_OFFER",
+        "decisionType": "ALTERNATIVE",
+        "decidedBy": "SYSTEM",
+        "reasonSpotId": null,
+        "offers": {
+          "status": "OFFERED",
+          "count": 1,
+          "requested": false
+        }
+      }
+    },
+    {
+      "id": "T26",
+      "group": "Зона отказа: сначала сетка",
+      "rule": "R5",
+      "why": "на 0,01 ниже порога отказа исход тот же: отдельной ветки у порога отказа нет",
+      "input": {
+        "productCode": "EQUIPMENT",
+        "rateFrom": 23.99,
+        "rateTo": 26.0,
+        "approveMax": 20.0,
+        "rejectMin": 24.0,
+        "policyOk": true,
+        "gridOffers": 0,
+        "spots": [
+          {
+            "id": "debt_load",
+            "type": "NO_DATA",
+            "scoringFactor": "debt_load",
+            "status": "OPEN",
+            "pricePp": 3.5,
+            "removable": null
+          },
+          {
+            "id": "revenue_stability",
+            "type": "NO_DATA",
+            "scoringFactor": "revenue_stability",
+            "status": "OPEN",
+            "pricePp": 2.5,
+            "removable": null
+          },
+          {
+            "id": "purpose",
+            "type": "NO_DATA",
+            "scoringFactor": "purpose",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          },
+          {
+            "id": "collateral",
+            "type": "COLLATERAL",
+            "scoringFactor": "collateral",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "REJECTED",
+        "decisionType": "REJECTED",
+        "decidedBy": "SYSTEM",
+        "reasonSpotId": "debt_load",
+        "offers": {
+          "status": null,
+          "count": 0,
+          "requested": false
+        }
+      }
+    },
+    {
+      "id": "T27",
+      "group": "Зона отказа: сначала сетка",
+      "rule": "R5",
+      "why": "на 0,01 выше порога отказа, сетка пустая — отказ",
+      "input": {
+        "productCode": "EQUIPMENT",
+        "rateFrom": 24.01,
+        "rateTo": 26.0,
+        "approveMax": 20.0,
+        "rejectMin": 24.0,
+        "policyOk": true,
+        "gridOffers": 0,
+        "spots": [
+          {
+            "id": "debt_load",
+            "type": "NO_DATA",
+            "scoringFactor": "debt_load",
+            "status": "OPEN",
+            "pricePp": 3.5,
+            "removable": null
+          },
+          {
+            "id": "revenue_stability",
+            "type": "NO_DATA",
+            "scoringFactor": "revenue_stability",
+            "status": "OPEN",
+            "pricePp": 2.5,
+            "removable": null
+          },
+          {
+            "id": "purpose",
+            "type": "NO_DATA",
+            "scoringFactor": "purpose",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          },
+          {
+            "id": "collateral",
+            "type": "COLLATERAL",
+            "scoringFactor": "collateral",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "REJECTED",
+        "decisionType": "REJECTED",
+        "decidedBy": "SYSTEM",
+        "reasonSpotId": "debt_load",
+        "offers": {
+          "status": null,
+          "count": 0,
+          "requested": false
+        }
+      }
+    },
+    {
+      "id": "T28",
+      "group": "Зона отказа: сначала сетка",
+      "rule": "R4",
+      "why": "из прогона движка: 800 000 ₽ на 6 мес не проходит, 640 000 ₽ на 36 мес с поручительством — проходит",
+      "input": {
+        "productCode": "WORKING_CAPITAL",
+        "rateFrom": 25.5,
+        "rateTo": 25.5,
+        "approveMax": 21.0,
+        "rejectMin": 25.0,
+        "policyOk": true,
+        "gridOffers": 1,
+        "spots": [
+          {
+            "id": "debt_load",
+            "type": "NO_DATA",
+            "scoringFactor": "debt_load",
+            "status": "CLOSED",
+            "pricePp": 3.5,
+            "removable": null
+          },
+          {
+            "id": "purpose",
+            "type": "NO_DATA",
+            "scoringFactor": "purpose",
+            "status": "CLOSED",
+            "pricePp": 1.5,
+            "removable": null
+          },
+          {
+            "id": "collateral",
+            "type": "COLLATERAL",
+            "scoringFactor": "collateral",
+            "status": "CLOSED",
+            "pricePp": 1.5,
+            "removable": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "COUNTER_OFFER",
+        "decisionType": "ALTERNATIVE",
+        "decidedBy": "SYSTEM",
+        "reasonSpotId": null,
+        "offers": {
+          "status": "OFFERED",
+          "count": 1,
+          "requested": false
+        }
+      }
+    },
+    {
+      "id": "T29",
+      "group": "Зона отказа: сначала сетка",
+      "rule": "R4",
+      "why": "из прогона движка: оборудование на 2 млн не проходит, овердрафт 150 000 ₽ — проходит",
+      "input": {
+        "productCode": "EQUIPMENT",
+        "rateFrom": 24.5,
+        "rateTo": 24.5,
+        "approveMax": 20.0,
+        "rejectMin": 24.0,
+        "policyOk": false,
+        "gridOffers": 1,
+        "spots": [
+          {
+            "id": "debt_load",
+            "type": "NO_DATA",
+            "scoringFactor": "debt_load",
+            "status": "CLOSED",
+            "pricePp": 3.5,
+            "removable": null
+          },
+          {
+            "id": "purpose",
+            "type": "NO_DATA",
+            "scoringFactor": "purpose",
+            "status": "CLOSED",
+            "pricePp": 1.5,
+            "removable": null
+          },
+          {
+            "id": "collateral",
+            "type": "COLLATERAL",
+            "scoringFactor": "collateral",
+            "status": "CLOSED",
+            "pricePp": 1.5,
+            "removable": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "COUNTER_OFFER",
+        "decisionType": "ALTERNATIVE",
+        "decidedBy": "SYSTEM",
+        "reasonSpotId": null,
+        "offers": {
+          "status": "OFFERED",
+          "count": 1,
+          "requested": false
+        }
+      }
+    },
+    {
+      "id": "T30",
+      "group": "Зона отказа: сначала сетка",
+      "rule": "R5",
+      "why": "овердрафт: порог отказа 26, сетка пустая — отказ",
+      "input": {
+        "productCode": "OVERDRAFT",
+        "rateFrom": 26.0,
+        "rateTo": 27.5,
+        "approveMax": 22.0,
+        "rejectMin": 26.0,
+        "policyOk": true,
+        "gridOffers": 0,
+        "spots": [
+          {
+            "id": "debt_load",
+            "type": "NO_DATA",
+            "scoringFactor": "debt_load",
+            "status": "OPEN",
+            "pricePp": 3.5,
+            "removable": null
+          },
+          {
+            "id": "revenue_stability",
+            "type": "NO_DATA",
+            "scoringFactor": "revenue_stability",
+            "status": "OPEN",
+            "pricePp": 2.5,
+            "removable": null
+          },
+          {
+            "id": "purpose",
+            "type": "NO_DATA",
+            "scoringFactor": "purpose",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          },
+          {
+            "id": "collateral",
+            "type": "COLLATERAL",
+            "scoringFactor": "collateral",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "REJECTED",
+        "decisionType": "REJECTED",
+        "decidedBy": "SYSTEM",
+        "reasonSpotId": "debt_load",
+        "offers": {
+          "status": null,
+          "count": 0,
+          "requested": false
+        }
+      }
+    },
+    {
+      "id": "T31",
+      "group": "Пятно-причина отказа",
+      "rule": "R5",
+      "why": "самое дорогое незакрытое пятно",
+      "input": {
+        "productCode": "EQUIPMENT",
+        "rateFrom": 24.0,
+        "rateTo": 28.0,
+        "approveMax": 20.0,
+        "rejectMin": 24.0,
+        "policyOk": true,
+        "gridOffers": 0,
+        "spots": [
+          {
+            "id": "debt_load",
+            "type": "NO_DATA",
+            "scoringFactor": "debt_load",
+            "status": "OPEN",
+            "pricePp": 3.5,
+            "removable": null
+          },
+          {
+            "id": "revenue_stability",
+            "type": "NO_DATA",
+            "scoringFactor": "revenue_stability",
+            "status": "OPEN",
+            "pricePp": 2.5,
+            "removable": null
+          },
+          {
+            "id": "purpose",
+            "type": "NO_DATA",
+            "scoringFactor": "purpose",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          },
+          {
+            "id": "collateral",
+            "type": "COLLATERAL",
+            "scoringFactor": "collateral",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "REJECTED",
+        "decisionType": "REJECTED",
+        "decidedBy": "SYSTEM",
+        "reasonSpotId": "debt_load",
+        "offers": {
+          "status": null,
+          "count": 0,
+          "requested": false
+        }
+      }
+    },
+    {
+      "id": "T32",
+      "group": "Пятно-причина отказа",
+      "rule": "R5",
+      "why": "равная цена — первое по порядку пятно (порядок создания)",
+      "input": {
+        "productCode": "EQUIPMENT",
+        "rateFrom": 24.0,
+        "rateTo": 25.0,
+        "approveMax": 20.0,
+        "rejectMin": 24.0,
+        "policyOk": true,
+        "gridOffers": 0,
+        "spots": [
+          {
+            "id": "debt_load",
+            "type": "NO_DATA",
+            "scoringFactor": "debt_load",
+            "status": "CLOSED",
+            "pricePp": 3.5,
+            "removable": null
+          },
+          {
+            "id": "purpose",
+            "type": "NO_DATA",
+            "scoringFactor": "purpose",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          },
+          {
+            "id": "collateral",
+            "type": "COLLATERAL",
+            "scoringFactor": "collateral",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "REJECTED",
+        "decisionType": "REJECTED",
+        "decidedBy": "SYSTEM",
+        "reasonSpotId": "purpose",
+        "offers": {
+          "status": null,
+          "count": 0,
+          "requested": false
+        }
+      }
+    },
+    {
+      "id": "T33",
+      "group": "Пятно-причина отказа",
+      "rule": "R5",
+      "why": "пятно на проверке (ON_REVIEW) считается незакрытым",
+      "input": {
+        "productCode": "EQUIPMENT",
+        "rateFrom": 24.0,
+        "rateTo": 27.5,
+        "approveMax": 20.0,
+        "rejectMin": 24.0,
+        "policyOk": true,
+        "gridOffers": 0,
+        "spots": [
+          {
+            "id": "debt_load",
+            "type": "NO_DATA",
+            "scoringFactor": "debt_load",
+            "status": "CLOSED",
+            "pricePp": 3.5,
+            "removable": null
+          },
+          {
+            "id": "anomaly",
+            "type": "ANOMALY",
+            "scoringFactor": "revenue_stability",
+            "status": "ON_REVIEW",
+            "pricePp": 2.5,
+            "removable": null
+          },
+          {
+            "id": "purpose",
+            "type": "NO_DATA",
+            "scoringFactor": "purpose",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "REJECTED",
+        "decisionType": "REJECTED",
+        "decidedBy": "SYSTEM",
+        "reasonSpotId": "anomaly",
+        "offers": {
+          "status": null,
+          "count": 0,
+          "requested": false
+        }
+      }
+    },
+    {
+      "id": "T34",
+      "group": "Пятно-причина отказа",
+      "rule": "R5",
+      "why": "все пятна закрыты — пятно фактора debt_load (нагрузка — главный рычаг ставки)",
+      "input": {
+        "productCode": "EQUIPMENT",
+        "rateFrom": 24.5,
+        "rateTo": 24.5,
+        "approveMax": 20.0,
+        "rejectMin": 24.0,
+        "policyOk": true,
+        "gridOffers": 0,
+        "spots": [
+          {
+            "id": "debt_load",
+            "type": "NO_DATA",
+            "scoringFactor": "debt_load",
+            "status": "CLOSED",
+            "pricePp": 3.5,
+            "removable": null
+          },
+          {
+            "id": "purpose",
+            "type": "NO_DATA",
+            "scoringFactor": "purpose",
+            "status": "CLOSED",
+            "pricePp": 1.5,
+            "removable": null
+          },
+          {
+            "id": "collateral",
+            "type": "COLLATERAL",
+            "scoringFactor": "collateral",
+            "status": "CLOSED",
+            "pricePp": 1.5,
+            "removable": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "REJECTED",
+        "decisionType": "REJECTED",
+        "decidedBy": "SYSTEM",
+        "reasonSpotId": "debt_load",
+        "offers": {
+          "status": null,
+          "count": 0,
+          "requested": false
+        }
+      }
+    },
+    {
+      "id": "T35",
+      "group": "Пятно-причина отказа",
+      "rule": "R5",
+      "why": "всё закрыто и пятна debt_load нет — первое пятно заявки",
+      "input": {
+        "productCode": "EQUIPMENT",
+        "rateFrom": 24.5,
+        "rateTo": 24.5,
+        "approveMax": 20.0,
+        "rejectMin": 24.0,
+        "policyOk": true,
+        "gridOffers": 0,
+        "spots": [
+          {
+            "id": "purpose",
+            "type": "NO_DATA",
+            "scoringFactor": "purpose",
+            "status": "CLOSED",
+            "pricePp": 1.5,
+            "removable": null
+          },
+          {
+            "id": "collateral",
+            "type": "COLLATERAL",
+            "scoringFactor": "collateral",
+            "status": "CLOSED",
+            "pricePp": 1.5,
+            "removable": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "REJECTED",
+        "decisionType": "REJECTED",
+        "decidedBy": "SYSTEM",
+        "reasonSpotId": "purpose",
+        "offers": {
+          "status": null,
+          "count": 0,
+          "requested": false
+        }
+      }
+    },
+    {
+      "id": "T36",
+      "group": "Пятно-причина отказа",
+      "rule": "R5",
+      "why": "незакрытое пятно с ценой 0 важнее закрытого дорогого",
+      "input": {
+        "productCode": "EQUIPMENT",
+        "rateFrom": 24.0,
+        "rateTo": 24.0,
+        "approveMax": 20.0,
+        "rejectMin": 24.0,
+        "policyOk": true,
+        "gridOffers": 0,
+        "spots": [
+          {
+            "id": "debt_load",
+            "type": "NO_DATA",
+            "scoringFactor": "debt_load",
+            "status": "CLOSED",
+            "pricePp": 3.5,
+            "removable": null
+          },
+          {
+            "id": "collateral",
+            "type": "COLLATERAL",
+            "scoringFactor": "collateral",
+            "status": "OPEN",
+            "pricePp": 0.0,
+            "removable": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "REJECTED",
+        "decisionType": "REJECTED",
+        "decidedBy": "SYSTEM",
+        "reasonSpotId": "collateral",
+        "offers": {
+          "status": null,
+          "count": 0,
+          "requested": false
+        }
+      }
+    },
+    {
+      "id": "T37",
+      "group": "Андеррайтер",
+      "rule": "R6",
+      "why": "вилка пересекает порог одобрения: решение зависит от открытых пятен, варианты сетки — CALCULATED",
+      "input": {
+        "productCode": "WORKING_CAPITAL",
+        "rateFrom": 17.0,
+        "rateTo": 24.5,
+        "approveMax": 21.0,
+        "rejectMin": 25.0,
+        "policyOk": true,
+        "gridOffers": 2,
+        "spots": [
+          {
+            "id": "revenue_stability",
+            "type": "NO_DATA",
+            "scoringFactor": "revenue_stability",
+            "status": "OPEN",
+            "pricePp": 2.5,
+            "removable": null
+          },
+          {
+            "id": "purpose",
+            "type": "NO_DATA",
+            "scoringFactor": "purpose",
+            "status": "CLOSED",
+            "pricePp": 1.5,
+            "removable": null
+          },
+          {
+            "id": "collateral",
+            "type": "COLLATERAL",
+            "scoringFactor": "collateral",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "UNDERWRITING",
+        "decisionType": null,
+        "decidedBy": null,
+        "reasonSpotId": null,
+        "offers": {
+          "status": "CALCULATED",
+          "count": 2,
+          "requested": false
+        }
+      }
+    },
+    {
+      "id": "T38",
+      "group": "Андеррайтер",
+      "rule": "R6",
+      "why": "пересекающая вилка при пустой сетке — всё равно андеррайтер, не отказ",
+      "input": {
+        "productCode": "EQUIPMENT",
+        "rateFrom": 19.0,
+        "rateTo": 23.5,
+        "approveMax": 20.0,
+        "rejectMin": 24.0,
+        "policyOk": true,
+        "gridOffers": 0,
+        "spots": [
+          {
+            "id": "debt_load",
+            "type": "NO_DATA",
+            "scoringFactor": "debt_load",
+            "status": "OPEN",
+            "pricePp": 3.5,
+            "removable": null
+          },
+          {
+            "id": "revenue_stability",
+            "type": "NO_DATA",
+            "scoringFactor": "revenue_stability",
+            "status": "OPEN",
+            "pricePp": 2.5,
+            "removable": null
+          },
+          {
+            "id": "purpose",
+            "type": "NO_DATA",
+            "scoringFactor": "purpose",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          },
+          {
+            "id": "collateral",
+            "type": "COLLATERAL",
+            "scoringFactor": "collateral",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "UNDERWRITING",
+        "decisionType": null,
+        "decidedBy": null,
+        "reasonSpotId": null,
+        "offers": {
+          "status": null,
+          "count": 0,
+          "requested": false
+        }
+      }
+    },
+    {
+      "id": "T39",
+      "group": "Персонажи (synthetic-data.md)",
+      "rule": "R3",
+      "why": "ООО «Кофейня»: автоодобрение на запрошенных условиях",
+      "input": {
+        "productCode": "EQUIPMENT",
+        "rateFrom": 18.0,
+        "rateTo": 19.5,
+        "approveMax": 20.0,
+        "rejectMin": 24.0,
+        "policyOk": true,
+        "gridOffers": 0,
+        "spots": [
+          {
+            "id": "debt_load",
+            "type": "NO_DATA",
+            "scoringFactor": "debt_load",
+            "status": "CLOSED",
+            "pricePp": 3.5,
+            "removable": null
+          },
+          {
+            "id": "anomaly",
+            "type": "ANOMALY",
+            "scoringFactor": "revenue_stability",
+            "status": "CLOSED",
+            "pricePp": 2.5,
+            "removable": null
+          },
+          {
+            "id": "purpose",
+            "type": "NO_DATA",
+            "scoringFactor": "purpose",
+            "status": "CLOSED",
+            "pricePp": 1.5,
+            "removable": null
+          },
+          {
+            "id": "collateral",
+            "type": "COLLATERAL",
+            "scoringFactor": "collateral",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "APPROVED",
+        "decisionType": "APPROVED",
+        "decidedBy": "SYSTEM",
+        "reasonSpotId": null,
+        "offers": {
+          "status": "OFFERED",
+          "count": 1,
+          "requested": true
+        }
+      }
+    },
+    {
+      "id": "T40",
+      "group": "Персонажи (synthetic-data.md)",
+      "rule": "R6",
+      "why": "ИП Петров: андеррайтер, дальше иные условия от андеррайтера (Р-08)",
+      "input": {
+        "productCode": "WORKING_CAPITAL",
+        "rateFrom": 17.0,
+        "rateTo": 24.5,
+        "approveMax": 21.0,
+        "rejectMin": 25.0,
+        "policyOk": true,
+        "gridOffers": 2,
+        "spots": [
+          {
+            "id": "revenue_stability",
+            "type": "NO_DATA",
+            "scoringFactor": "revenue_stability",
+            "status": "OPEN",
+            "pricePp": 2.5,
+            "removable": null
+          },
+          {
+            "id": "purpose",
+            "type": "NO_DATA",
+            "scoringFactor": "purpose",
+            "status": "CLOSED",
+            "pricePp": 1.5,
+            "removable": null
+          },
+          {
+            "id": "collateral",
+            "type": "COLLATERAL",
+            "scoringFactor": "collateral",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "UNDERWRITING",
+        "decisionType": null,
+        "decidedBy": null,
+        "reasonSpotId": null,
+        "offers": {
+          "status": "CALCULATED",
+          "count": 2,
+          "requested": false
+        }
+      }
+    },
+    {
+      "id": "T41",
+      "group": "Персонажи (synthetic-data.md)",
+      "rule": "R4",
+      "why": "ИП Кузнецова: платёж 34,7 % выручки при допустимых 30 % — 1,2 млн на 36 мес или овердрафт",
+      "input": {
+        "productCode": "WORKING_CAPITAL",
+        "rateFrom": 20.0,
+        "rateTo": 21.5,
+        "approveMax": 21.0,
+        "rejectMin": 25.0,
+        "policyOk": false,
+        "gridOffers": 2,
+        "spots": [
+          {
+            "id": "debt_load",
+            "type": "NO_DATA",
+            "scoringFactor": "debt_load",
+            "status": "CLOSED",
+            "pricePp": 3.5,
+            "removable": null
+          },
+          {
+            "id": "purpose",
+            "type": "NO_DATA",
+            "scoringFactor": "purpose",
+            "status": "CLOSED",
+            "pricePp": 1.5,
+            "removable": null
+          },
+          {
+            "id": "collateral",
+            "type": "COLLATERAL",
+            "scoringFactor": "collateral",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "COUNTER_OFFER",
+        "decisionType": "ALTERNATIVE",
+        "decidedBy": "SYSTEM",
+        "reasonSpotId": null,
+        "offers": {
+          "status": "OFFERED",
+          "count": 2,
+          "requested": false
+        }
+      }
+    },
+    {
+      "id": "T42",
+      "group": "Персонажи (synthetic-data.md)",
+      "rule": "R2",
+      "why": "ООО «Техснаб» не погасил долг — отказ, причина — долг",
+      "input": {
+        "productCode": "WORKING_CAPITAL",
+        "rateFrom": 16.0,
+        "rateTo": 17.5,
+        "approveMax": 21.0,
+        "rejectMin": 25.0,
+        "policyOk": true,
+        "gridOffers": 0,
+        "spots": [
+          {
+            "id": "tax_debt",
+            "type": "STOP_FACTOR",
+            "scoringFactor": null,
+            "status": "OPEN",
+            "pricePp": null,
+            "removable": true
+          },
+          {
+            "id": "debt_load",
+            "type": "NO_DATA",
+            "scoringFactor": "debt_load",
+            "status": "CLOSED",
+            "pricePp": 3.5,
+            "removable": null
+          },
+          {
+            "id": "purpose",
+            "type": "NO_DATA",
+            "scoringFactor": "purpose",
+            "status": "CLOSED",
+            "pricePp": 1.5,
+            "removable": null
+          },
+          {
+            "id": "collateral",
+            "type": "COLLATERAL",
+            "scoringFactor": "collateral",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "REJECTED",
+        "decisionType": "REJECTED",
+        "decidedBy": "SYSTEM",
+        "reasonSpotId": "tax_debt",
+        "offers": {
+          "status": null,
+          "count": 0,
+          "requested": false
+        }
+      }
+    },
+    {
+      "id": "T43",
+      "group": "Персонажи (synthetic-data.md)",
+      "rule": "R3",
+      "why": "ООО «Техснаб» погасил долг — автоодобрение",
+      "input": {
+        "productCode": "WORKING_CAPITAL",
+        "rateFrom": 16.0,
+        "rateTo": 17.5,
+        "approveMax": 21.0,
+        "rejectMin": 25.0,
+        "policyOk": true,
+        "gridOffers": 0,
+        "spots": [
+          {
+            "id": "tax_debt",
+            "type": "STOP_FACTOR",
+            "scoringFactor": null,
+            "status": "CLOSED",
+            "pricePp": null,
+            "removable": true
+          },
+          {
+            "id": "debt_load",
+            "type": "NO_DATA",
+            "scoringFactor": "debt_load",
+            "status": "CLOSED",
+            "pricePp": 3.5,
+            "removable": null
+          },
+          {
+            "id": "purpose",
+            "type": "NO_DATA",
+            "scoringFactor": "purpose",
+            "status": "CLOSED",
+            "pricePp": 1.5,
+            "removable": null
+          },
+          {
+            "id": "collateral",
+            "type": "COLLATERAL",
+            "scoringFactor": "collateral",
+            "status": "OPEN",
+            "pricePp": 1.5,
+            "removable": null
+          }
+        ]
+      },
+      "expected": {
+        "status": "APPROVED",
+        "decisionType": "APPROVED",
+        "decidedBy": "SYSTEM",
+        "reasonSpotId": null,
+        "offers": {
+          "status": "OFFERED",
+          "count": 1,
+          "requested": true
+        }
+      }
+    },
+    {
+      "id": "T44",
+      "group": "Персонажи (synthetic-data.md)",
+      "rule": "R1",
+      "why": "ООО «Однодневка»: новый директор и массовый адрес — автоотказ; причина — первый по порядку проверки",
+      "input": {
+        "productCode": "WORKING_CAPITAL",
+        "rateFrom": 17.0,
+        "rateTo": 26.0,
+        "approveMax": 21.0,
+        "rejectMin": 25.0,
+        "policyOk": true,
+        "gridOffers": 0,
+        "spots": [
+          {
+            "id": "new_director",
+            "type": "STOP_FACTOR",
+            "scoringFactor": null,
+            "status": "OPEN",
+            "pricePp": null,
+            "removable": false
+          },
+          {
+            "id": "mass_address",
+            "type": "STOP_FACTOR",
+            "scoringFactor": null,
+            "status": "OPEN",
+            "pricePp": null,
+            "removable": false
+          }
+        ]
+      },
+      "expected": {
+        "status": "REJECTED",
+        "decisionType": "REJECTED",
+        "decidedBy": "SYSTEM",
+        "reasonSpotId": "new_director",
+        "offers": {
+          "status": null,
+          "count": 0,
+          "requested": false
+        }
+      }
+    }
+  ]
+}

@@ -1,7 +1,10 @@
 package com.alphabank.backend.repository.model;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.UUID;
+
+import com.alphabank.backend.model.SnapshotTrace;
 
 public record ForkSnapshotRecord(
         UUID id,
@@ -11,5 +14,8 @@ public record ForkSnapshotRecord(
         Double approveMax,
         Double rejectMin,
         String rulesVersion,
-        OffsetDateTime calculatedAt) {
+        LocalDate asOf,
+        OffsetDateTime calculatedAt,
+        Boolean reproducible,
+        SnapshotTrace trace) {
 }

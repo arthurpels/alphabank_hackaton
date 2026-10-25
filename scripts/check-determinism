@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+NEWMAN="newman@6.2.1"
+COLLECTION="docs/credit-pipeline.postman_collection.json"
+ENVIRONMENT="docs/local.postman_environment.json"
+ML_URL="http://localhost:${ML_PORT:-8001}"
+OUT="${DETERMINISM_OUT:-$(mktemp -d)}"
+MODE="${1:-}"
+mkdir -p "$OUT"
+
+if [ -n "$MODE" ] && [ "$MODE" != "--llm" ]; then
+  echo "Использование: scripts/check-determinism [--llm]" >&2
+  exit 2
+fi
+
+wait_for_ml() {
+  for _ in $(seq 1 60); do
+    if curl -fs "$ML_URL/health" > /dev/null; then
+      return 0
+    fi
+    sleep 2
+  done
+  echo "ml не поднялся за 2 минуты" >&2
+  exit 1
+}
+
+wait_for_llm() {
+  for _ in $(seq 1 60); do
+    if curl -fs "$ML_URL/health/llm" | grep -q '"status":"ready"'; then
+      return 0
+    fi
+    sleep 5
+  done
+  echo "LLM не прогрелась за 5 минут" >&2
+  exit 1
+}
+
+start_ml() {
+  LLM_ENABLED="$1" LLM_REPLAY_PATH="" docker compose up -d ml > /dev/null 2>&1
+  wait_for_ml
+}
+
+newman_status=0
+for run in 1 2; do
+  echo "==> Прогон $run: сброс демо"
+  scripts/reset-demo > "$OUT/reset-$run.log" 2>&1
+  if [ "$MODE" = "--llm" ] && [ "$run" = 1 ]; then
+    echo "==> Прогон $run: LLM выключена"
+    start_ml false
+  elif [ "$MODE" = "--llm" ]; then
+    echo "==> Прогон $run: LLM включена (локальная модель) — исходы не должны измениться"
+    docker compose --profile llm up -d ollama > /dev/null 2>&1
+    start_ml true
+    wait_for_llm
+  else
+    if [ "$run" = 2 ]; then
+      echo "==> Прогон $run: перезапуск ml — ответы не должны зависеть от состояния сервиса"
+      docker compose restart ml > /dev/null
+      wait_for_ml
+    fi
+  fi
+  echo "==> Прогон $run: коллекция"
+  if ! npx -y "$NEWMAN" run "$COLLECTION" -e "$ENVIRONMENT" \
+      --reporters cli,json --reporter-json-export "$OUT/run-$run.json" > "$OUT/newman-$run.log" 2>&1; then
+    newman_status=1
+    echo "    проверки коллекции упали — см. $OUT/newman-$run.log"
+  fi
+done
+
+if [ "$MODE" = "--llm" ]; then
+  echo "==> Возвращаю ml к настройкам из .env"
+  docker compose up -d ml > /dev/null 2>&1
+  wait_for_ml
+fi
+
+echo "==> Сравнение прогонов"
+compare_status=0
+python3 scripts/determinism_compare.py "$OUT/run-1.json" "$OUT/run-2.json" || compare_status=$?
+
+echo "Отчёты newman и логи: $OUT"
+if [ "$newman_status" != 0 ] || [ "$compare_status" != 0 ]; then
+  exit 1
+fi

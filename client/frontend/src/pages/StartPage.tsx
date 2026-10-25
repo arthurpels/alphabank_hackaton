@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Typography } from '@alfalab/core-components/typography';
 import { ArrowRightMIcon } from '@alfalab/icons-glyph/ArrowRightMIcon';
 import { BankMIcon } from '@alfalab/icons-glyph/BankMIcon';
@@ -40,6 +40,7 @@ export default function StartPage() {
           </span>
           <ArrowRightMIcon className="tile__arrow" />
         </button>
+        <Link to="/rules" className="hero-card__link">Как мы считаем ставку</Link>
       </div>
     </div>
   );

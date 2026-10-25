@@ -72,7 +72,7 @@ paths:
       operationId: getDemoTime
       tags: [demo]
       summary: Текущее время демо
-      description: Время, по которому бэк считает сроки, журнал и вилки. Заголовок `X-Demo-User` не нужен.
+      description: Время, по которому бэк считает сроки и журнал. Дата расчёта вилки фиксируется на заявке и от этого времени не зависит. Заголовок `X-Demo-User` не нужен.
       security: []
       responses:
         '200':
@@ -136,6 +136,25 @@ paths:
                 $ref: '#/components/schemas/Me'
         '401':
           $ref: '#/components/responses/Unauthorized'
+
+  /rules:
+    get:
+      operationId: getScoringRules
+      tags: [catalog]
+      summary: Действующие правила скоринга
+      description: |
+        Публичный прокси к ML `GET /rules`: версия правил, продукты и пороги, факторы,
+        вклады и диапазоны неизвестных значений. Заголовок `X-Demo-User` не нужен.
+      security: []
+      responses:
+        '200':
+          description: действующие правила
+          content:
+            application/json:
+              schema:
+                $ref: './openapi-ml.yaml#/components/schemas/RulesResponse'
+        '503':
+          $ref: '#/components/responses/SourceUnavailable'
 
   /products:
     get:
@@ -312,6 +331,36 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /applications/{applicationId}/fork/verify:
+    parameters:
+      - $ref: '#/components/parameters/ApplicationId'
+    post:
+      operationId: verifyFork
+      tags: [applications]
+      summary: Проверить воспроизводимость последнего снимка вилки
+      description: |
+        M06. Берёт последний снимок вилки заявки (без снимков офферов), проверяет, что сохранённый
+        `ScoreRequest` не изменился (его SHA-256 совпадает с `requestHash`), заново отправляет его в `/score`
+        и сравнивает канонический JSON ответа (ключи по алфавиту) байт-в-байт с сохранённым.
+        Модель не вызывается: вердикты LLM уже вошли в `ScoreRequest` и лежат в снимке.
+        `reproducible: true` — расхождений нет, `diff` пустой. Иначе в `diff` — каждое расхождение
+        с путём (`$.rateTo`, `$.factors[2].spotPricePp`, `requestHash`). Заявку не меняет.
+        Снимок без сохранённого входа (рассчитан до M06) — `404`, заявку нужно пересчитать.
+        Если скоринг недоступен — `503`.
+      responses:
+        '200':
+          description: результат пересчёта
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForkVerification'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/SourceUnavailable'
+
   /applications/{applicationId}/submit:
     parameters:
       - $ref: '#/components/parameters/ApplicationId'
@@ -324,13 +373,14 @@ paths:
         `APPROVED`, `COUNTER_OFFER`, `REJECTED` или `UNDERWRITING`.
         Открытый устранимый стоп-фактор подачу не блокирует, но приводит к отказу.
 
-        Автопроверка заново запрашивает источники, пересчитывает вилку и применяет правило по порядку:
+        Автопроверка заново запрашивает источники, пересчитывает вилку и применяет правило по порядку
+        (`docs/decision-table.md`, R1–R6):
         1. открытый неустранимый, затем устранимый стоп-фактор → `REJECTED`, `reasonSpotId` — это пятно;
         2. политика продукта проходит и правый край ≤ `approveMax` → `APPROVED`, оффер на запрошенных условиях;
-        3. левый край ≥ `rejectMin` → `REJECTED`, `reasonSpotId` — самое дорогое незакрытое пятно;
-        4. политика не проходит или левый край > `approveMax` → сетка `/offers/grid`: проходящие варианты
-           `OFFERED`, `COUNTER_OFFER`; пустая сетка → `REJECTED`;
-        5. иначе → `UNDERWRITING`, варианты сетки сохраняются как `CALCULATED` для андеррайтера.
+        3. политика не проходит или левый край > `approveMax` (в том числе левый край ≥ `rejectMin`) → сетка
+           `/offers/grid`: проходящие варианты `OFFERED`, `COUNTER_OFFER`; пустая сетка → `REJECTED`,
+           `reasonSpotId` — самое дорогое незакрытое пятно;
+        4. иначе → `UNDERWRITING`, варианты сетки сохраняются как `CALCULATED` для андеррайтера.
 
         Если источник или скоринг недоступен — `503`, заявка остаётся в `COLLECTING`.
       responses:
@@ -763,7 +813,7 @@ paths:
       operationId: getUnderwritingSummary
       tags: [underwriting]
       summary: Сводка для андеррайтера
-      description: 3–5 выводов, у каждого — ссылки на факты-источники. Генерирует LLM (T27); без LLM — шаблонный текст (`generatedBy = TEMPLATE`).
+      description: Сохранённая сводка, читается из БД без обращения к мокам или ML. Шаблон доступен сразу; при включённой LLM ответ `generating + TEMPLATE` позже заменяется на `ready + LLM` с `llm.*`.
       responses:
         '200':
           description: сводка
@@ -1152,7 +1202,7 @@ components:
 
     Fork:
       type: object
-      required: [id, rateFrom, rateTo, zone, thresholds, rulesVersion, calculatedAt]
+      required: [id, rateFrom, rateTo, zone, thresholds, rulesVersion, asOf, calculatedAt, factors, reproducible]
       properties:
         id:
           type: string
@@ -1172,9 +1222,64 @@ components:
         rulesVersion:
           type: string
           example: 2026-10-23.draft1
+        asOf:
+          type: string
+          format: date
+          description: дата, зафиксированная при первом расчёте заявки; не меняется при пересчётах и перемотке демо-времени
+          example: 2026-10-23
         calculatedAt:
           type: string
           format: date-time
+        factors:
+          type: array
+          description: разложение из сохранённого ответа `/score`; пустой массив у снимка, рассчитанного до M06
+          items:
+            $ref: '#/components/schemas/ForkFactor'
+        reproducible:
+          type: boolean
+          nullable: true
+          description: результат последнего `POST .../fork/verify`; null — проверка ещё не выполнялась
+
+    ForkFactor:
+      type: object
+      required: [code, title, applicable, known, value, best, worst, spotPricePp, source]
+      properties:
+        code:
+          type: string
+          enum: [credit_history, business_age, tax_discipline, debt_load, revenue_stability, purpose, collateral]
+        title:
+          type: string
+          example: Подтверждённая выручка и долговая нагрузка
+        applicable:
+          type: boolean
+        known:
+          type: boolean
+          description: true — задан вклад `value`; false — задан диапазон `best`…`worst`
+        value:
+          type: number
+          nullable: true
+          description: вклад известного фактора, п.п.
+          example: -0.5
+        best:
+          type: number
+          nullable: true
+          description: вклад неизвестного фактора в нижний край вилки, п.п.
+          example: -1.5
+        worst:
+          type: number
+          nullable: true
+          description: вклад неизвестного фактора в верхний край вилки, п.п.
+          example: 2
+        spotPricePp:
+          type: number
+          nullable: true
+          description: цена открытого пятна, `worst - best`, п.п.
+          example: 3.5
+        source:
+          allOf:
+            - $ref: '#/components/schemas/SourceCode'
+          nullable: true
+          description: источник данных; null — клиентский ответ, обеспечение или неоднозначный источник
 
     ZoneThresholds:
       type: object
@@ -1302,6 +1407,207 @@ components:
           type: string
           format: date-time
           nullable: true
+        purposeVerdict:
+          type: object
+          allOf:
+            - $ref: '#/components/schemas/PurposeVerdict'
+          nullable: true
+          description: только у ответа по цели кредита — кто решил и при каких версиях
+        anomalyVerdict:
+          type: object
+          allOf:
+            - $ref: '#/components/schemas/AnomalyVerdict'
+          nullable: true
+          description: только у ответа на аномалию выручки — какую причину назвал клиент и подтвердили ли её данные (M16)
+
+    AnomalyVerdict:
+      type: object
+      description: |
+        Разбор ответа на аномалию выручки, сохранённый при ответе клиента (M16). Вариант-кнопка (`optionCode`) берётся
+        как есть, без модели; свободный текст разбирает `/answers/classify` ML-сервиса (словарь, затем LLM с правилами
+        ответов). Тот же текст для того же пятна повторно не отправляется — берётся сохранённая классификация, кроме
+        `UNAVAILABLE`. Затем `/answers/verify` проверяет причину данными источника за 24 месяца (маркетплейс — 6):
+        `ACCEPTED` — пятно закрывает система с правилом в журнале; `REVIEW` — ответ `PENDING`, пятно у специалиста
+        в `ON_REVIEW`. LLM недоступна — тоже специалисту: отказа из-за недоступности нет.
+      required: [code]
+      properties:
+        anomaly:
+          type: object
+          nullable: true
+          description: аномалия, на которую отвечал клиент; null — в текущих данных источника её уже нет, ответ у специалиста
+          required: [code, month, changePct]
+          properties:
+            code:
+              type: string
+              enum: [REVENUE_DROP, REVENUE_SPIKE]
+            month:
+              type: string
+              example: 2026-03
+            changePct:
+              type: integer
+              example: -45
+            source:
+              type: string
+              allOf:
+                - $ref: '#/components/schemas/SourceCode'
+              nullable: true
+        code:
+          type: string
+          enum: [RENOVATION, SEASONAL, CLIENT_LOST, OTHER, null]
+          nullable: true
+          description: причина; null — LLM недоступна и причину определить не удалось
+        classification:
+          type: object
+          nullable: true
+          description: ответ `/answers/classify`; null — клиент выбрал вариант кнопкой
+          required: [status, generatedBy, matchedKeywords]
+          properties:
+            status:
+              type: string
+              enum: [DECIDED, UNAVAILABLE]
+            code:
+              type: string
+              enum: [RENOVATION, SEASONAL, CLIENT_LOST, OTHER, null]
+              nullable: true
+            generatedBy:
+              type: string
+              enum: [KEYWORDS, LLM]
+            matchedKeywords:
+              type: array
+              items:
+                type: string
+            reason:
+              type: string
+              nullable: true
+            evidence:
+              type: string
+              nullable: true
+              description: дословная цитата из ответа клиента
+            violation:
+              type: string
+              nullable: true
+              description: какое правило ответа нарушено (`MANIPULATION`, `NO_CUE`, …) — тогда код `OTHER`
+            llm:
+              type: object
+              nullable: true
+              required: [model, digest, promptVersion, cached]
+              properties:
+                model:
+                  type: string
+                digest:
+                  type: string
+                promptVersion:
+                  type: string
+                cached:
+                  type: boolean
+        check:
+          type: object
+          nullable: true
+          description: ответ `/answers/verify`; null — проверки не было (LLM недоступна, аномалия не найдена, `ml` не ответил)
+          required: [verdict, explanation]
+          properties:
+            verdict:
+              type: string
+              enum: [ACCEPTED, REVIEW]
+            rule:
+              type: string
+              nullable: true
+              description: правило из `answer_checks` (`RENOVATION_ONE_OFF`, `SEASONAL_LAST_YEAR`); null — для этой причины проверки данными нет
+              example: RENOVATION_ONE_OFF
+            explanation:
+              type: string
+              example: 'Падение разовое: в апреле выручка вернулась к 98 % от уровня до падения'
+
+    PurposeVerdict:
+      type: object
+      description: |
+        Ответ `/purpose` ML-сервиса, сохранённый при ответе клиента (M05). Пересчёты вилки берут фактор «цель»
+        из сохранённого ответа и `/purpose` не вызывают. Тот же текст (без учёта регистра, пробелов, «ё») для того же
+        продукта повторно не отправляется — берётся этот вердикт. `UNAVAILABLE` (в том числе таймаут) сохраняется
+        с ответом `PENDING`, пятно уходит андеррайтеру в `ON_REVIEW`; это не отказ и не `UNCLEAR`. Если андеррайтер
+        вернул ответ клиенту, при новом ответе модель спрашивается снова.
+      required: [productCode, status, generatedBy, matchedKeywords]
+      properties:
+        productCode:
+          $ref: '#/components/schemas/ProductCode'
+        status:
+          type: string
+          enum: [DECIDED, UNCLEAR, UNAVAILABLE, NOT_APPLICABLE]
+        purpose:
+          type: string
+          enum: [MATCH, MISMATCH, null]
+          nullable: true
+        generatedBy:
+          type: string
+          enum: [KEYWORDS, LLM]
+          description: KEYWORDS — решило правило (словарь целей), LLM — модель
+        matchedKeywords:
+          type: array
+          items:
+            type: string
+        reason:
+          type: string
+          nullable: true
+          description: обоснование LLM
+        llm:
+          type: object
+          nullable: true
+          description: версии, при которых получен ответ LLM; `null` — модель не использовалась
+          required: [model, digest, promptVersion, cached]
+          properties:
+            model:
+              type: string
+              example: qwen3:4b
+            digest:
+              type: string
+            promptVersion:
+              type: string
+              example: bba46b2556f0
+            cached:
+              type: boolean
+        profile:
+          type: object
+          nullable: true
+          description: |
+            Сверка цели с деятельностью компании (M33): основной ОКВЭД из ЕГРЮЛ против цели, только если цель подходит
+            продукту. `DOES_NOT_FIT` — ответ `PENDING`, пятно `ON_REVIEW` у специалиста с причиной (не отказ);
+            `FITS`, `UNCLEAR`, `NOT_CHECKED` (LLM выключена или не ответила) — как обычно, пятно закрыто.
+            `null` — ответ сохранён до M33.
+          required: [okved, status]
+          properties:
+            okved:
+              type: string
+              example: '56.30'
+            activity:
+              type: string
+              nullable: true
+              example: ОКВЭД 56.30 — Деятельность по предоставлению продуктов питания и напитков
+            status:
+              type: string
+              enum: [FITS, DOES_NOT_FIT, UNCLEAR, NOT_CHECKED]
+            reason:
+              type: string
+              nullable: true
+            evidence:
+              type: string
+              nullable: true
+              description: цитата из цели клиента — предмет покупки
+            violation:
+              type: string
+              nullable: true
+              description: какое правило ответа сработало (`UNIVERSAL_PURCHASE` — трата, нужная любому бизнесу)
+            llm:
+              type: object
+              nullable: true
+              properties:
+                model:
+                  type: string
+                digest:
+                  type: string
+                promptVersion:
+                  type: string
+                cached:
+                  type: boolean
 
     SpotCreate:
       type: object
@@ -1514,6 +1820,83 @@ components:
         decidedAt:
           type: string
           format: date-time
+        forkSnapshotId:
+          type: string
+          format: uuid
+          nullable: true
+          description: снимок вилки, на котором принято решение (M06); полный вход скоринга и версии — в нём
+        requestHash:
+          type: string
+          nullable: true
+          description: SHA-256 канонического `ScoreRequest` этого снимка
+          example: 3f1c0b9e4a7d2c58e6f0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f6
+
+    ForkVerification:
+      type: object
+      required: [snapshotId, reproducible, rulesVersion, requestHash, calculatedAt, verdicts, diff]
+      properties:
+        snapshotId:
+          type: string
+          format: uuid
+        reproducible:
+          type: boolean
+          description: true — пересчёт по снимку дал байт-в-байт тот же ответ `/score`, `diff` пустой
+        rulesVersion:
+          type: string
+          example: 2026-10-23.draft1
+        engineVersion:
+          type: string
+          nullable: true
+          description: версия скорингового движка `ml` на момент расчёта (`GET /health` → `engineVersion`); null — `ml` не ответил
+          example: 4c2a9e1f0b7d
+        currentEngineVersion:
+          type: string
+          nullable: true
+          description: 'версия движка `ml` сейчас; отличие от `engineVersion` при `reproducible: true` значит, что код менялся, но ответ тот же'
+        requestHash:
+          type: string
+          description: SHA-256 канонического `ScoreRequest` из снимка
+        calculatedAt:
+          type: string
+          format: date-time
+        verdicts:
+          type: array
+          description: вердикты разбора цели, действовавшие при расчёте снимка, с версиями LLM
+          items:
+            $ref: '#/components/schemas/UsedVerdict'
+        diff:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldDiff'
+
+    UsedVerdict:
+      type: object
+      required: [spotId, verdict]
+      properties:
+        spotId:
+          type: string
+          format: uuid
+        scoringFactor:
+          type: string
+          nullable: true
+          example: purpose
+        verdict:
+          $ref: '#/components/schemas/PurposeVerdict'
+
+    FieldDiff:
+      type: object
+      required: [path]
+      properties:
+        path:
+          type: string
+          description: путь до расхождения в ответе `/score`; `requestHash` — сохранённый вход изменён
+          example: $.factors[2].spotPricePp
+        expected:
+          nullable: true
+          description: значение из снимка
+        actual:
+          nullable: true
+          description: значение при пересчёте
 
     Contract:
       type: object
@@ -1638,8 +2021,12 @@ components:
 
     UnderwritingSummary:
       type: object
-      required: [items, generatedBy]
+      required: [status, items, generatedBy, llm, generatedAt]
       properties:
+        status:
+          type: string
+          enum: [ready, generating]
+          description: generating — показан готовый шаблон, LLM-версия ещё создаётся
         generatedBy:
           type: string
           enum: [LLM, TEMPLATE]
@@ -1647,6 +2034,23 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SummaryItem'
+        llm:
+          type: object
+          nullable: true
+          required: [model, digest, promptVersion, cached]
+          properties:
+            model:
+              type: string
+              example: qwen3:4b
+            digest:
+              type: string
+            promptVersion:
+              type: string
+            cached:
+              type: boolean
+        generatedAt:
+          type: string
+          format: date-time
 
     SummaryItem:
       type: object

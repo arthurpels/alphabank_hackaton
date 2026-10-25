@@ -6,7 +6,9 @@ import { Text } from '@alfalab/core-components/text';
 import { ApiError, api } from '../api';
 import { loginAsUnderwriter } from '../auth';
 import { DocumentPreview } from '../components/DocumentPreview';
+import { ReproBlock } from '../components/ReproBlock';
 import { ForkBar } from '../components/ForkBar';
+import { ForkBreakdown } from '../components/ForkBreakdown';
 import {
   AddSpotForm,
   DecisionForm,
@@ -17,6 +19,7 @@ import {
 import { FORK_SCALE } from '../constants';
 import { rub, ruDate } from '../format';
 import { STATUS_META } from '../statuses';
+import { SUMMARY_MAX_POLLS, SUMMARY_POLL_MS } from '../verdictLabels';
 import type { ApplicationDetails, UnderwritingSummary } from '../types';
 import '../App.css';
 
@@ -50,6 +53,7 @@ export default function UnderwriterApplicationPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [preview, setPreview] = useState<Blob | null>(null);
+  const [summaryGaveUp, setSummaryGaveUp] = useState(false);
 
   const loadSummary = useCallback((applicationId: string) => {
     setSummaryError(null);
@@ -74,9 +78,24 @@ export default function UnderwriterApplicationPage() {
       .catch((e) => setError(errorText(e)));
   }, [id, loadSummary]);
 
+  const summaryGenerating = summary?.status === 'generating';
+  useEffect(() => {
+    if (!id || !summaryGenerating) return;
+    let tries = 0;
+    const timer = setInterval(() => {
+      tries += 1;
+      api.getUnderwritingSummary(id).then(setSummary).catch(() => undefined);
+      if (tries >= SUMMARY_MAX_POLLS) {
+        clearInterval(timer);
+        setSummaryGaveUp(true);
+      }
+    }, SUMMARY_POLL_MS);
+    return () => clearInterval(timer);
+  }, [id, summaryGenerating]);
   const run = useCallback(async (key: string, call: () => Promise<ApplicationDetails>) => {
     setBusy(key);
     setError(null);
+    setSummaryGaveUp(false);
     try {
       const next = await call();
       setData(next);
@@ -166,10 +185,13 @@ export default function UnderwriterApplicationPage() {
             approveMax={fork.thresholds.approveMax}
             rejectMin={fork.thresholds.rejectMin}
           />
+          <ForkBreakdown fork={fork} showSource />
         </section>
       )}
 
-      <SummaryBlock summary={summary} error={summaryError} />
+      {fork && <ReproBlock applicationId={application.id} rulesVersion={data.decision?.rulesVersion ?? fork.rulesVersion} />}
+
+      <SummaryBlock summary={summary} error={summaryError} waiting={summaryGenerating && !summaryGaveUp} gaveUp={summaryGenerating && summaryGaveUp} />
 
       <SpotsReview
         spots={spots}

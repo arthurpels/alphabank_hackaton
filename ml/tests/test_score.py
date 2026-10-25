@@ -1,10 +1,13 @@
+import re
+
 import pytest
 import yaml
 
-from main import RULES_PATH
+from main import BASE_DIR, RULES_PATH
 from scoring.conditions import Condition, ConditionError
 from scoring.engine import Engine, RulesError
 from scoring.schemas import ScoreRequest
+from scoring.version import ENGINE_FILES, engine_version
 from tests.contract import SCORE_EXAMPLES as CONTRACT_EXAMPLES
 from tests.contract import client, persona_request, post
 
@@ -120,10 +123,6 @@ def test_invalid_request_is_rejected(changes: dict) -> None:
     assert client.post("/score", json=_request("coffee", **changes)).status_code == 422
 
 
-def test_health() -> None:
-    assert client.get("/health").json() == {"status": "ok"}
-
-
 @pytest.mark.parametrize(
     "source",
     ["__import__('os').system('ls')", "credit_score.__class__", "[1, 2]", "credit_score + 1 > 2", "lambda: 1"],
@@ -144,3 +143,24 @@ def test_rules_with_unknown_name_fail_on_load() -> None:
     raw["factors"]["credit_history"]["rules"][0]["if"] = "credit_rating > 1"
     with pytest.raises(RulesError, match="credit_rating"):
         Engine(raw)
+
+
+def test_health_reports_engine_and_rules_versions() -> None:
+    first = client.get("/health").json()
+    second = client.get("/health").json()
+    assert first == second
+    assert first["status"] == "ok"
+    assert re.fullmatch(r"[0-9a-f]{12}", first["engineVersion"])
+    assert first["rulesVersion"] == yaml.safe_load(RULES_PATH.read_text(encoding="utf-8"))["rules_version"]
+
+
+def test_engine_version_changes_with_rules(tmp_path) -> None:
+    for name in ENGINE_FILES:
+        target = tmp_path / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes((BASE_DIR / name).read_bytes())
+    before = engine_version(tmp_path)
+    rules = tmp_path / "scoring_rules.yaml"
+    rules.write_text(rules.read_text(encoding="utf-8") + "\n# правка\n", encoding="utf-8")
+    assert engine_version(tmp_path) != before
+    assert before == engine_version(BASE_DIR)

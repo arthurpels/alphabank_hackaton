@@ -17,11 +17,27 @@ public interface MocksClient {
 
     FnsResponse fnsDebts(String inn);
 
-    Optional<OfdResponse> ofdRevenue(String inn);
+    int CURRENT_MONTHS = 12;
+    int MARKETPLACE_MONTHS = 6;
+    int HISTORY_MONTHS = 24;
 
-    Optional<MarketplaceResponse> marketplaceSales(String inn);
+    default Optional<OfdResponse> ofdRevenue(String inn) {
+        return ofdRevenue(inn, CURRENT_MONTHS);
+    }
 
-    Optional<AcquiringResponse> acquiringTurnover(String inn);
+    Optional<OfdResponse> ofdRevenue(String inn, int months);
+
+    default Optional<MarketplaceResponse> marketplaceSales(String inn) {
+        return marketplaceSales(inn, MARKETPLACE_MONTHS);
+    }
+
+    Optional<MarketplaceResponse> marketplaceSales(String inn, int months);
+
+    default Optional<AcquiringResponse> acquiringTurnover(String inn) {
+        return acquiringTurnover(inn, CURRENT_MONTHS);
+    }
+
+    Optional<AcquiringResponse> acquiringTurnover(String inn, int months);
 
     void ofdConnect(String inn);
 

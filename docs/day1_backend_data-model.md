@@ -18,6 +18,7 @@ erDiagram
     PRODUCT ||--o{ APPLICATION : "запрошен"
     APPLICATION ||--o{ SPOT : "пятна"
     APPLICATION ||--o{ FORK_SNAPSHOT : "снимки вилки"
+    APPLICATION ||--o| UNDERWRITING_SUMMARY : "сохранённая сводка"
     APPLICATION ||--o{ OFFER : "варианты условий"
     APPLICATION ||--o{ DOCUMENT : "документы"
     APPLICATION ||--o| DECISION : "итог"
@@ -25,6 +26,7 @@ erDiagram
     DATA_SOURCE ||--o{ APPLICATION_SOURCE : "справочник источников"
     PRODUCT ||--o{ OFFER : "продукт варианта"
     FORK_SNAPSHOT ||--o| OFFER : "вилка варианта"
+    FORK_SNAPSHOT ||--o{ DECISION : "основа решения"
     OFFER ||--o| DECISION : "основание решения"
     SPOT ||--o{ SPOT_ANSWER : "ответы клиента"
     DOCUMENT ||--o{ SPOT_ANSWER : "подтверждение"
@@ -66,6 +68,7 @@ erDiagram
         int term_months
         string goal "цель, свободный текст"
         string status "см. application-states.md"
+        date as_of "фиксируется при первом расчёте; null в DRAFT"
         timestamp created_at
         timestamp submitted_at
         timestamp info_requested_at "для таймаута дозапроса"
@@ -102,6 +105,8 @@ erDiagram
         string review_comment "при REJECTED показывается клиенту"
         timestamp created_at
         timestamp reviewed_at
+        json purpose_verdict "ответ /purpose для пятна цели: статус, значение, кто решил, обоснование, llm.*, продукт"
+        json anomaly_verdict "ответ на аномалию выручки: аномалия, код причины, /answers/classify (кто решил, llm.*), /answers/verify (вердикт, правило)"
     }
 
     FORK_SNAPSHOT {
@@ -112,7 +117,24 @@ erDiagram
         numeric approve_max "порог автоодобрения продукта на момент расчёта"
         numeric reject_min "порог отказа продукта на момент расчёта"
         string rules_version "версия YAML-правил, воспроизводимость"
+        date as_of "дата входа для скоринга; совпадает с APPLICATION.as_of"
         timestamp calculated_at
+        text score_request "полный ScoreRequest, канонический JSON (ключи по алфавиту); null у снимков до M06"
+        string request_hash "SHA-256 score_request"
+        text score_response "ответ /score, канонический JSON — эталон для verify"
+        string engine_version "версия движка ml (GET /health → engineVersion)"
+        json verdicts "вердикты разбора цели на момент расчёта: [{spotId, scoringFactor, verdict с llm.*}]"
+    }
+
+    UNDERWRITING_SUMMARY {
+        uuid application_id PK, FK "одна актуальная сводка на заявку"
+        string status "ready | generating"
+        string generated_by "TEMPLATE | LLM"
+        json items "пункты сводки и ссылки на факты"
+        json llm "model, digest, promptVersion, cached; null у шаблона"
+        timestamp generated_at
+        timestamp updated_at
+        bigint revision "защита от перезаписи новой версии старой async-задачей"
     }
 
     OFFER {
@@ -143,6 +165,8 @@ erDiagram
         string comment "обязателен при override = true; при REJECTED — причина"
         uuid reason_spot_id FK "при REJECTED — пятно/стоп-фактор-причина"
         timestamp decided_at
+        uuid fork_snapshot_id FK "снимок вилки, на котором принято решение; вход и версии — в нём"
+        string request_hash "SHA-256 ScoreRequest этого снимка"
     }
 
     DOCUMENT {
@@ -245,7 +269,9 @@ CALCULATED → OFFERED → CHOSEN
 8. Каждый переход статуса заявки — событие `STATUS_CHANGE` в AUDIT_LOG
    (кто, откуда, куда, причина).
 9. `FORK_SNAPSHOT.rules_version` = версии YAML-правил из `ml/`; решение и
-   любую вилку можно пересчитать заново и получить тот же результат.
+   любую вилку можно пересчитать заново и получить тот же результат:
+   `POST /applications/{id}/fork/verify` отправляет `score_request` в `/score` и сравнивает ответ
+   с `score_response` байт-в-байт (M06).
 
 ## Стыки API (для OpenAPI, день 2)
 

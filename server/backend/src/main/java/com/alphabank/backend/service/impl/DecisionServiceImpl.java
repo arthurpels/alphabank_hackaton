@@ -34,6 +34,7 @@ import com.alphabank.backend.repository.model.ApplicationRecord;
 import com.alphabank.backend.repository.model.ForkSnapshotRecord;
 import com.alphabank.backend.repository.model.OfferRecord;
 import com.alphabank.backend.repository.model.ProductRecord;
+import com.alphabank.backend.scoringclient.dto.ScoreRequest;
 import com.alphabank.backend.security.CurrentUser;
 import com.alphabank.backend.service.ApplicationAccessService;
 import com.alphabank.backend.service.ApplicationDetailsService;
@@ -110,10 +111,8 @@ public class DecisionServiceImpl implements DecisionService {
                 yield List.of();
             }
         };
-        String rulesVersion = forkSnapshotRepository.findLatest(applicationId)
-                .map(ForkSnapshotRecord::rulesVersion)
-                .orElse(null);
-        decisionWriter.byUnderwriter(applicationId, request.type(), user.id(), rulesVersion, request.override(),
+        ForkSnapshotRecord snapshot = forkSnapshotRepository.findLatest(applicationId).orElse(null);
+        decisionWriter.byUnderwriter(applicationId, request.type(), user.id(), snapshot, request.override(),
                 request.reasonSpotId(), request.comment(), offerIds);
         ApplicationStatus target = switch (request.type()) {
             case APPROVED -> ApplicationStatus.APPROVED;
@@ -130,7 +129,7 @@ public class DecisionServiceImpl implements DecisionService {
         ForkCalculation calculation = forkCalculationService.calculate(application, product,
                 accessService.companyInn(application));
         return offerWriter.save(application.id(), product, application.amount(), application.termMonths(), null,
-                calculation.score(), OfferStatus.OFFERED, now());
+                calculation.request(), calculation.score(), OfferStatus.OFFERED, now());
     }
 
     private List<UUID> markOffers(ApplicationRecord application, DecisionRequest request, CurrentUser user) {
@@ -158,9 +157,10 @@ public class DecisionServiceImpl implements DecisionService {
         paramsValidator.validate(mapper.toProduct(product), manual.amount(), manual.termMonths());
         ForkCalculation calculation = forkCalculationService.calculate(application, product(application.productId()),
                 accessService.companyInn(application));
+        ScoreRequest offerRequest = gridOfferWriter.offerRequest(calculation.request(), manual.productCode(),
+                manual.amount(), manual.termMonths(), manual.collateralType());
         OfferRecord offer = offerWriter.save(application.id(), product, manual.amount(), manual.termMonths(),
-                manual.collateralType(), gridOfferWriter.score(calculation.request(), manual.productCode(),
-                        manual.amount(), manual.termMonths(), manual.collateralType()),
+                manual.collateralType(), offerRequest, gridOfferWriter.score(offerRequest),
                 DecidedBy.UNDERWRITER, comment, OfferStatus.OFFERED, now());
         ProductRecord requested = product(application.productId());
         auditService.record(application.id(), AuditEventType.OVERRIDE, user.id(), comment, Map.of(

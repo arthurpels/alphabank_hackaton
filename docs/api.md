@@ -14,6 +14,13 @@
 - Деньги — **в копейках** (`200000000` = 2 000 000 ₽), ставки и цены пятен — в % и п.п.
 - Даты — ISO 8601 (`2026-10-23`), `registeredAt` и сроки — `YYYY-MM-DD`.
 
+### Таймауты ML
+
+- `/score`, сетка офферов и `/anomalies`: read timeout 4 с, ретраи как у остальных источников.
+- `/purpose`, `/summary` и `/answers`: долгий `ML_LLM_TIMEOUT_MS` (по умолчанию `90000`), без ретраев.
+  После `ML_LLM_CIRCUIT_FAILURES` ошибок подряд (по умолчанию 3) circuit breaker размыкается на
+  `ML_LLM_CIRCUIT_OPEN_MS` (по умолчанию `30000`); следующий после паузы успешный вызов закрывает его снова.
+
 ## Аутентификация: демо-пользователь
 
 Это прототип: вместо логина/пароля заголовок `X-Demo-User` с UUID пользователя.
@@ -56,7 +63,7 @@ GET /api/v1/demo/users              # без заголовка; ?role=CLIENT|UN
 | `FORBIDDEN` | 403 | не та роль или заявка другой компании |
 | `NOT_FOUND` | 404 | нет такого id |
 | `INVALID_TRANSITION` | 409 | действие не разрешено статусной машиной (`currentStatus` — текущий статус) |
-| `SOURCE_UNAVAILABLE` | 503 | моки или скоринг-сервис недоступны; бэкенд делает ретраи, повторите запрос |
+| `SOURCE_UNAVAILABLE` | 503 | мок или быстрый скоринг недоступен после ретраев; долгие LLM-вызовы не повторяются |
 | `INTERNAL_ERROR` | 500 | непредвиденное; в логах бэкенда |
 
 ## Эндпоинты по группам
@@ -69,6 +76,9 @@ GET /api/v1/demo/users              # без заголовка; ?role=CLIENT|UN
 - `GET /me` — текущий пользователь и его компания.
 - `GET /products` — продуктовая сетка: `code` (`EQUIPMENT`, `WORKING_CAPITAL`,
   `OVERDRAFT`), `name`, `minAmount`/`maxAmount` (копейки), `allowedTerms`.
+- `GET /rules` — действующие правила скоринга из ML: `rulesVersion`, продукты и пороги,
+  факторы, вклады и диапазоны неизвестных значений. Публичный endpoint, `X-Demo-User`
+  не нужен; недоступность ML → `503 SOURCE_UNAVAILABLE`.
 
 ### Жизненный цикл заявки (`/applications`)
 
@@ -79,10 +89,16 @@ GET /api/v1/demo/users              # без заголовка; ?role=CLIENT|UN
 - `GET /applications` — список заявок текущего клиента.
 - `GET /applications/{id}` — карточка: параметры, компания, статус, вилка
   (`fork`: `rateFrom`/`rateTo`, `zone`, `thresholds`), пятна, офферы, решение.
+  В `fork.factors` — сохранённое разложение `/score`: вклад известного фактора `value`
+  или диапазон неизвестного `best`/`worst`, цена пятна `spotPricePp` и `source`.
+  ML при чтении вилки повторно не вызывается; для снимков до M06 `factors` пустой.
+  `fork.reproducible` — результат последней проверки (`null`, если её ещё не было).
   Клиенту — только свои; андеррайтеру — любая.
 - `PATCH /applications/{id}` — поменять сумму/срок/цель (только `DRAFT`, `COLLECTING`).
 - `POST /applications/{id}/evaluate` — **первичный расчёт**: бэкенд ходит в моки
-  (ЕГРЮЛ, БКИ, ФНС), строит пятна и считает вилку через скоринг-сервис.
+  (ЕГРЮЛ, БКИ, ФНС), строит пятна и считает вилку через скоринг-сервис. При первом расчёте
+  фиксирует на заявке `asOf` из `DEMO_DATE` (по умолчанию `2026-10-23`); все пересчёты
+  используют её же, поэтому перемотка демо-времени меняет сроки, но не вилку.
   `DRAFT → COLLECTING`. Источник недоступен → `503 SOURCE_UNAVAILABLE`.
 - `POST /applications/{id}/submit` — подать заявку. Дальше статусная машина:
   автоодобрение `→ APPROVED`, андеррайтер `→ UNDERWRITING`, иные условия
@@ -91,6 +107,15 @@ GET /api/v1/demo/users              # без заголовка; ?role=CLIENT|UN
   источнику `status` (`OK` / `WARNING` / `BLOCKED`), `facts` — что подтвердилось, `problems` — стоп-факторы.
   Клиент видит это после «Рассчитать». В `DRAFT` — `409`.
 - `GET /applications/{id}/fork-history` — история вилки (видно, как сужалась).
+- `POST /applications/{id}/fork/verify` — проверка воспроизводимости последнего снимка вилки (M06).
+  Каждый снимок хранит полный `ScoreRequest` в каноническом JSON (ключи по алфавиту), его SHA-256,
+  ответ `/score`, `rulesVersion`, версию движка `ml` и вердикты разбора цели с `llm.*`. Решение
+  ссылается на снимок (`decision.forkSnapshotId`, `decision.requestHash`). `verify` проверяет хеш входа,
+  заново отправляет вход в `/score` и сравнивает ответ байт-в-байт. LLM не вызывается: её вердикт уже
+  внутри входа. Ответ — `{ reproducible, diff, rulesVersion, engineVersion, currentEngineVersion,
+  requestHash, verdicts }`; при расхождении в `diff` — путь и оба значения
+  (`{ "path": "$.rateTo", "expected": 19.5, "actual": 20.0 }`). Снимок без входа (рассчитан до M06) → `404`,
+  скоринг недоступен → `503`. Доступно клиенту (своя заявка) и андеррайтеру.
 - `GET /applications/{id}/history` — журнал событий заявки.
 
 ### Пятна и документы (`/applications/{id}/spots`)
@@ -102,7 +127,24 @@ GET /api/v1/demo/users              # без заголовка; ?role=CLIENT|UN
   Только андеррайтер.
 - `POST …/spots/{spotId}/close` — закрыть пятно. Тело зависит от `closeMethod`:
   - `CONNECT_SOURCE` — `{ method, sourceCode, consent: true }`;
-  - `ANSWER` — `{ method, optionCode?, text? }` (например, `RENOVATION`);
+  - `ANSWER` — `{ method, optionCode?, text? }` (например, `RENOVATION`). Ответ по цели кредита разбирает
+    `/purpose` ML-сервиса; вердикт (кто решил: словарь или LLM, обоснование, модель и версия промпта) хранится в
+    `lastAnswer.purposeVerdict` и пишется в журнал. Пересчёты вилки и повтор того же текста модель не вызывают.
+    `UNCLEAR` означает, что модель ответила «непонятно»: пятно остаётся `OPEN`, нужен более конкретный текст.
+    `UNAVAILABLE` или таймаут означает, что модель не ответила: ответ сохраняется как `PENDING`, пятно уходит
+    андеррайтеру в `ON_REVIEW`, отказа из-за недоступности LLM нет.
+    Цель сверяется и с деятельностью компании (M33): бэкенд передаёт в `/purpose` основной ОКВЭД из ЕГРЮЛ;
+    если цель подходит продукту, но LLM находит, что она не похожа на деятельность компании (кофемашины у
+    производителя компьютеров), ответ уходит андеррайтеру в `ON_REVIEW` с причиной в журнале — это не отказ;
+    итог в `lastAnswer.purposeVerdict.profile`. Траты, нужные любому бизнесу (офисная техника, мебель,
+    транспорт, аренда, зарплата, налоги), подходят всегда; без LLM сверка не выполняется (`NOT_CHECKED`).
+    Ответ на аномалию выручки (M16): вариант-кнопкой (`optionCode`: `RENOVATION`, `SEASONAL`, `CLIENT_LOST`) или
+    свободным текстом — его разбирает `/answers/classify` (словарь, затем LLM). Причину проверяет данными
+    `/answers/verify` по ряду источника за 24 месяца: подтвердилась — пятно `CLOSED` системой с правилом в журнале
+    (Кофейня: «Был ремонт» → `RENOVATION_ONE_OFF`); нет, причина без проверки данными (`CLIENT_LOST`, `OTHER`),
+    попытка управлять проверкой или LLM недоступна — `PENDING`, пятно `ON_REVIEW` у андеррайтера. Разбор и проверка
+    хранятся в `lastAnswer.anomalyVerdict`; тот же текст модель повторно не разбирает. Вариант, которого нет в
+    `answerOptions` пятна, — `400`;
   - `UPLOAD` — `{ method, documentId, text?, contractAmount?, contractTermMonths? }`
     (сумма/срок договора — если пятно по фактору `debt_load`);
   - `PAY` — `{ method }` (погашение долга ФНС, повторный запрос делает система);
@@ -127,7 +169,10 @@ GET /api/v1/demo/users              # без заголовка; ?role=CLIENT|UN
 - `GET /underwriting/queue?status=…` — очередь заявок. Без `status` — в работе (`UNDERWRITING`,
   `INFO_REQUESTED`), старые сверху. `status` можно повторять: «Завершённые» —
   `APPROVED`, `COUNTER_OFFER`, `REJECTED`, `SIGNING`, `ISSUED`, `CANCELLED`, новые сверху; только поданные заявки.
-- `GET /underwriting/applications/{id}/summary` — сводка фактов по заявке.
+- `GET /underwriting/applications/{id}/summary` — сохранённая сводка фактов, читается из БД без вызова
+  моков/ML. Поля: `status` (`ready`/`generating`), `generatedBy`, `items`, `llm`, `generatedAt`.
+  Шаблон создаётся при переходе в `UNDERWRITING` и после изменений пятен. При включённой LLM
+  асинхронная версия позже заменяет шаблон; ошибка LLM оставляет шаблон в `ready`.
 - `POST /applications/{id}/decision { type, offerIds?, comment?, override? }` —
   решение: `APPROVED` / ветка «иные условия» через `ALTERNATIVE` / `REJECTED`.
   Ручная правка условий — `override: true` + обязательный `comment`.

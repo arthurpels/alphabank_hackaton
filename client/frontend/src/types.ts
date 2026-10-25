@@ -25,9 +25,29 @@ export interface Spot {
   lastAnswer?: SpotAnswer | null;
 }
 
+export type FactorCode =
+  | 'credit_history' | 'business_age' | 'tax_discipline' | 'debt_load'
+  | 'revenue_stability' | 'purpose' | 'collateral';
+
+export interface ForkFactor {
+  code: FactorCode;
+  title: string;
+  applicable: boolean;
+  known: boolean;
+  value?: number | null;
+  best?: number | null;
+  worst?: number | null;
+  spotPricePp?: number | null;
+  source?: SourceCode | null;
+}
+
 export interface Fork {
   rateFrom: number;
   rateTo: number;
+  factors?: ForkFactor[];
+  reproducible?: boolean | null;
+  rulesVersion?: string | null;
+  asOf?: string | null;
   zone: DecisionZone;
   thresholds: { approveMax: number; rejectMin: number };
 }
@@ -141,6 +161,9 @@ export interface Decision {
   comment?: string | null;
   reasonSpotId?: string | null;
   decidedAt: string;
+  rulesVersion?: string | null;
+  forkSnapshotId?: string | null;
+  requestHash?: string | null;
 }
 
 export interface PaymentScheduleItem {
@@ -182,6 +205,8 @@ export interface SpotAnswer {
   reviewComment?: string | null;
   createdAt: string;
   reviewedAt?: string | null;
+  purposeVerdict?: PurposeVerdict | null;
+  anomalyVerdict?: AnomalyVerdict | null;
 }
 
 export type ScoringFactor = 'debt_load' | 'revenue_stability' | 'purpose' | 'collateral';
@@ -241,8 +266,11 @@ export interface SummaryItem {
 }
 
 export interface UnderwritingSummary {
+  status?: 'ready' | 'generating';
   generatedBy: 'LLM' | 'TEMPLATE';
   items: SummaryItem[];
+  llm?: LlmMeta | null;
+  generatedAt?: string;
 }
 
 export type CheckStatus = 'OK' | 'WARNING' | 'BLOCKED';
@@ -264,4 +292,111 @@ export interface Document {
   kind: string;
   fileName: string;
   uploadedAt: string;
+}
+
+export interface LlmMeta {
+  model: string;
+  digest: string;
+  promptVersion: string;
+  cached: boolean;
+}
+
+export interface PurposeVerdict {
+  productCode: ProductCode;
+  status: 'DECIDED' | 'UNCLEAR' | 'UNAVAILABLE' | 'NOT_APPLICABLE';
+  purpose?: 'MATCH' | 'MISMATCH' | null;
+  generatedBy: 'KEYWORDS' | 'LLM';
+  matchedKeywords: string[];
+  reason?: string | null;
+  llm?: LlmMeta | null;
+}
+
+export type AnomalyCause = 'RENOVATION' | 'SEASONAL' | 'CLIENT_LOST' | 'OTHER';
+
+export interface AnomalyVerdict {
+  anomaly?: {
+    code: 'REVENUE_DROP' | 'REVENUE_SPIKE';
+    month: string;
+    changePct: number;
+    source?: SourceCode | null;
+  } | null;
+  code?: AnomalyCause | null;
+  classification?: {
+    status: 'DECIDED' | 'UNAVAILABLE';
+    code?: AnomalyCause | null;
+    generatedBy: 'KEYWORDS' | 'LLM';
+    matchedKeywords: string[];
+    reason?: string | null;
+    evidence?: string | null;
+    violation?: string | null;
+    llm?: LlmMeta | null;
+  } | null;
+  check?: {
+    verdict: 'ACCEPTED' | 'REVIEW';
+    rule?: string | null;
+    explanation: string;
+  } | null;
+}
+
+export interface FieldDiff {
+  path: string;
+  expected?: unknown;
+  actual?: unknown;
+}
+
+export interface UsedVerdict {
+  spotId: string;
+  scoringFactor?: string | null;
+  verdict: PurposeVerdict;
+}
+
+export interface ForkVerification {
+  snapshotId: string;
+  reproducible: boolean;
+  rulesVersion: string;
+  engineVersion?: string | null;
+  currentEngineVersion?: string | null;
+  requestHash: string;
+  calculatedAt: string;
+  verdicts: UsedVerdict[];
+  diff: FieldDiff[];
+}
+
+export interface RulesRule {
+  condition: string | null;
+  value: number;
+}
+
+export interface RulesFactor {
+  code: FactorCode;
+  title: string;
+  unknown: { best: number; worst: number; spotPricePp: number } | null;
+  rules: RulesRule[];
+  overdraftRules: RulesRule[];
+}
+
+export interface RulesProduct {
+  code: ProductCode;
+  name: string;
+  baseRate: number;
+  thresholds: { approveMax: number; rejectMin: number };
+  amount: { min: number; max: number };
+  terms: number[];
+  policy: { metric: 'PTI' | 'LIMIT_SHARE'; cap: number };
+  skipFactors: FactorCode[];
+}
+
+export interface RulesStopFactor {
+  code: string;
+  condition: string;
+  removable: boolean;
+  closeMethod: 'PAY' | null;
+}
+
+export interface RulesResponse {
+  rulesVersion: string;
+  calcRatePct: number;
+  products: RulesProduct[];
+  factors: RulesFactor[];
+  stopFactors: RulesStopFactor[];
 }

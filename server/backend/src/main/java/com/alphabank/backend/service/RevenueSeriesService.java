@@ -10,5 +10,7 @@ public interface RevenueSeriesService {
 
     Series fetch(SourceCode source, String inn);
 
+    Series fetchHistory(SourceCode source, String inn);
+
     List<Series> fetchConnected(UUID applicationId, String inn);
 }

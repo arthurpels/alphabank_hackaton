@@ -9,41 +9,40 @@ import org.springframework.stereotype.Component;
 import com.alphabank.backend.enums.AuditEventType;
 import com.alphabank.backend.enums.DecidedBy;
 import com.alphabank.backend.enums.OfferStatus;
-import com.alphabank.backend.repository.ForkSnapshotRepository;
 import com.alphabank.backend.repository.OfferRepository;
 import com.alphabank.backend.repository.model.ForkSnapshotRecord;
 import com.alphabank.backend.repository.model.OfferRecord;
 import com.alphabank.backend.repository.model.ProductRecord;
+import com.alphabank.backend.scoringclient.dto.ScoreRequest;
 import com.alphabank.backend.scoringclient.dto.ScoreResponse;
 import com.alphabank.backend.service.AuditService;
+import com.alphabank.backend.service.ForkSnapshotService;
 
 @Component
 public class OfferWriter {
 
-    private final ForkSnapshotRepository forkSnapshotRepository;
+    private final ForkSnapshotService forkSnapshotService;
     private final OfferRepository offerRepository;
     private final AuditService auditService;
 
-    public OfferWriter(ForkSnapshotRepository forkSnapshotRepository, OfferRepository offerRepository,
+    public OfferWriter(ForkSnapshotService forkSnapshotService, OfferRepository offerRepository,
                        AuditService auditService) {
-        this.forkSnapshotRepository = forkSnapshotRepository;
+        this.forkSnapshotService = forkSnapshotService;
         this.offerRepository = offerRepository;
         this.auditService = auditService;
     }
 
     public OfferRecord save(UUID applicationId, ProductRecord product, long amount, int termMonths,
-                            String collateralType, ScoreResponse fork, OfferStatus status, OffsetDateTime createdAt) {
-        return save(applicationId, product, amount, termMonths, collateralType, fork, DecidedBy.SYSTEM, null, status,
-                createdAt);
+                            String collateralType, ScoreRequest request, ScoreResponse fork, OfferStatus status,
+                            OffsetDateTime createdAt) {
+        return save(applicationId, product, amount, termMonths, collateralType, request, fork, DecidedBy.SYSTEM,
+                null, status, createdAt);
     }
 
     public OfferRecord save(UUID applicationId, ProductRecord product, long amount, int termMonths,
-                            String collateralType, ScoreResponse fork, DecidedBy proposedBy, String comment,
-                            OfferStatus status, OffsetDateTime createdAt) {
-        ForkSnapshotRecord snapshot = new ForkSnapshotRecord(UUID.randomUUID(), applicationId, fork.rateFrom(),
-                fork.rateTo(), fork.thresholds().approveMax(), fork.thresholds().rejectMin(), fork.rulesVersion(),
-                createdAt);
-        forkSnapshotRepository.insert(snapshot);
+                            String collateralType, ScoreRequest request, ScoreResponse fork, DecidedBy proposedBy,
+                            String comment, OfferStatus status, OffsetDateTime createdAt) {
+        ForkSnapshotRecord snapshot = forkSnapshotService.save(applicationId, request, fork, createdAt);
         OfferRecord offer = new OfferRecord(UUID.randomUUID(), applicationId, product.id(), amount, termMonths,
                 collateralType, null, snapshot.id(), proposedBy, status, comment, createdAt, null);
         offerRepository.insert(offer);

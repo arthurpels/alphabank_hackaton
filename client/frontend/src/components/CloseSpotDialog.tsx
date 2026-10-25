@@ -9,6 +9,7 @@ import { RadioGroup } from '@alfalab/core-components/radio-group';
 import { Textarea } from '@alfalab/core-components/textarea';
 import { SOURCE_LABELS } from '../constants';
 import type { CollateralType, SourceCode, Spot, SpotCloseRequest } from '../types';
+import { WAIT_TEXT } from '../verdictLabels';
 import './CloseSpotDialog.css';
 
 // окно закрытия пятна (T37) поля — по описанию closeSpot в docs/openapi.yaml
@@ -43,6 +44,7 @@ const SUBMIT_LABELS = {
 const MAX_FILE_MB = 10;
 const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
 const digits = (v: string) => v.replace(/\D/g, '');
+const OTHER_OPTION = '__text';
 
 export function CloseSpotDialog({ spot, onDismiss, onSubmit }: Props) {
   const method = spot.closeMethod;
@@ -67,9 +69,9 @@ export function CloseSpotDialog({ spot, onDismiss, onSubmit }: Props) {
   const errors: Record<string, string> = {};
   if (method === 'CONNECT_SOURCE' && !source) errors.source = 'Выберите, откуда взять данные';
   if (method === 'CONNECT_SOURCE' && !consent) errors.consent = 'Нужно согласие, чтобы запросить данные';
-  if (method === 'ANSWER' && !option && !text.trim()) {
-    errors.answer = hasOptions ? 'Выберите вариант или напишите ответ' : 'Напишите ответ';
-  }
+  const ownText = !hasOptions || option === OTHER_OPTION;
+  if (method === 'ANSWER' && !option && hasOptions) errors.answer = 'Выберите причину или опишите своими словами';
+  else if (method === 'ANSWER' && ownText && !text.trim()) errors.answer = 'Напишите ответ';
   if (method === 'UPLOAD') {
     if (!file) errors.file = 'Выберите файл';
     else if (!ALLOWED_TYPES.includes(file.type)) errors.file = 'Подойдёт PDF, JPEG или PNG';
@@ -92,8 +94,8 @@ export function CloseSpotDialog({ spot, onDismiss, onSubmit }: Props) {
       body.consent = true;
     }
     if (method === 'ANSWER') {
-      if (option) body.optionCode = option;
-      if (text.trim()) body.text = text.trim();
+      if (ownText) body.text = text.trim();
+      else body.optionCode = option;
     }
     if (method === 'UPLOAD' && Number(amount) && Number(term)) {
       body.contractAmount = Number(amount) * 100;
@@ -159,21 +161,24 @@ export function CloseSpotDialog({ spot, onDismiss, onSubmit }: Props) {
           {method === 'ANSWER' && (
             <>
               <p className="close-dialog__hint">{spot.clientHint}</p>
-              {hasOptions && (
+                            {hasOptions && (
                 <RadioGroup value={option} onChange={(_, payload) => setOption(payload?.value ?? '')} direction="vertical">
                   {spot.answerOptions!.map((o) => (
                     <Radio key={o.code} value={o.code} label={o.label} />
                   ))}
+                  <Radio value={OTHER_OPTION} label="Другое — опишу своими словами" />
                 </RadioGroup>
               )}
-              <Textarea
-                block
-                label={hasOptions ? 'Пояснение (по желанию)' : 'Ваш ответ'}
-                minRows={3}
-                maxLength={2000}
-                value={text}
-                onChange={(_, { value }) => setText(value)}
-              />
+              {ownText && (
+                <Textarea
+                  block
+                  label="Ваш ответ"
+                  minRows={3}
+                  maxLength={2000}
+                  value={text}
+                  onChange={(_, { value }) => setText(value)}
+                />
+              )}
               {touched && errors.answer && <div className="notice notice--bad">{errors.answer}</div>}
             </>
           )}
@@ -247,6 +252,7 @@ export function CloseSpotDialog({ spot, onDismiss, onSubmit }: Props) {
             </>
           )}
 
+          {loading && method === 'ANSWER' && <p className="close-dialog__hint">{WAIT_TEXT.checkingAnswer}</p>}
           {serverError && <div className="notice notice--bad">{serverError}</div>}
         </div>
       </Modal.Content>

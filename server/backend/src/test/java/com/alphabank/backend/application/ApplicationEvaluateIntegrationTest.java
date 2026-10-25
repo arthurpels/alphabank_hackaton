@@ -6,6 +6,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.Duration;
+
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -18,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.alphabank.backend.security.DemoUserAuthFilter;
 import com.alphabank.backend.stub.StubIds;
 import com.alphabank.backend.support.FakeExternalServicesConfig;
+import com.alphabank.backend.util.DemoClock;
 import com.jayway.jsonpath.JsonPath;
 
 @SpringBootTest
@@ -29,15 +33,28 @@ class ApplicationEvaluateIntegrationTest {
     private static final String API = "/api/v1/applications";
     private static final String COFFEE = StubIds.COFFEE_USER_ID.toString();
     private static final String BUILDER = StubIds.BUILDER_USER_ID.toString();
+    private static final String SHELL = StubIds.SHELL_USER_ID.toString();
     private static final String UNDERWRITER = StubIds.UNDERWRITER_ID.toString();
     private static final String COFFEE_REQUEST = """
             {"productCode":"EQUIPMENT","amount":200000000,"termMonths":36,
              "goal":"2 кофемашины и витрина для второй точки",
              "consents":{"bki":true,"personalData":true}}
             """;
+    private static final String SHELL_REQUEST = """
+            {"productCode":"WORKING_CAPITAL","amount":100000000,"termMonths":12,
+             "goal":"Пополнение оборотных средств","consents":{"bki":true,"personalData":true}}
+            """;
 
     @Autowired
     private MockMvc mvc;
+
+    @Autowired
+    private DemoClock clock;
+
+    @AfterEach
+    void resetClock() {
+        clock.reset();
+    }
 
     @Test
     void createdApplicationIsDraftWithoutFork() throws Exception {
@@ -65,6 +82,15 @@ class ApplicationEvaluateIntegrationTest {
                 .andExpect(jsonPath("$.fork.zone").value("UNDERWRITER"))
                 .andExpect(jsonPath("$.fork.thresholds.approveMax").value(20.0))
                 .andExpect(jsonPath("$.fork.rulesVersion").value("2026-10-23.draft1"))
+                .andExpect(jsonPath("$.fork.reproducible").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.fork.factors.length()").value(4))
+                .andExpect(jsonPath("$.fork.factors[0].code").value("debt_load"))
+                .andExpect(jsonPath("$.fork.factors[0].known").value(false))
+                .andExpect(jsonPath("$.fork.factors[0].best").value(-1.5))
+                .andExpect(jsonPath("$.fork.factors[0].worst").value(2.0))
+                .andExpect(jsonPath("$.fork.factors[0].spotPricePp").value(3.5))
+                .andExpect(jsonPath("$.fork.factors[0].source").value("OFD"))
+                .andExpect(jsonPath("$.fork.factors[1].source").value("OFD"))
                 .andExpect(jsonPath("$.spots.length()").value(4))
                 .andExpect(jsonPath("$.spots[0].title").value("Продажи через кассу не видны"))
                 .andExpect(jsonPath("$.spots[0].pricePp").value(3.5))
@@ -83,6 +109,39 @@ class ApplicationEvaluateIntegrationTest {
                 .andExpect(jsonPath("$[1].fromState").value("DRAFT"))
                 .andExpect(jsonPath("$[1].toState").value("COLLECTING"))
                 .andExpect(jsonPath("$[2].event").value("SPOT_CREATED"));
+    }
+
+    @Test
+    void recalculationAfterSixtyDaysKeepsForkAndCalculationDate() throws Exception {
+        String created = mvc.perform(post(API).header(DemoUserAuthFilter.HEADER, SHELL)
+                        .contentType(MediaType.APPLICATION_JSON).content(SHELL_REQUEST))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String id = JsonPath.read(created, "$.application.id");
+        String evaluated = mvc.perform(post(API + "/" + id + "/evaluate").header(DemoUserAuthFilter.HEADER, SHELL))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fork.asOf").value("2026-10-23"))
+                .andExpect(jsonPath("$.spots.length()").value(2))
+                .andExpect(jsonPath("$.spots[0].title").value("Директор назначен меньше 3 месяцев назад"))
+                .andReturn().getResponse().getContentAsString();
+        double rateFrom = JsonPath.read(evaluated, "$.fork.rateFrom");
+        double rateTo = JsonPath.read(evaluated, "$.fork.rateTo");
+
+        clock.advance(Duration.ofDays(60));
+
+        mvc.perform(post(API + "/" + id + "/submit").header(DemoUserAuthFilter.HEADER, SHELL))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fork.rateFrom").value(rateFrom))
+                .andExpect(jsonPath("$.fork.rateTo").value(rateTo))
+                .andExpect(jsonPath("$.fork.asOf").value("2026-10-23"))
+                .andExpect(jsonPath("$.spots[0].title").value("Директор назначен меньше 3 месяцев назад"))
+                .andExpect(jsonPath("$.spots[0].status").value("OPEN"));
+
+        mvc.perform(get(API + "/" + id + "/fork-history").header(DemoUserAuthFilter.HEADER, SHELL))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].asOf").value("2026-10-23"))
+                .andExpect(jsonPath("$[1].asOf").value("2026-10-23"));
     }
 
     @Test

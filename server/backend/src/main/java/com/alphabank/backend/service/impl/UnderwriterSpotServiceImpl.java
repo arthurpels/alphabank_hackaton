@@ -38,6 +38,7 @@ import com.alphabank.backend.service.ApplicationAccessService;
 import com.alphabank.backend.service.ApplicationDetailsService;
 import com.alphabank.backend.service.ForkCalculationService;
 import com.alphabank.backend.service.StatusTransitionService;
+import com.alphabank.backend.service.SummaryGenerationService;
 import com.alphabank.backend.service.UnderwriterSpotService;
 import com.alphabank.backend.statemachine.ApplicationStateMachine;
 import com.alphabank.backend.validator.SpotCreateRequestValidator;
@@ -62,6 +63,7 @@ public class UnderwriterSpotServiceImpl implements UnderwriterSpotService {
     private final ForkCalculationService forkCalculationService;
     private final GridOfferWriter gridOfferWriter;
     private final StatusTransitionService statusTransitionService;
+    private final SummaryGenerationService summaryGenerationService;
     private final Clock clock;
 
     public UnderwriterSpotServiceImpl(SpotCreateRequestValidator createValidator,
@@ -72,7 +74,8 @@ public class UnderwriterSpotServiceImpl implements UnderwriterSpotService {
                                       ProductRepository productRepository, SpotRepository spotRepository,
                                       SpotAnswerRepository spotAnswerRepository, SpotResolutionWriter writer,
                                       ForkCalculationService forkCalculationService, GridOfferWriter gridOfferWriter,
-                                      StatusTransitionService statusTransitionService, Clock clock) {
+                                      StatusTransitionService statusTransitionService,
+                                      SummaryGenerationService summaryGenerationService, Clock clock) {
         this.createValidator = createValidator;
         this.reviewValidator = reviewValidator;
         this.stateMachine = stateMachine;
@@ -86,6 +89,7 @@ public class UnderwriterSpotServiceImpl implements UnderwriterSpotService {
         this.forkCalculationService = forkCalculationService;
         this.gridOfferWriter = gridOfferWriter;
         this.statusTransitionService = statusTransitionService;
+        this.summaryGenerationService = summaryGenerationService;
         this.clock = clock;
     }
 
@@ -106,6 +110,7 @@ public class UnderwriterSpotServiceImpl implements UnderwriterSpotService {
         applicationRepository.markInfoRequested(applicationId, now);
         statusTransitionService.apply(applicationId, ApplicationStatus.INFO_REQUESTED, TransitionInitiator.UNDERWRITER,
                 user.id(), "Дозапрос: " + request.title());
+        summaryGenerationService.refresh(applicationId);
         return detailsService.build(accessService.load(user, applicationId), user);
     }
 
@@ -130,12 +135,13 @@ public class UnderwriterSpotServiceImpl implements UnderwriterSpotService {
             closeRevenueSpots(applicationId, user.id());
         }
         ForkCalculation calculation = calculate(application);
-        forkCalculationService.save(applicationId, calculation.score());
+        forkCalculationService.save(applicationId, calculation.request(), calculation.score());
         gridOfferWriter.save(applicationId, calculation.request(), OfferStatus.CALCULATED);
         statusTransitionService.apply(applicationId, ApplicationStatus.UNDERWRITING, TransitionInitiator.UNDERWRITER,
                 user.id(), request.verdict() == AnswerVerdict.ACCEPTED
                         ? "Ответ по пятну принят: " + spot.title()
                         : "Ответ по пятну не принят: " + request.comment());
+        summaryGenerationService.refresh(applicationId);
         return detailsService.build(accessService.load(user, applicationId), user);
     }
 

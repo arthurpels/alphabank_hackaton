@@ -4,6 +4,8 @@ import { Text } from '@alfalab/core-components/text';
 import { CheckmarkCircleMIcon } from '@alfalab/icons-glyph/CheckmarkCircleMIcon';
 import { CLOSE_METHOD_LABELS } from '../constants';
 import type { Spot } from '../types';
+import { answerAuthor, causeLabel } from '../verdictLabels';
+import { AuthorBadge } from './AuthorBadge';
 import './SpotCard.css';
 
 type Props = {
@@ -21,12 +23,15 @@ export function SpotCard({ spot, onClose, busy = false, disabled = false }: Prop
   const isReview = spot.status === 'ON_REVIEW';
   const rejectedComment =
     spot.status === 'OPEN' && spot.lastAnswer?.verdict === 'REJECTED' ? spot.lastAnswer.reviewComment : null;
+    const author = answerAuthor(spot);
+    const recognized = causeLabel(spot, spot.lastAnswer?.anomalyVerdict?.code);
 
   if (spot.type === 'STOP_FACTOR' && !isClosed) {
     return (
       <Alert view="negative" title={spot.title} className="spot-alert">
         <div>{spot.clientHint}</div>
         {rejectedComment && <div className="spot__rejected">Ответ не принят: {rejectedComment}</div>}
+        {author && <AuthorBadge author={author} />}
         <div className="spot-alert__foot">
           {!spot.closeMethod ? (
             <span className="spot__review">Устранить нельзя</span>
@@ -58,7 +63,10 @@ export function SpotCard({ spot, onClose, busy = false, disabled = false }: Prop
           </Text>
         )}
         {rejectedComment && <div className="spot__rejected">Ответ не принят: {rejectedComment}</div>}
+        {author && <AuthorBadge author={author} />}
       </div>
+
+        {recognized && <div className="spot__recognized">Мы поняли ответ так: «{recognized}»</div>}
 
       {!isClosed && (
         <div className="spot__side">

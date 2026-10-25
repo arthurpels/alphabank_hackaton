@@ -10,7 +10,9 @@ import type {
   SpotReviewRequest,
   UnderwritingSummary,
   DemoUser,
+  ForkVerification,
   Product,
+  RulesResponse,
   SourceChecks,
   SpotCloseRequest,
   UserRole,
@@ -24,6 +26,7 @@ export interface Api {
   listDemoUsers(role?: UserRole): Promise<DemoUser[]>;
   getMe(): Promise<DemoUser>;
   listProducts(): Promise<Product[]>;
+  getRules(): Promise<RulesResponse>;
   listApplications(): Promise<ApplicationSummary[]>;
   getApplication(id: string): Promise<ApplicationDetails>;
   createApplication(body: ApplicationCreate): Promise<ApplicationDetails>;
@@ -32,11 +35,11 @@ export interface Api {
   closeSpot(id: string, spotId: string, body: SpotCloseRequest): Promise<ApplicationDetails>;
   uploadDocument(id: string, file: File, kind: string): Promise<Document>;
   downloadDocument(id: string, documentId: string): Promise<Blob>;
+  verifyFork(id: string): Promise<ForkVerification>;
   submitApplication(id: string): Promise<ApplicationDetails>;
   acceptOffer(id: string, offerId: string): Promise<ApplicationDetails>;
   signContract(id: string): Promise<ApplicationDetails>;
   cancelApplication(id: string, reason?: string): Promise<ApplicationDetails>;
-  // кабинет андеррайтера (T39)
   getUnderwritingQueue(statuses?: ApplicationStatus[]): Promise<QueueItem[]>;
   getUnderwritingSummary(id: string): Promise<UnderwritingSummary>;
   reviewSpot(id: string, spotId: string, body: SpotReviewRequest): Promise<ApplicationDetails>;
@@ -48,6 +51,7 @@ const realApi: Api = {
   listDemoUsers: (role) => request('GET', `/demo/users${role ? `?role=${role}` : ''}`),
   getMe: () => request('GET', '/me'),
   listProducts: () => request('GET', '/products'),
+  getRules: () => request('GET', '/rules'),
   listApplications: () => request('GET', '/applications'),
   getApplication: (id) => request('GET', `/applications/${id}`),
   createApplication: (body) => request('POST', '/applications', body),
@@ -61,6 +65,7 @@ const realApi: Api = {
     return request('POST', `/applications/${id}/documents`, form);
   },
   downloadDocument: (id, documentId) => requestBlob(`/applications/${id}/documents/${documentId}`),
+  verifyFork: (id) => request('POST', `/applications/${id}/fork/verify`),
   submitApplication: (id) => request('POST', `/applications/${id}/submit`),
   acceptOffer: (id, offerId) => request('POST', `/applications/${id}/accept`, { offerId }),
   signContract: (id) => request('POST', `/applications/${id}/sign`),
@@ -73,6 +78,6 @@ const realApi: Api = {
   makeDecision: (id, body) => request('POST', `/applications/${id}/decision`, body),
 };
 
-export const USE_MOCKS = import.meta.env.VITE_USE_MOCKS !== 'false';
+export const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === 'true';
 
 export const api: Api = USE_MOCKS ? mockApi : realApi;

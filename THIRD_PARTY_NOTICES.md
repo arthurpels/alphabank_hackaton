@@ -16,6 +16,8 @@
 | Spring JDBC (`spring-boot-starter-jdbc`) | 3.3.4 | Apache-2.0 | доступ к PostgreSQL (HikariCP) |
 | Flyway (`flyway-core`, `flyway-database-postgresql`) | 10.10.0 (BOM) | Apache-2.0 | миграции схемы БД при старте |
 | PostgreSQL JDBC Driver | 42.7.4 (BOM) | BSD-2-Clause | драйвер подключения к PostgreSQL |
+| Testcontainers (`junit-jupiter`, `postgresql`; тесты) | 1.19.8 (BOM) | MIT | golden-master тест: Postgres, моки и `ml` в контейнерах (M27) |
+| docker-java (через Testcontainers; тесты) | 3.3.6 | Apache-2.0 | клиент Docker API для Testcontainers |
 
 ## Mocks (`mocks/`)
 
@@ -46,6 +48,11 @@
 | certifi | 2026.7.22 | MPL-2.0 | корневые сертификаты для HTTPX |
 | pytest (разработка) | 8.3.3 | MIT | тесты движка |
 | Ruff (разработка) | 0.7.1 | MIT | линтер и форматтер |
+| NumPy (разработка) | 2.1.3 | BSD-3-Clause | генератор синтетической популяции и калибровка балльной карты (M20, `ml/calibration/`) |
+| newman (разработка, через `npx`) | 6.2.1 | Apache-2.0 | прогон Postman-коллекции в `scripts/check-determinism` (M32) |
+| Hypothesis (разработка) | 6.112.1 | MPL-2.0 | property-тесты движка (M21) |
+| attrs (разработка, через Hypothesis) | 24.2.0 | MIT | зависимость Hypothesis |
+| sortedcontainers (разработка, через Hypothesis) | 2.4.0 | Apache-2.0 | зависимость Hypothesis |
 
 ### Локальная LLM (профиль compose `llm`, опционально)
 
@@ -71,3 +78,4 @@
 | TypeScript | 6.0.3 | Apache-2.0 | типизация (только разработка) |
 | oxlint | 1.89.0 | MIT | линтер (только разработка) |
 | react-router-dom | 7.18.4 | MIT | переходы между страницами |
+| @playwright/test | 1.64.1 | Apache-2.0 | e2e-тесты по персонажам (только разработка) |

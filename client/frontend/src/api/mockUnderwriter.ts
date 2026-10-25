@@ -3,6 +3,7 @@ import type {
   ApplicationStatus,
   DecisionRequest,
   Fork,
+  ForkVerification,
   Offer,
   QueueItem,
   Spot,
@@ -14,11 +15,31 @@ import { ApiError } from './http';
 
 export const BUILDER_ID = 'builder-application';
 
+const RULES_VERSION = '2026-10-23.draft1';
 const UW_ACTIONS: ApplicationDetails['application']['availableActions'] = ['REVIEW_SPOT', 'ADD_SPOT', 'DECIDE'];
 
-const fork = (rateFrom: number, rateTo: number, zone: Fork['zone'], approveMax = 20, rejectMin = 24): Fork => ({
+const BUILDER_FACTORS: NonNullable<Fork['factors']> = [
+  { code: 'credit_history', title: 'Кредитная история', applicable: true, known: true, value: -1, source: 'BKI' },
+  { code: 'business_age', title: 'Возраст бизнеса', applicable: true, known: true, value: -0.5, source: 'EGRUL' },
+  { code: 'tax_discipline', title: 'Налоговая дисциплина', applicable: true, known: true, value: 0, source: 'FNS' },
+  { code: 'purpose', title: 'Цель кредита', applicable: true, known: true, value: -0.5, source: null },
+  { code: 'revenue_stability', title: 'Стабильность выручки', applicable: true, known: false, best: 0, worst: 2.5, spotPricePp: 2.5, source: 'OFD' },
+  { code: 'collateral', title: 'Обеспечение', applicable: true, known: false, best: -1.5, worst: 0, spotPricePp: 1.5, source: null },
+];
+
+const fork = (
+  rateFrom: number,
+  rateTo: number,
+  zone: Fork['zone'],
+  approveMax = 20,
+  rejectMin = 24,
+  factors?: Fork['factors'],
+): Fork => ({
   rateFrom,
   rateTo,
+  ...(factors ? { factors } : {}),
+  rulesVersion: RULES_VERSION,
+  asOf: '2026-10-23',
   zone,
   thresholds: { approveMax, rejectMin },
 });
@@ -37,7 +58,7 @@ function initial(): ApplicationDetails {
       amount: 250000000,
       termMonths: 36,
     },
-    fork: fork(19, 23.5, 'UNDERWRITER'),
+    fork: fork(18.5, 22.5, 'UNDERWRITER', 20, 24, BUILDER_FACTORS),
     spots: [
       {
         id: 'u1',
@@ -99,6 +120,7 @@ function initial(): ApplicationDetails {
 }
 
 let state: ApplicationDetails = initial();
+let summaryCalls = 0;
 
 const setStatus = (status: ApplicationStatus) => {
   state = {
@@ -126,8 +148,8 @@ const summary: UnderwritingSummary = {
       facts: [{ source: 'BKI', label: 'действующих просрочек нет' }],
     },
     {
-      text: 'Запрошенные условия в зоне андеррайтера: правый край вилки 23,5 % выше порога одобрения 20 %.',
-      facts: [{ source: 'ВИЛКА', label: 'от 19 % до 23,5 %' }],
+      text: 'Запрошенные условия в зоне андеррайтера: правый край вилки 22,5 % выше порога одобрения 20 %.',
+      facts: [{ source: 'ВИЛКА', label: 'от 18,5 % до 22,5 %' }],
     },
   ],
 };
@@ -157,7 +179,44 @@ export const underwriterMock = {
     return wait([item]);
   },
 
-  getUnderwritingSummary: () => wait(summary),
+  getUnderwritingSummary: () => {
+    summaryCalls += 1;
+    const llmOff = new URLSearchParams(window.location.search).get('mockLlm') === 'off';
+    if (llmOff) return wait<UnderwritingSummary>({ ...summary, status: 'ready', llm: null, generatedAt: nowIso() });
+    if (summaryCalls <= 2) return wait<UnderwritingSummary>({ ...summary, status: 'generating', llm: null, generatedAt: nowIso() });
+    return wait<UnderwritingSummary>({
+      ...summary,
+      status: 'ready',
+      generatedBy: 'LLM',
+      llm: {
+        model: 'qwen3:4b',
+        digest: '359d7dd4bcdab3d86b87d73ac27966f4dbb9f5efdfcc75d34a8764a09474fae7',
+        promptVersion: 'bba46b2556f0',
+        cached: false,
+      },
+      generatedAt: nowIso(),
+    });
+  },
+
+  // M28: ?mockVerify=diff — пересчёт разошёлся, ?mockVerify=404 — у заявки нет сохранённого снимка
+  verifyFork: () => {
+    const mode = new URLSearchParams(window.location.search).get('mockVerify');
+    if (mode === '404') {
+      return Promise.reject(new ApiError(404, 'NOT_FOUND', 'У заявки нет сохранённого снимка расчёта'));
+    }
+    const result: ForkVerification = {
+      snapshotId: 'snapshot-1',
+      reproducible: mode !== 'diff',
+      rulesVersion: RULES_VERSION,
+      engineVersion: '4c2a9e1f0b7d',
+      currentEngineVersion: '4c2a9e1f0b7d',
+      requestHash: '3f1c0b9e4a7d2c58e6f0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f6',
+      calculatedAt: nowIso(),
+      verdicts: [],
+      diff: mode === 'diff' ? [{ path: '$.rateTo', expected: 23.5, actual: 24 }] : [],
+    };
+    return wait(result);
+  },
 
   reviewSpot: (_id: string, spotId: string, body: SpotReviewRequest) => {
     if (body.verdict === 'REJECTED' && !body.comment?.trim()) {
@@ -189,6 +248,11 @@ export const underwriterMock = {
           ? {
               ...state.fork,
               rateTo: Math.max(state.fork.rateFrom, Math.round((state.fork.rateTo - spot.pricePp) * 10) / 10),
+              factors: state.fork.factors?.map((f) =>
+                !f.known && f.code === spot.scoringFactor
+                  ? { ...f, known: true, value: f.best, best: null, worst: null, spotPricePp: null }
+                  : f,
+              ),
             }
           : state.fork,
     };

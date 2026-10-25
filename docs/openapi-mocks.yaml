@@ -9,13 +9,13 @@ info:
     сумме: кривой ИНН → `422`, валидный, но не заведённый → `404`; источник, не заведённый
     для ИНН, тоже → `404`.
 
-    - Моки детерминированные: один ИНН → один и тот же ответ. Данные пяти компаний-персонажей
-    зашиты по ИНН (см. `docs/synthetic-data.md`, раздел 1 — единственное место с данными).
+    - Моки детерминированные: один ИНН → один и тот же ответ. Данные пяти основных компаний
+    и тестовой «Теплицы» для M15 зашиты по ИНН (см. `docs/synthetic-data.md`).
 
     - Деньги в ответах моков — в рублях (в отличие от бэкенда, где копейки).
 
-    - Ряды `months` — последние полные месяцы до даты демо (октябрь 2025 – сентябрь 2026);
-    параметр `months` отдаёт последние N.
+    - Ряды `months` — последние полные месяцы до даты демо; параметр `months` отдаёт последние N.
+    Для проверки годовой сезонности доступны 24 месяца, октябрь 2024 – сентябрь 2026.
 
     - `POST /mock/fns/v1/debts/pay` обнуляет долг до `POST /mock/reset` (используется
     `scripts/reset-demo` и сценарий «Техснаб погасил долг»).
@@ -272,7 +272,7 @@ paths:
         schema:
           type: integer
           minimum: 1
-          maximum: 12
+          maximum: 24
           default: 12
       responses:
         '200':
@@ -313,6 +313,61 @@ paths:
                     - month: '2026-09'
                       revenue: 1480000
                     share_of_total_revenue: 0.7
+                seasonal:
+                  summary: ООО «Теплица» — 24 месяца, сезонный спад в марте 2025 и 2026
+                  value:
+                    source: OFD
+                    inn: '7740000005'
+                    months:
+                    - month: '2024-10'
+                      revenue: 2400000
+                    - month: '2024-11'
+                      revenue: 2300000
+                    - month: '2024-12'
+                      revenue: 2800000
+                    - month: '2025-01'
+                      revenue: 2200000
+                    - month: '2025-02'
+                      revenue: 2600000
+                    - month: '2025-03'
+                      revenue: 1400000
+                    - month: '2025-04'
+                      revenue: 2500000
+                    - month: '2025-05'
+                      revenue: 2700000
+                    - month: '2025-06'
+                      revenue: 3000000
+                    - month: '2025-07'
+                      revenue: 3200000
+                    - month: '2025-08'
+                      revenue: 3100000
+                    - month: '2025-09'
+                      revenue: 2700000
+                    - month: '2025-10'
+                      revenue: 2450000
+                    - month: '2025-11'
+                      revenue: 2350000
+                    - month: '2025-12'
+                      revenue: 2850000
+                    - month: '2026-01'
+                      revenue: 2250000
+                    - month: '2026-02'
+                      revenue: 2650000
+                    - month: '2026-03'
+                      revenue: 1450000
+                    - month: '2026-04'
+                      revenue: 2550000
+                    - month: '2026-05'
+                      revenue: 2750000
+                    - month: '2026-06'
+                      revenue: 3050000
+                    - month: '2026-07'
+                      revenue: 3250000
+                    - month: '2026-08'
+                      revenue: 3150000
+                    - month: '2026-09'
+                      revenue: 2750000
+                    share_of_total_revenue: 0.9
         '404':
           $ref: '#/components/responses/NotFound'
         '422':
@@ -462,7 +517,7 @@ paths:
         schema:
           type: integer
           minimum: 1
-          maximum: 12
+          maximum: 24
           default: 12
       responses:
         '200':

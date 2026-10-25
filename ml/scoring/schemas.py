@@ -208,19 +208,132 @@ class SummaryItem(CamelModel):
     facts: list[FactRef]
 
 
+class LlmMeta(CamelModel):
+    model: str
+    digest: str
+    prompt_version: str
+    cached: bool = False
+
+
+class LlmHealth(CamelModel):
+    status: Literal["disabled", "warming", "ready", "unavailable"]
+    model: str | None = None
+    digest: str | None = None
+    cached_verdicts: int | None = None
+
+
 class UnderwritingSummary(CamelModel):
     generated_by: Literal["LLM", "TEMPLATE"]
     items: list[SummaryItem]
+    llm: LlmMeta | None = None
 
 
 class PurposeRequest(CamelModel):
     product_code: ProductCode
     goal: str | None = Field(default=None, max_length=1000)
+    okved: str | None = Field(default=None, pattern=r"^\d{2}(\.\d{1,2}){0,2}$")
+
+
+class PurposeStatus(str, Enum):
+    DECIDED = "DECIDED"
+    UNCLEAR = "UNCLEAR"
+    UNAVAILABLE = "UNAVAILABLE"
+    NOT_APPLICABLE = "NOT_APPLICABLE"
+
+
+class ProfileStatus(str, Enum):
+    FITS = "FITS"
+    DOES_NOT_FIT = "DOES_NOT_FIT"
+    UNCLEAR = "UNCLEAR"
+    NOT_CHECKED = "NOT_CHECKED"
+
+
+class ProfileCheck(CamelModel):
+    okved: str
+    activity: str | None
+    status: ProfileStatus
+    reason: str | None = None
+    evidence: str | None = None
+    violation: (
+        Literal["FORMAT", "NO_EVIDENCE", "EVIDENCE_NOT_IN_GOAL", "UNIVERSAL_PURCHASE", "UNCERTAIN_REASON"] | None
+    ) = None
+    llm: LlmMeta | None = None
 
 
 class PurposeResponse(CamelModel):
+    status: PurposeStatus
     purpose: Purpose | None
     applicable: bool
     generated_by: Literal["KEYWORDS", "LLM"]
     matched_keywords: list[str]
     reason: str | None = None
+    evidence: str | None = None
+    violation: (
+        Literal["FORMAT", "NO_EVIDENCE", "EVIDENCE_NOT_IN_GOAL", "GENERIC_EVIDENCE", "UNCERTAIN_REASON"] | None
+    ) = None
+    llm: LlmMeta | None = None
+    profile: ProfileCheck | None = None
+
+
+class AnswerCode(str, Enum):
+    RENOVATION = "RENOVATION"
+    SEASONAL = "SEASONAL"
+    CLIENT_LOST = "CLIENT_LOST"
+    OTHER = "OTHER"
+
+
+class AnomalyCode(str, Enum):
+    REVENUE_DROP = "REVENUE_DROP"
+    REVENUE_SPIKE = "REVENUE_SPIKE"
+
+
+class AnomalyRef(CamelModel):
+    code: AnomalyCode
+    month: str = Field(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")
+    change_pct: int
+    source: SourceCode | None = None
+
+
+class AnswerClassifyRequest(CamelModel):
+    text: str = Field(min_length=1, max_length=1000)
+    anomaly: AnomalyRef | None = None
+
+
+class AnswerStatus(str, Enum):
+    DECIDED = "DECIDED"
+    UNAVAILABLE = "UNAVAILABLE"
+
+
+class AnswerClassifyResponse(CamelModel):
+    status: AnswerStatus
+    code: AnswerCode | None
+    generated_by: Literal["KEYWORDS", "LLM"]
+    matched_keywords: list[str]
+    reason: str | None = None
+    evidence: str | None = None
+    violation: (
+        Literal[
+            "MANIPULATION",
+            "FORMAT",
+            "NO_EVIDENCE",
+            "EVIDENCE_NOT_IN_TEXT",
+            "NEGATED_EVIDENCE",
+            "UNCERTAIN_REASON",
+            "NO_CUE",
+            "EXCLUDED_CONTEXT",
+        ]
+        | None
+    ) = None
+    llm: LlmMeta | None = None
+
+
+class AnswerVerifyRequest(CamelModel):
+    anomaly: AnomalyRef
+    answer_code: AnswerCode
+    series: list[Series] = Field(max_length=10)
+
+
+class AnswerVerifyResponse(CamelModel):
+    verdict: Literal["ACCEPTED", "REVIEW"]
+    rule: str | None
+    explanation: str

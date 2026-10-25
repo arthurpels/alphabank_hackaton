@@ -25,9 +25,11 @@ public class JdbcDecisionRepository implements DecisionRepository {
     public void insert(DecisionRecord decision) {
         jdbc.sql("""
                         INSERT INTO decision (id, application_id, type, offer_id, decided_by, decided_by_user_id,
-                                              rules_version, override, comment, reason_spot_id, decided_at)
+                                              rules_version, override, comment, reason_spot_id, decided_at,
+                                              fork_snapshot_id, request_hash)
                         VALUES (:id, :applicationId, :type, :offerId, :decidedBy, :decidedByUserId,
-                                :rulesVersion, :override, :comment, :reasonSpotId, :decidedAt)
+                                :rulesVersion, :override, :comment, :reasonSpotId, :decidedAt,
+                                :forkSnapshotId, :requestHash)
                         """)
                 .param("id", decision.id())
                 .param("applicationId", decision.applicationId())
@@ -40,6 +42,8 @@ public class JdbcDecisionRepository implements DecisionRepository {
                 .param("comment", decision.comment())
                 .param("reasonSpotId", decision.reasonSpotId())
                 .param("decidedAt", decision.decidedAt())
+                .param("forkSnapshotId", decision.forkSnapshotId())
+                .param("requestHash", decision.requestHash())
                 .update();
     }
 
@@ -55,7 +59,7 @@ public class JdbcDecisionRepository implements DecisionRepository {
     public Optional<DecisionRecord> findByApplicationId(UUID applicationId) {
         return jdbc.sql("""
                         SELECT id, application_id, type, offer_id, decided_by, decided_by_user_id, rules_version,
-                               override, comment, reason_spot_id, decided_at
+                               override, comment, reason_spot_id, decided_at, fork_snapshot_id, request_hash
                         FROM decision
                         WHERE application_id = :applicationId
                         """)
@@ -71,7 +75,9 @@ public class JdbcDecisionRepository implements DecisionRepository {
                         rs.getBoolean("override"),
                         rs.getString("comment"),
                         rs.getObject("reason_spot_id", UUID.class),
-                        rs.getObject("decided_at", OffsetDateTime.class)))
+                        rs.getObject("decided_at", OffsetDateTime.class),
+                        rs.getObject("fork_snapshot_id", UUID.class),
+                        rs.getString("request_hash")))
                 .optional();
     }
 }

@@ -14,6 +14,7 @@ import com.alphabank.backend.dto.response.ConsentsDto;
 import com.alphabank.backend.dto.response.ContractDto;
 import com.alphabank.backend.dto.response.DecisionDto;
 import com.alphabank.backend.dto.response.ForkDto;
+import com.alphabank.backend.dto.response.ForkFactorDto;
 import com.alphabank.backend.dto.response.OfferDto;
 import com.alphabank.backend.dto.response.ProductDto;
 import com.alphabank.backend.dto.response.SpotAnswerDto;
@@ -24,6 +25,7 @@ import com.alphabank.backend.enums.ApplicationAction;
 import com.alphabank.backend.enums.ApplicationStatus;
 import com.alphabank.backend.enums.DecidedBy;
 import com.alphabank.backend.enums.ProductCode;
+import com.alphabank.backend.enums.SourceCode;
 import com.alphabank.backend.repository.model.ApplicationRecord;
 import com.alphabank.backend.repository.model.CompanyRecord;
 import com.alphabank.backend.repository.model.DecisionRecord;
@@ -32,6 +34,8 @@ import com.alphabank.backend.repository.model.OfferRecord;
 import com.alphabank.backend.repository.model.ProductRecord;
 import com.alphabank.backend.repository.model.SpotAnswerRecord;
 import com.alphabank.backend.repository.model.SpotRecord;
+import com.alphabank.backend.scoringclient.dto.Factor;
+import com.alphabank.backend.scoringclient.dto.ScoreResponse;
 import com.alphabank.backend.statemachine.ApplicationTransitions;
 import com.alphabank.backend.util.ForkZoneResolver;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -57,7 +61,7 @@ public class ApplicationDetailsMapper {
                 application.infoRequestedAt(),
                 application.status() == ApplicationStatus.INFO_REQUESTED && application.infoRequestedAt() != null
                         ? application.infoRequestedAt().plusDays(ApplicationTransitions.INFO_REQUEST_DAYS) : null);
-        return new ApplicationDetailsDto(dto, fork == null ? null : toFork(fork),
+        return new ApplicationDetailsDto(dto, fork == null ? null : toFork(fork, spots),
                 spots.stream().map(spot -> toSpot(spot, answers.get(spot.id()))).toList(), offers, decision,
                 contract);
     }
@@ -70,12 +74,50 @@ public class ApplicationDetailsMapper {
     }
 
     public ForkDto toFork(ForkSnapshotRecord fork) {
+        return toFork(fork, List.of());
+    }
+
+    public ForkDto toFork(ForkSnapshotRecord fork, List<SpotRecord> spots) {
         ZoneThresholdsDto thresholds = new ZoneThresholdsDto(
                 fork.approveMax() == null ? 0 : fork.approveMax(),
                 fork.rejectMin() == null ? 0 : fork.rejectMin());
         return new ForkDto(fork.id(), fork.rateFrom(), fork.rateTo(),
                 ForkZoneResolver.resolve(fork.rateFrom(), fork.rateTo(), thresholds), thresholds,
-                fork.rulesVersion(), fork.calculatedAt());
+                fork.rulesVersion(), fork.asOf(), fork.calculatedAt(), factors(fork, spots), fork.reproducible());
+    }
+
+    private List<ForkFactorDto> factors(ForkSnapshotRecord fork, List<SpotRecord> spots) {
+        if (fork.trace() == null || fork.trace().scoreResponse() == null) {
+            return List.of();
+        }
+        try {
+            ScoreResponse score = objectMapper.readValue(fork.trace().scoreResponse(), ScoreResponse.class);
+            return score.factors().stream()
+                    .map(factor -> new ForkFactorDto(factor.code(), factor.title(), factor.applicable(), factor.known(),
+                            factor.value(), factor.best(), factor.worst(), factor.spotPricePp(), source(factor, spots)))
+                    .toList();
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Некорректный ответ скоринга в снимке вилки", e);
+        }
+    }
+
+    private SourceCode source(Factor factor, List<SpotRecord> spots) {
+        SourceCode fixedSource = switch (factor.code()) {
+            case CREDIT_HISTORY -> SourceCode.BKI;
+            case BUSINESS_AGE -> SourceCode.EGRUL;
+            case TAX_DISCIPLINE -> SourceCode.FNS;
+            default -> null;
+        };
+        if (fixedSource != null) {
+            return fixedSource;
+        }
+        List<SourceCode> sources = spots.stream()
+                .filter(spot -> factor.code().name().toLowerCase().equals(spot.scoringFactor()))
+                .map(SpotRecord::source)
+                .filter(source -> source != null)
+                .distinct()
+                .toList();
+        return sources.size() == 1 ? sources.get(0) : null;
     }
 
     public OfferDto toOffer(OfferRecord offer, ProductCode productCode, ForkSnapshotRecord fork, boolean requested) {
@@ -86,8 +128,8 @@ public class ApplicationDetailsMapper {
 
     public DecisionDto toDecision(DecisionRecord decision) {
         return new DecisionDto(decision.id(), decision.type(), decision.decidedBy(), decision.decidedByUserId(),
-                decision.rulesVersion(),
-                decision.override(), decision.comment(), decision.reasonSpotId(), decision.decidedAt());
+                decision.rulesVersion(), decision.override(), decision.comment(), decision.reasonSpotId(),
+                decision.decidedAt(), decision.forkSnapshotId(), decision.requestHash());
     }
 
     public ProductDto toProduct(ProductRecord product) {
@@ -105,7 +147,8 @@ public class ApplicationDetailsMapper {
     private static SpotAnswerDto toAnswer(SpotAnswerRecord answer) {
         return new SpotAnswerDto(answer.id(), answer.optionCode(), answer.text(), answer.documentId(),
                 answer.contractAmount(), answer.contractTermMonths(), answer.verdict(), answer.reviewedBy(),
-                answer.reviewComment(), answer.createdAt(), answer.reviewedAt());
+                answer.reviewComment(), answer.createdAt(), answer.reviewedAt(), answer.purposeVerdict(),
+                answer.anomalyVerdict());
     }
 
     private CompanyDto toCompany(CompanyRecord company) {

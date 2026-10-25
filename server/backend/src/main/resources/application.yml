@@ -33,9 +33,17 @@ app:
   ml-url: ${ML_URL:http://localhost:8001}
   mocks-url: ${MOCKS_URL:http://localhost:8002}
   documents-dir: ${DOCUMENTS_DIR:/data/documents}
+  demo-date: ${DEMO_DATE:2026-10-23}
   cors-allowed-origins: http://localhost:5173
   external:
     retry-attempts: 3
     retry-backoff-ms: 200
+  llm:
+    connect-timeout-ms: 1500
+    timeout-ms: ${ML_LLM_TIMEOUT_MS:90000}
+    circuit-failures: ${ML_LLM_CIRCUIT_FAILURES:3}
+    circuit-open-ms: ${ML_LLM_CIRCUIT_OPEN_MS:30000}
+  summary:
+    llm-enabled: ${LLM_SUMMARY_ENABLED:false}
   info-request:
     check-interval: PT1M

@@ -16,5 +16,7 @@ public interface SpotAnswerRepository {
 
     List<SpotAnswerRecord> findAcceptedContracts(UUID applicationId);
 
+    List<SpotAnswerRecord> findBySpotId(UUID spotId);
+
     void review(UUID id, AnswerVerdict verdict, String reviewedBy, String reviewComment, OffsetDateTime reviewedAt);
 }

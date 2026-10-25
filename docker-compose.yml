@@ -38,6 +38,11 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
       ML_URL: ${ML_URL}
       MOCKS_URL: ${MOCKS_URL}
+      DEMO_DATE: ${DEMO_DATE:-2026-10-23}
+      ML_LLM_TIMEOUT_MS: ${ML_LLM_TIMEOUT_MS:-90000}
+      ML_LLM_CIRCUIT_FAILURES: ${ML_LLM_CIRCUIT_FAILURES:-3}
+      ML_LLM_CIRCUIT_OPEN_MS: ${ML_LLM_CIRCUIT_OPEN_MS:-30000}
+      LLM_SUMMARY_ENABLED: ${LLM_SUMMARY_ENABLED:-false}
       SERVER_PORT: 8080
     ports:
       - "${BACKEND_PORT}:8080"
@@ -78,10 +83,15 @@ services:
       LLM_ENABLED: ${LLM_ENABLED}
       OLLAMA_URL: ${OLLAMA_URL}
       OLLAMA_MODEL: ${OLLAMA_MODEL}
+      OLLAMA_MODEL_DIGEST: ${OLLAMA_MODEL_DIGEST}
       LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS}
       LLM_SUMMARY_ENABLED: ${LLM_SUMMARY_ENABLED}
+      LLM_CACHE_PATH: ${LLM_CACHE_PATH}
+      LLM_REPLAY_PATH: ${LLM_REPLAY_PATH:-}
     ports:
       - "${ML_PORT}:8001"
+    volumes:
+      - ml_llm_cache:/data/llm-cache
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8001/health')\" > /dev/null 2>&1 || exit 1"]
       interval: 10s
@@ -146,3 +156,4 @@ volumes:
   postgres_data:
   documents_data:
   ollama_data:
+  ml_llm_cache:
