@@ -77,7 +77,7 @@ export function CancelButton({ busy, onCancel }: { busy: boolean; onCancel: () =
     <div className="confirm">
       <span className="confirm__text">Отказаться от заявки?</span>
       <Button view="secondary" size={40} loading={busy} onClick={onCancel}>Да, отказаться</Button>
-      <Button view="text" size={40} disabled={busy} onClick={() => setConfirm(false)}>Нет</Button>
+      <Button view="secondary" size={40} disabled={busy} onClick={() => setConfirm(false)}>Нет</Button>
     </div>
   );
 }
