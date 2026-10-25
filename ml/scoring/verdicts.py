@@ -97,3 +97,28 @@ class CachedLlm:
         if stored is None or stored.content == answer.content:
             return answer
         return stored
+
+
+def import_records(cache: VerdictCache, path: Path) -> int:
+    before = cache.count()
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line.strip():
+            entry = json.loads(line)
+            cache.put(entry["key"], LlmAnswer(content=entry["content"], model=entry["model"], digest=entry["digest"]))
+    return cache.count() - before
+
+
+if __name__ == "__main__":
+    import argparse
+
+    from scoring.llm import LlmSettings
+
+    parser = argparse.ArgumentParser(description="Залить записанные ответы модели (replay) в кеш вердиктов LLM")
+    parser.add_argument("records", type=Path, help="файл ответов модели, например eval/replay/llm_answers.jsonl")
+    parser.add_argument("--cache", default=LlmSettings.from_env().cache_path)
+    args = parser.parse_args()
+    target = open_cache(args.cache)
+    if target is None:
+        raise SystemExit(1)
+    added = import_records(target, args.records)
+    print(f"Добавлено ответов: {added}, всего в кеше: {target.count()} ({args.cache})")

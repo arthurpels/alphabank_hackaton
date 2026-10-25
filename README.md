@@ -44,3 +44,4 @@ scripts/check-determinism
 cd server/backend && mvn test -Dtest=PersonaGoldenMasterTest -Dgolden.update=true
 ```
 
+
