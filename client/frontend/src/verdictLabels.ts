@@ -1,4 +1,4 @@
-import type { LlmMeta, PurposeVerdict, Spot, SpotAnswer, UnderwritingSummary } from './types';
+import type { AnomalyCause, AnomalyVerdict, LlmMeta, PurposeVerdict, Spot, SpotAnswer, UnderwritingSummary } from './types';
 
 export const LLM_WAIT_SECONDS = 90;
 export const SUMMARY_POLL_MS = 3000;
@@ -58,8 +58,63 @@ export function purposeAuthor(v: PurposeVerdict): Author {
   return { kind: 'RULE', title: 'Правило', details };
 }
 
+const CAUSE_LABELS: Record<AnomalyCause, string> = {
+  RENOVATION: 'Был ремонт',
+  SEASONAL: 'Сезонный спад',
+  CLIENT_LOST: 'Ушёл крупный клиент',
+  OTHER: 'Другая причина',
+};
+
+const RULE_LABELS: Record<string, string> = {
+  RENOVATION_ONE_OFF: 'падение было разовым, выручка вернулась',
+  SEASONAL_LAST_YEAR: 'такой же спад был в прошлом году',
+};
+
+export function causeLabel(spot: Spot, code: AnomalyCause | null | undefined): string | null {
+  if (!code) return null;
+  return spot.answerOptions?.find((o) => o.code === code)?.label ?? CAUSE_LABELS[code];
+}
+
+export function anomalyAuthor(spot: Spot, v: AnomalyVerdict): Author {
+  const cause = causeLabel(spot, v.code);
+  const c = v.classification;
+  const how: string[] = [];
+  if (cause) {
+    if (!c) how.push(`Вы выбрали вариант «${cause}».`);
+    else if (c.generatedBy === 'LLM' && c.llm) how.push(`Причину из вашего текста определил ИИ: «${cause}». ${llmDetails(c.llm).join(' ')}`);
+    else if (c.matchedKeywords.length > 0) how.push(`Причина «${cause}» определена по словам: ${c.matchedKeywords.join(', ')}.`);
+    else how.push(`Причина определена как «${cause}».`);
+  }
+  if (c?.violation) {
+    how.push('Ответ похож на попытку повлиять на проверку, поэтому причину «Другая» посмотрит специалист.');
+  }
+  if (c?.reason) how.push(c.reason);
+
+  if (v.check?.verdict === 'ACCEPTED') {
+    const rule = v.check.rule ? RULE_LABELS[v.check.rule] ?? v.check.rule : null;
+    return {
+      kind: 'RULE',
+      title: 'Подтверждено данными',
+      details: [...how, v.check.explanation, ...(rule ? [`Правило проверки: ${rule}.`] : [])],
+    };
+  }
+  if (!v.code) {
+    return {
+      kind: 'WAITING',
+      title: WAIT_TEXT.handedToSpecialist,
+      details: ['ИИ-проверка сейчас недоступна, причину по вашему тексту определить не удалось. Отказа из-за этого нет: ответ посмотрит специалист банка.'],
+    };
+  }
+  return {
+    kind: 'WAITING',
+    title: WAIT_TEXT.handedToSpecialist,
+    details: [...how, v.check?.explanation ?? 'Эту причину нельзя проверить данными: ответ посмотрит специалист банка.'],
+  };
+}
+
 export function answerAuthor(spot: Spot, answer: SpotAnswer | null | undefined = spot.lastAnswer): Author | null {
   if (!answer) return null;
+  if (answer.anomalyVerdict) return anomalyAuthor(spot, answer.anomalyVerdict);
   if (answer.purposeVerdict) return purposeAuthor(answer.purposeVerdict);
   if (answer.verdict === 'ACCEPTED' && answer.reviewedBy === 'SYSTEM') {
     return {

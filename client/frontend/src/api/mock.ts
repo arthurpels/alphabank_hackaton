@@ -10,6 +10,8 @@ import type {
   PurposeVerdict,
   Spot,
   SpotCloseRequest,
+  AnomalyCause,
+  AnomalyVerdict,
 } from '../types';
 import { ApiError, getCurrentUser } from './http';
 import { underwriterMock } from './mockUnderwriter';
@@ -253,6 +255,67 @@ function judgePurpose(text: string): PurposeVerdict {
   };
 }
 
+const ANOMALY_WORDS: Record<Exclude<AnomalyCause, 'OTHER'>, string[]> = {
+  RENOVATION: ['ремонт', 'закрыл', 'закрыт'],
+  SEASONAL: ['сезон', 'зима', 'лето'],
+  CLIENT_LOST: ['клиент', 'ушел', 'потеряли'],
+};
+const MOCK_ANOMALY = { code: 'REVENUE_DROP' as const, month: '2026-03', changePct: -45, source: 'OFD' as const };
+
+function judgeAnomaly(optionCode: string | undefined, text: string): AnomalyVerdict {
+  let code: AnomalyCause | null;
+  let classification: AnomalyVerdict['classification'] = null;
+  if (optionCode) {
+    code = optionCode as AnomalyCause;
+  } else {
+    const t = text.toLowerCase().replace(/ё/g, 'е');
+    const hit = (Object.keys(ANOMALY_WORDS) as Array<keyof typeof ANOMALY_WORDS>).find((k) =>
+      ANOMALY_WORDS[k].some((w) => t.includes(w)),
+    );
+    const matched = hit ? ANOMALY_WORDS[hit].filter((w) => t.includes(w)) : [];
+    if (t.includes('одобр') || t.includes('ставк')) {
+      code = 'OTHER';
+      classification = { status: 'DECIDED', code, generatedBy: 'LLM', matchedKeywords: [], reason: null, violation: 'MANIPULATION', llm: MOCK_LLM };
+    } else if (hit) {
+      code = hit;
+      classification = { status: 'DECIDED', code, generatedBy: 'KEYWORDS', matchedKeywords: matched };
+    } else if (llmIsOff()) {
+      code = null;
+      classification = { status: 'UNAVAILABLE', code: null, generatedBy: 'KEYWORDS', matchedKeywords: [], reason: 'ИИ временно недоступна' };
+    } else {
+      code = 'OTHER';
+      classification = { status: 'DECIDED', code, generatedBy: 'LLM', matchedKeywords: [], reason: 'В тексте нет понятной причины падения выручки.', llm: MOCK_LLM };
+    }
+  }
+  let check: AnomalyVerdict['check'] = null;
+  if (code === 'RENOVATION') {
+    check = { verdict: 'ACCEPTED', rule: 'RENOVATION_ONE_OFF', explanation: 'Падение разовое: в апреле выручка вернулась к 98 % от уровня до падения.' };
+  } else if (code === 'SEASONAL') {
+    check = { verdict: 'REVIEW', rule: null, explanation: 'В прошлом году в марте такого спада не было, поэтому ответ посмотрит специалист.' };
+  } else if (code) {
+    check = { verdict: 'REVIEW', rule: null, explanation: 'Эту причину нельзя проверить данными: ответ посмотрит специалист банка.' };
+  }
+  return { anomaly: MOCK_ANOMALY, code, classification, check };
+}
+
+const ANOMALY_SPOT: Spot = {
+  id: 's5',
+  type: 'ANOMALY',
+  title: 'Почему в марте выручка упала на 45 %',
+  clientHint: 'Пока нет объяснения — считаем это риском. Что случилось?',
+  scoringFactor: 'revenue_stability',
+  pricePp: 2.5,
+  closeMethod: 'ANSWER',
+  status: 'OPEN',
+  addedBy: 'SYSTEM',
+  source: 'OFD',
+  answerOptions: [
+    { code: 'RENOVATION', label: 'Был ремонт' },
+    { code: 'SEASONAL', label: 'Сезонный спад' },
+    { code: 'CLIENT_LOST', label: 'Ушёл крупный клиент' },
+  ],
+};
+
 const wait = <T>(v: T) => new Promise<T>((r) => setTimeout(() => r(structuredClone(v)), 150));
 
 export const mockApi: Api = {
@@ -340,7 +403,16 @@ export const mockApi: Api = {
     let lastAnswer: Spot['lastAnswer'] = null;
     const answer = { id: `a-${spotId}`, optionCode: body.optionCode, text: body.text, documentId: body.documentId, contractAmount: body.contractAmount, contractTermMonths: body.contractTermMonths, createdAt: new Date().toISOString() };
     let delay = 150;
-    if ((spot.scoringFactor === 'purpose' || spot.id === 's3') && body.method === 'ANSWER') {
+    if (spot.type === 'ANOMALY' && body.method === 'ANSWER') {
+      const verdict = judgeAnomaly(body.optionCode, body.text ?? '');
+      if (verdict.classification?.generatedBy === 'LLM') delay = LLM_DELAY_MS;
+      if (verdict.check?.verdict === 'ACCEPTED') {
+        lastAnswer = { ...answer, verdict: 'ACCEPTED', reviewedBy: 'SYSTEM', anomalyVerdict: verdict };
+      } else {
+        status = 'ON_REVIEW';
+        lastAnswer = { ...answer, verdict: 'PENDING', anomalyVerdict: verdict };
+      }
+    } else if ((spot.scoringFactor === 'purpose' || spot.id === 's3') && body.method === 'ANSWER') {
       const verdict = judgePurpose(body.text ?? body.optionCode ?? '');
       if (verdict.generatedBy === 'LLM') delay = LLM_DELAY_MS;
       if (verdict.status === 'UNAVAILABLE') {
@@ -365,10 +437,11 @@ export const mockApi: Api = {
       status = 'OPEN';
       lastAnswer = { ...answer, verdict: 'REJECTED', reviewComment: 'Опишите цель подробнее: на что именно пойдут деньги.' };
     }
-    state = recalc({
-      ...state,
-      spots: state.spots.map((s) => (s.id === spotId ? { ...s, status, lastAnswer } : s)),
-    });
+    let spots = state.spots.map((s) => (s.id === spotId ? { ...s, status, lastAnswer } : s));
+    if (spotId === 's1' && body.method === 'CONNECT_SOURCE' && !spots.some((s) => s.id === 's5')) {
+      spots = [...spots, ANOMALY_SPOT];
+    }
+    state = recalc({ ...state, spots });
     if (state.application.status === 'INFO_REQUESTED' && state.spots.every((s) => s.status !== 'OPEN')) {
       setStatus('UNDERWRITING');
     }

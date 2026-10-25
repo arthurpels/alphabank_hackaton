@@ -188,6 +188,7 @@ export interface SpotAnswer {
   createdAt: string;
   reviewedAt?: string | null;
   purposeVerdict?: PurposeVerdict | null;
+  anomalyVerdict?: AnomalyVerdict | null;
 }
 
 export type ScoringFactor = 'debt_load' | 'revenue_stability' | 'purpose' | 'collateral';
@@ -290,6 +291,33 @@ export interface PurposeVerdict {
   matchedKeywords: string[];
   reason?: string | null;
   llm?: LlmMeta | null;
+}
+
+export type AnomalyCause = 'RENOVATION' | 'SEASONAL' | 'CLIENT_LOST' | 'OTHER';
+
+export interface AnomalyVerdict {
+  anomaly?: {
+    code: 'REVENUE_DROP' | 'REVENUE_SPIKE';
+    month: string;
+    changePct: number;
+    source?: SourceCode | null;
+  } | null;
+  code?: AnomalyCause | null;
+  classification?: {
+    status: 'DECIDED' | 'UNAVAILABLE';
+    code?: AnomalyCause | null;
+    generatedBy: 'KEYWORDS' | 'LLM';
+    matchedKeywords: string[];
+    reason?: string | null;
+    evidence?: string | null;
+    violation?: string | null;
+    llm?: LlmMeta | null;
+  } | null;
+  check?: {
+    verdict: 'ACCEPTED' | 'REVIEW';
+    rule?: string | null;
+    explanation: string;
+  } | null;
 }
 
 export interface FieldDiff {

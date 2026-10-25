@@ -1,4 +1,4 @@
-import { expect, type APIRequestContext, type Page } from '@playwright/test';
+import { expect, type APIRequestContext, type Locator, type Page } from '@playwright/test';
 
 export const MOCKS_URL = process.env.E2E_MOCKS_URL ?? 'http://localhost:8002';
 export const LLM_WAIT_MS = 100_000; // дольше таймаута ИИ на бэкенде (90 с)
@@ -62,6 +62,9 @@ const spotCard = (page: Page, title: string | RegExp) =>
 
 const dialog = (page: Page) => page.getByRole('dialog');
 
+export const radio = (scope: Page | Locator, label: string | RegExp) =>
+  scope.locator('label').filter({ hasText: label });
+
 export async function expectSpotClosed(page: Page, title: string | RegExp) {
   await expect(spotCard(page, title)).toHaveClass(/spot--closed/, { timeout: 30_000 });
 }
@@ -69,7 +72,7 @@ export async function expectSpotClosed(page: Page, title: string | RegExp) {
 export async function connectSource(page: Page, title: string | RegExp, source?: string) {
   await spotCard(page, title).getByRole('button', { name: 'Подключить', exact: true }).click();
   const dlg = dialog(page);
-  if (source) await dlg.getByRole('radio', { name: source }).click();
+  if (source) await radio(dlg, source).click();
   await dlg.getByText('Согласен на получение данных из источника').click();
   await dlg.getByRole('button', { name: 'Подключить', exact: true }).click();
   await expect(dlg).toBeHidden({ timeout: 30_000 });
@@ -78,7 +81,7 @@ export async function connectSource(page: Page, title: string | RegExp, source?:
 export async function connectSourceExpectingNoData(page: Page, title: string | RegExp, source: string) {
   await spotCard(page, title).getByRole('button', { name: 'Подключить', exact: true }).click();
   const dlg = dialog(page);
-  await dlg.getByRole('radio', { name: source }).click();
+  await radio(dlg, source).click();
   await dlg.getByText('Согласен на получение данных из источника').click();
   await dlg.getByRole('button', { name: 'Подключить', exact: true }).click();
   await expect(dlg).toContainText('не нашёл данных по вашему ИНН');
@@ -89,8 +92,8 @@ export async function connectSourceExpectingNoData(page: Page, title: string | R
 export async function answerSpot(page: Page, title: string | RegExp, text: string, option?: RegExp) {
   await spotCard(page, title).getByRole('button', { name: 'Ответить', exact: true }).click();
   const dlg = dialog(page);
-  if (option) await dlg.getByRole('radio', { name: option }).click();
-  await dlg.locator('textarea').first().fill(text);
+  if (option) await radio(dlg, option).click();
+  else await dlg.locator('textarea').first().fill(text);
   await dlg.getByRole('button', { name: 'Отправить ответ' }).click();
   await expect(dlg).toBeHidden({ timeout: LLM_WAIT_MS });
 }
