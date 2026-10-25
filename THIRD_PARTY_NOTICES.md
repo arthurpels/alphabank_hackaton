@@ -46,6 +46,9 @@
 | certifi | 2026.7.22 | MPL-2.0 | корневые сертификаты для HTTPX |
 | pytest (разработка) | 8.3.3 | MIT | тесты движка |
 | Ruff (разработка) | 0.7.1 | MIT | линтер и форматтер |
+| Hypothesis (разработка) | 6.112.1 | MPL-2.0 | property-тесты движка (M21) |
+| attrs (разработка, через Hypothesis) | 24.2.0 | MIT | зависимость Hypothesis |
+| sortedcontainers (разработка, через Hypothesis) | 2.4.0 | Apache-2.0 | зависимость Hypothesis |
 
 ### Локальная LLM (профиль compose `llm`, опционально)
 
