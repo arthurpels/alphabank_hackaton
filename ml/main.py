@@ -8,6 +8,7 @@ from scoring.answers import AnswerClassifier, AnswerVerifier
 from scoring.engine import Engine
 from scoring.llm import LlmClient, LlmSettings, OllamaClient, load_prompts
 from scoring.purpose import PurposeClassifier
+from scoring.replay import open_replay
 from scoring.rules import RulesResponse
 from scoring.schemas import (
     AnomaliesRequest,
@@ -38,9 +39,10 @@ ENGINE_VERSION = engine_version(BASE_DIR)
 engine = Engine.from_yaml(RULES_PATH)
 rules = RulesResponse.from_yaml(RULES_PATH)
 llm_settings = LlmSettings.from_env()
-ollama = OllamaClient(llm_settings) if llm_settings.enabled else None
+replay = open_replay(llm_settings.replay_path)
+ollama = OllamaClient(llm_settings) if llm_settings.enabled and replay is None else None
 verdict_cache = open_cache(llm_settings.cache_path) if ollama is not None else None
-llm: LlmClient | None = CachedLlm(ollama, verdict_cache) if ollama and verdict_cache else ollama
+llm: LlmClient | None = replay or (CachedLlm(ollama, verdict_cache) if ollama and verdict_cache else ollama)
 warmup = LlmWarmup(ollama, verdict_cache)
 prompts = load_prompts(PROMPTS_PATH)
 purpose_classifier = PurposeClassifier(engine.purpose_keywords, llm, prompts)

@@ -8,12 +8,51 @@ MAX_EVIDENCE_LENGTH = 200
 
 Violation = Literal["FORMAT", "NO_EVIDENCE", "EVIDENCE_NOT_IN_GOAL", "GENERIC_EVIDENCE", "UNCERTAIN_REASON"]
 MIN_WORD_CHARS = 3
+LONG_WORD_CHARS = 8
+MAX_TYPOS_SHORT = 1
+MAX_TYPOS_LONG = 2
+MAX_SPAN_SLACK = 2
 
 
 def normalize_text(text: str) -> str:
     text = text.lower().replace("ё", "е")
     text = re.sub(r"[«»\"'“”„.,!?;:()\[\]—–-]+", " ", text)
     return " ".join(text.split())
+
+
+def _edit_distance(left: str, right: str) -> int:
+    previous = list(range(len(right) + 1))
+    for i, left_char in enumerate(left, start=1):
+        current = [i]
+        for j, right_char in enumerate(right, start=1):
+            current.append(min(previous[j] + 1, current[j - 1] + 1, previous[j - 1] + (left_char != right_char)))
+        previous = current
+    return previous[-1]
+
+
+def _same_word(part: str, word: str) -> bool:
+    if part == word or part in word:
+        return True
+    limit = MAX_TYPOS_LONG if len(word) >= LONG_WORD_CHARS else MAX_TYPOS_SHORT
+    return abs(len(part) - len(word)) <= limit and _edit_distance(part, word) <= limit
+
+
+def locate_evidence(evidence: str, text: str) -> tuple[int, int] | None:
+    position = text.find(evidence)
+    if position >= 0:
+        return len(text[:position].split()), len(text[: position + len(evidence)].split())
+    words = text.split()
+    parts = [part for part in evidence.split() if len(part) >= MIN_WORD_CHARS]
+    if not any(len(part) > MIN_WORD_CHARS for part in parts):
+        return None
+    matched = []
+    for part in parts:
+        index = next((i for i, word in enumerate(words) if _same_word(part, word)), None)
+        if index is None:
+            return None
+        matched.append(index)
+    start, end = min(matched), max(matched) + 1
+    return (start, end) if end - start <= len(evidence.split()) + MAX_SPAN_SLACK else None
 
 
 def _clean(value: Any, limit: int) -> str | None:
@@ -56,7 +95,7 @@ class PurposeRules:
         normalized_evidence = normalize_text(evidence or "")
         if len(normalized_evidence) < self.min_evidence_chars:
             return PurposeVerdict("UNCLEAR", reason, evidence, "NO_EVIDENCE")
-        if normalized_evidence not in normalize_text(goal):
+        if locate_evidence(normalized_evidence, normalize_text(goal)) is None:
             return PurposeVerdict("UNCLEAR", reason, evidence, "EVIDENCE_NOT_IN_GOAL")
         if self._only_generic(normalized_evidence):
             return PurposeVerdict("UNCLEAR", reason, evidence, "GENERIC_EVIDENCE")
@@ -165,16 +204,14 @@ class AnswerRules:
         normalized_text = normalize_text(text)
         if len(normalized_evidence) < self.min_evidence_chars:
             return AnswerVerdict("OTHER", reason, evidence, "NO_EVIDENCE")
-        position = normalized_text.find(normalized_evidence)
-        if position < 0:
+        span = locate_evidence(normalized_evidence, normalized_text)
+        if span is None:
             return AnswerVerdict("OTHER", reason, evidence, "EVIDENCE_NOT_IN_TEXT")
-        before = normalized_text[:position].split()
-        after = normalized_text[position + len(normalized_evidence) :].split()
-        if is_negated(before, after, self.negations):
+        words = normalized_text.split()
+        if is_negated(words[: span[0]], words[span[1] :], self.negations):
             return AnswerVerdict("OTHER", reason, evidence, "NEGATED_EVIDENCE")
         if any(marker in normalize_text(reason or "") for marker in self.uncertainty_markers):
             return AnswerVerdict("OTHER", reason, evidence, "UNCERTAIN_REASON")
-        words = normalized_text.split()
         if any(find_phrase(words, parts) for parts in self.excludes.get(code, ())):
             return AnswerVerdict("OTHER", reason, evidence, "EXCLUDED_CONTEXT")
         if not all(self._has_cue(words, group) for group in self.cues.get(code, ())):

@@ -87,6 +87,7 @@ services:
       LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS}
       LLM_SUMMARY_ENABLED: ${LLM_SUMMARY_ENABLED}
       LLM_CACHE_PATH: ${LLM_CACHE_PATH}
+      LLM_REPLAY_PATH: ${LLM_REPLAY_PATH:-}
     ports:
       - "${ML_PORT}:8001"
     volumes:
