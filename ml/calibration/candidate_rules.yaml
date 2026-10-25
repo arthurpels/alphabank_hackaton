@@ -1,0 +1,319 @@
+# Кандидат правил по итогам калибровки M20 — НЕ действующие правила.
+# Собирается командой python -m calibration.report; действующие правила — ml/scoring_rules.yaml.
+rules_version: 2026-10-25.cal1
+calc_rate_pct: 20
+products:
+  EQUIPMENT:
+    name: Кредит на оборудование
+    base_rate: 22.0
+    approve_max: 20.0
+    reject_min: 24.0
+    amount:
+    - 300000
+    - 10000000
+    terms:
+    - 12
+    - 24
+    - 36
+    pti_cap: 0.3
+  WORKING_CAPITAL:
+    name: Кредит на пополнение оборотных средств
+    base_rate: 20.0
+    approve_max: 21.0
+    reject_min: 25.0
+    amount:
+    - 100000
+    - 10000000
+    terms:
+    - 6
+    - 12
+    - 24
+    - 36
+    pti_cap: 0.3
+  OVERDRAFT:
+    name: Овердрафт для бизнеса
+    base_rate: 21.0
+    approve_max: 22.0
+    reject_min: 26.0
+    amount:
+    - 50000
+    - 3000000
+    terms:
+    - 3
+    - 6
+    - 12
+    limit_cap: 0.3
+    skip_factors:
+    - purpose
+    - collateral
+factors:
+  credit_history:
+    title: Кредитная история
+    unknown: null
+    rules:
+    - if: delinquencies_12m > 0 or credit_score < 550
+      value: 2.0
+    - if: credit_score >= 750
+      value: -2.0
+    - if: credit_score >= 700
+      value: -1.0
+    - if: credit_score >= 600
+      value: 0.0
+    - else: 1.0
+  business_age:
+    title: Возраст бизнеса
+    unknown: null
+    rules:
+    - if: age_months < 12
+      value: 0.0
+    - if: age_months < 36
+      value: -0.5
+    - else: -0.5
+  tax_discipline:
+    title: Налоговая дисциплина
+    unknown: null
+    rules:
+    - if: unfiled_reports > 0
+      value: 0.5
+    - else: 0.0
+  debt_load:
+    title: Подтверждённая выручка и долговая нагрузка
+    unknown:
+    - -0.5
+    - 1.0
+    metric: pti = платёж по кредиту / среднемесячная подтверждённая выручка
+    rules:
+    - if: pti <= 0.05
+      value: 0.0
+    - if: pti <= 0.10
+      value: 0.0
+    - if: pti <= 0.25
+      value: 0.5
+    - else: 1.0
+    overdraft_rules:
+    - if: limit_share <= 0.15
+      value: -0.5
+    - else: 0.5
+  revenue_stability:
+    title: Стабильность выручки
+    unknown:
+    - 0.0
+    - 2.5
+    rules:
+    - if: series and no_anomalies
+      value: 0.0
+    - if: anomaly_explained_accepted
+      value: 0.0
+    - if: only_document
+      value: 1.0
+    - if: anomaly_explanation_rejected
+      value: 2.5
+  purpose:
+    title: Цель кредита
+    unknown:
+    - -0.5
+    - 1.0
+    rules:
+    - if: purpose_matches_product
+      value: -0.5
+    - else: 0.5
+  collateral:
+    title: Обеспечение
+    unknown:
+    - -1.5
+    - 0.0
+    rules:
+    - if: guarantee_or_pledge
+      value: -1.5
+    - else: 0.0
+stop_factors:
+- code: LIQUIDATION
+  if: egrul.status != 'ACTIVE'
+  removable: false
+- code: YOUNG_BUSINESS
+  if: age_months < 6
+  removable: false
+- code: NEW_DIRECTOR
+  if: director_months < 3
+  removable: false
+- code: MASS_ADDRESS
+  if: egrul.address.is_mass
+  removable: false
+- code: TAX_DEBT
+  if: fns.tax_debt.amount > 0
+  removable: true
+  close: PAY
+- code: BKI_OVERDUE
+  if: bki.delinquencies.current > 0
+  removable: false
+offer_grid:
+  amount_cuts:
+  - 0.2
+  - 0.35
+  - 0.5
+  amount_step_rub: 1000
+  limit_step_rub: 10000
+  terms:
+  - requested
+  - max_allowed
+  collateral:
+  - none
+  - guarantee
+  other_products:
+  - OVERDRAFT
+  pick: по каждому продукту — наибольшая проходящая сумма; без обеспечения важнее
+  passes: политика продукта выполнена и правый край ≤ approve_max
+anomalies:
+  REVENUE_DROP:
+    if: change_pct < -30
+    title: Почему в {month} выручка упала на {pct} %
+    client_hint: Пока нет объяснения — считаем это риском. Что случилось?
+    answer_options:
+    - code: RENOVATION
+      label: Был ремонт
+    - code: SEASONAL
+      label: Сезонный спад
+    - code: CLIENT_LOST
+      label: Ушёл крупный клиент
+  REVENUE_SPIKE:
+    if: ratio > 3
+    title: Почему в {month} обороты выросли в {times}
+    client_hint: Резкий рост оборотов перед заявкой — объясните, откуда поступления.
+    answer_options: []
+purpose_keywords:
+  EQUIPMENT:
+  - оборудован
+  - станок
+  - станк
+  - кофемашин
+  - печь
+  - печи
+  - холодильн
+  - морозильн
+  - витрин
+  - техник
+  - транспорт
+  - автомобил
+  - грузовик
+  - трактор
+  - погрузчик
+  - принтер
+  - компьютер
+  - ноутбук
+  - мебел
+  - производственн
+  - установк
+  WORKING_CAPITAL:
+  - закуп
+  - товар
+  - материал
+  - сырь
+  - запас
+  - запчаст
+  - перепродаж
+  - оборот
+  - зарплат
+  - аренд
+  - налог
+  - поставщик
+  - сезон
+answer_keywords:
+  negations:
+  - не
+  - нет
+  - без
+  - ни
+  hedges:
+  - наверное
+  - не знаю
+  - не уверен
+  - сложно сказать
+  - без понятия
+  - возможно
+  manipulation:
+  - игнорируй
+  - инструкци
+  - выбери
+  - засчитай
+  - напиши
+  - ответь
+  - одобрят
+  - renovation
+  - seasonal
+  - client lost
+  - client_lost
+  codes:
+    RENOVATION:
+      any:
+      - ремонт
+      - реконструкц
+      - перепланировк
+      - отделк
+      - переоборудован
+      defer_if:
+      - дорог
+      - улиц
+      - переезд
+      - переезж
+    SEASONAL:
+      any:
+      - сезон
+      - каникул
+      - праздник
+      - новогодн
+      - каждый год
+      - ежегодн
+      - как и в прошлом году
+      defer_if: []
+    CLIENT_LOST:
+      all:
+      - - заказчик
+        - дистрибьютор
+        - арендатор
+        - оптовик
+        - сеть
+        - сетью
+        - сети
+        - крупн клиент
+        - главн клиент
+        - основн клиент
+        - ключев клиент
+        - крупн покупател
+        - основн покупател
+        - главн покупател
+      - - ушел
+        - ушла
+        - ушли
+        - закрыл
+        - обанкрот
+        - расторг
+        - отказал
+        - не продлил
+        - не продлева
+        - сократил
+        - съехал
+        - перешел
+        - перенес
+        - потерял
+        - перестал
+      defer_if:
+      - пришел
+      - новый
+answer_checks:
+  RENOVATION:
+    rule: RENOVATION_ONE_OFF
+    anomalies:
+    - REVENUE_DROP
+    recovery_share: 0.9
+    accepted: 'Падение разовое: в {next_month} выручка вернулась к {recovery} % от уровня до падения'
+    review: Не похоже на разовое падение после ремонта — проверит специалист
+  SEASONAL:
+    rule: SEASONAL_LAST_YEAR
+    anomalies:
+    - REVENUE_DROP
+    - REVENUE_SPIKE
+    min_share: 0.5
+    accepted: 'Такое же изменение было год назад: в {last_year_month} {last_year_change} %, сейчас {change} %'
+    review: Год назад в этот месяц такого изменения не было — проверит специалист
+  no_check: Эту причину данными не проверить — решает специалист
+  no_data: Нет данных для проверки — решает специалист
