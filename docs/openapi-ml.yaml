@@ -1089,7 +1089,10 @@ paths:
       operationId: health
       tags:
       - scoring
-      summary: Проверка для healthcheck в compose
+      summary: Проверка для healthcheck в compose и версии движка
+      description: '`engineVersion` — первые 12 символов sha256 от кода движка (`scoring/engine.py`, `conditions.py`,
+        `schemas.py`) и `scoring_rules.yaml`: меняется при любой правке формул или правил. Бэкенд пишет её в снимок вилки
+        (M06), чтобы было видно, каким движком посчитана вилка.'
       responses:
         '200':
           description: сервис жив
@@ -1097,10 +1100,20 @@ paths:
             application/json:
               schema:
                 type: object
+                required:
+                - status
+                - engineVersion
+                - rulesVersion
                 properties:
                   status:
                     type: string
                     example: ok
+                  engineVersion:
+                    type: string
+                    example: 3f9c1a2b7d4e
+                  rulesVersion:
+                    type: string
+                    example: 2026-10-23.draft1
 components:
   responses:
     ValidationError:

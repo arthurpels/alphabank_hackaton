@@ -22,9 +22,11 @@ import com.alphabank.backend.dto.response.ApplicationDetailsDto;
 import com.alphabank.backend.dto.response.ApplicationSummaryDto;
 import com.alphabank.backend.dto.response.AuditEventDto;
 import com.alphabank.backend.dto.response.ForkDto;
+import com.alphabank.backend.dto.response.ForkVerificationDto;
 import com.alphabank.backend.dto.response.SourceChecksDto;
 import com.alphabank.backend.security.CurrentUser;
 import com.alphabank.backend.service.ApplicationService;
+import com.alphabank.backend.service.ForkVerificationService;
 import com.alphabank.backend.service.IssuanceService;
 import com.alphabank.backend.service.SourceCheckService;
 
@@ -40,12 +42,15 @@ public class ApplicationController {
     private final ApplicationService applicationService;
     private final IssuanceService issuanceService;
     private final SourceCheckService sourceCheckService;
+    private final ForkVerificationService forkVerificationService;
 
     public ApplicationController(ApplicationService applicationService, IssuanceService issuanceService,
-                                 SourceCheckService sourceCheckService) {
+                                 SourceCheckService sourceCheckService,
+                                 ForkVerificationService forkVerificationService) {
         this.applicationService = applicationService;
         this.issuanceService = issuanceService;
         this.sourceCheckService = sourceCheckService;
+        this.forkVerificationService = forkVerificationService;
     }
 
     @GetMapping
@@ -91,6 +96,12 @@ public class ApplicationController {
     @Operation(operationId = "getForkHistory", summary = "История вилки")
     public List<ForkDto> getForkHistory(CurrentUser user, @PathVariable UUID applicationId) {
         return applicationService.getForkHistory(user, applicationId);
+    }
+
+    @PostMapping("/{applicationId}/fork/verify")
+    @Operation(operationId = "verifyFork", summary = "Пересчитать последний снимок вилки и сравнить байт-в-байт")
+    public ForkVerificationDto verifyFork(CurrentUser user, @PathVariable UUID applicationId) {
+        return forkVerificationService.verify(user, applicationId);
     }
 
     @PostMapping("/{applicationId}/submit")

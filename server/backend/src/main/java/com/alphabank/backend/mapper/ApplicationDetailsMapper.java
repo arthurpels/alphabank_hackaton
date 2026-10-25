@@ -86,8 +86,8 @@ public class ApplicationDetailsMapper {
 
     public DecisionDto toDecision(DecisionRecord decision) {
         return new DecisionDto(decision.id(), decision.type(), decision.decidedBy(), decision.decidedByUserId(),
-                decision.rulesVersion(),
-                decision.override(), decision.comment(), decision.reasonSpotId(), decision.decidedAt());
+                decision.rulesVersion(), decision.override(), decision.comment(), decision.reasonSpotId(),
+                decision.decidedAt(), decision.forkSnapshotId(), decision.requestHash());
     }
 
     public ProductDto toProduct(ProductRecord product) {

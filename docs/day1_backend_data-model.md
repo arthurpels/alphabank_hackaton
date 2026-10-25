@@ -25,6 +25,7 @@ erDiagram
     DATA_SOURCE ||--o{ APPLICATION_SOURCE : "справочник источников"
     PRODUCT ||--o{ OFFER : "продукт варианта"
     FORK_SNAPSHOT ||--o| OFFER : "вилка варианта"
+    FORK_SNAPSHOT ||--o{ DECISION : "основа решения"
     OFFER ||--o| DECISION : "основание решения"
     SPOT ||--o{ SPOT_ANSWER : "ответы клиента"
     DOCUMENT ||--o{ SPOT_ANSWER : "подтверждение"
@@ -116,6 +117,11 @@ erDiagram
         string rules_version "версия YAML-правил, воспроизводимость"
         date as_of "дата входа для скоринга; совпадает с APPLICATION.as_of"
         timestamp calculated_at
+        text score_request "полный ScoreRequest, канонический JSON (ключи по алфавиту); null у снимков до M06"
+        string request_hash "SHA-256 score_request"
+        text score_response "ответ /score, канонический JSON — эталон для verify"
+        string engine_version "версия движка ml (GET /health → engineVersion)"
+        json verdicts "вердикты разбора цели на момент расчёта: [{spotId, scoringFactor, verdict с llm.*}]"
     }
 
     OFFER {
@@ -146,6 +152,8 @@ erDiagram
         string comment "обязателен при override = true; при REJECTED — причина"
         uuid reason_spot_id FK "при REJECTED — пятно/стоп-фактор-причина"
         timestamp decided_at
+        uuid fork_snapshot_id FK "снимок вилки, на котором принято решение; вход и версии — в нём"
+        string request_hash "SHA-256 ScoreRequest этого снимка"
     }
 
     DOCUMENT {
@@ -248,7 +256,9 @@ CALCULATED → OFFERED → CHOSEN
 8. Каждый переход статуса заявки — событие `STATUS_CHANGE` в AUDIT_LOG
    (кто, откуда, куда, причина).
 9. `FORK_SNAPSHOT.rules_version` = версии YAML-правил из `ml/`; решение и
-   любую вилку можно пересчитать заново и получить тот же результат.
+   любую вилку можно пересчитать заново и получить тот же результат:
+   `POST /applications/{id}/fork/verify` отправляет `score_request` в `/score` и сравнивает ответ
+   с `score_response` байт-в-байт (M06).
 
 ## Стыки API (для OpenAPI, день 2)
 

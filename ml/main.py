@@ -21,11 +21,13 @@ from scoring.schemas import (
 )
 from scoring.summary import Summarizer
 from scoring.verdicts import CachedLlm, open_cache
+from scoring.version import engine_version
 from scoring.warmup import LlmWarmup
 
 BASE_DIR = Path(__file__).resolve().parent
 RULES_PATH = BASE_DIR / "scoring_rules.yaml"
 PROMPTS_PATH = BASE_DIR / "llm.yaml"
+ENGINE_VERSION = engine_version(BASE_DIR)
 
 engine = Engine.from_yaml(RULES_PATH)
 llm_settings = LlmSettings.from_env()
@@ -50,7 +52,7 @@ app = FastAPI(title="ML Scoring Service", lifespan=lifespan)
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok"}
+    return {"status": "ok", "engineVersion": ENGINE_VERSION, "rulesVersion": engine.rules_version}
 
 
 @app.get("/health/llm", response_model=LlmHealth, tags=["llm"])

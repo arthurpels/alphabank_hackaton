@@ -21,7 +21,6 @@ import com.alphabank.backend.model.FactorStates;
 import com.alphabank.backend.model.ForkCalculation;
 import com.alphabank.backend.repository.ApplicationRepository;
 import com.alphabank.backend.repository.ApplicationSourceRepository;
-import com.alphabank.backend.repository.ForkSnapshotRepository;
 import com.alphabank.backend.repository.OfferRepository;
 import com.alphabank.backend.repository.SpotAnswerRepository;
 import com.alphabank.backend.repository.SpotRepository;
@@ -35,6 +34,7 @@ import com.alphabank.backend.scoringclient.dto.ScoreRequest;
 import com.alphabank.backend.scoringclient.dto.ScoreResponse;
 import com.alphabank.backend.service.FactorStateService;
 import com.alphabank.backend.service.ForkCalculationService;
+import com.alphabank.backend.service.ForkSnapshotService;
 
 @Service
 public class ForkCalculationServiceImpl implements ForkCalculationService {
@@ -44,7 +44,7 @@ public class ForkCalculationServiceImpl implements ForkCalculationService {
     private final ApplicationSourceRepository applicationSourceRepository;
     private final FactorStateService factorStateService;
     private final ScoringClient scoringClient;
-    private final ForkSnapshotRepository forkSnapshotRepository;
+    private final ForkSnapshotService forkSnapshotService;
     private final SpotRepository spotRepository;
     private final SpotAnswerRepository spotAnswerRepository;
     private final OfferRepository offerRepository;
@@ -54,7 +54,7 @@ public class ForkCalculationServiceImpl implements ForkCalculationService {
     public ForkCalculationServiceImpl(EnrichmentService enrichmentService, ApplicationRepository applicationRepository,
                                       ApplicationSourceRepository applicationSourceRepository,
                                       FactorStateService factorStateService, ScoringClient scoringClient,
-                                      ForkSnapshotRepository forkSnapshotRepository, SpotRepository spotRepository,
+                                      ForkSnapshotService forkSnapshotService, SpotRepository spotRepository,
                                       SpotAnswerRepository spotAnswerRepository, OfferRepository offerRepository,
                                       Clock clock, @Value("${app.demo-date}") LocalDate demoDate) {
         this.enrichmentService = enrichmentService;
@@ -62,7 +62,7 @@ public class ForkCalculationServiceImpl implements ForkCalculationService {
         this.applicationSourceRepository = applicationSourceRepository;
         this.factorStateService = factorStateService;
         this.scoringClient = scoringClient;
-        this.forkSnapshotRepository = forkSnapshotRepository;
+        this.forkSnapshotService = forkSnapshotService;
         this.spotRepository = spotRepository;
         this.spotAnswerRepository = spotAnswerRepository;
         this.offerRepository = offerRepository;
@@ -100,16 +100,16 @@ public class ForkCalculationServiceImpl implements ForkCalculationService {
     }
 
     @Override
-    public void save(UUID applicationId, ScoreRequest request, ScoreResponse score) {
-        forkSnapshotRepository.insert(new ForkSnapshotRecord(UUID.randomUUID(), applicationId, score.rateFrom(),
-                score.rateTo(), score.thresholds().approveMax(), score.thresholds().rejectMin(),
-                score.rulesVersion(), request.asOf(), OffsetDateTime.now(clock)));
+    public ForkSnapshotRecord save(UUID applicationId, ScoreRequest request, ScoreResponse score) {
+        ForkSnapshotRecord snapshot = forkSnapshotService.save(applicationId, request, score,
+                OffsetDateTime.now(clock));
         Map<String, Double> prices = spotPrices(score);
         spotRepository.findByApplicationId(applicationId).stream()
                 .filter(spot -> spot.status() != SpotStatus.CLOSED && spot.scoringFactor() != null)
                 .filter(spot -> prices.containsKey(spot.scoringFactor()))
                 .forEach(spot -> spotRepository.updatePrice(spot.id(), prices.get(spot.scoringFactor())));
         offerRepository.expireActive(applicationId);
+        return snapshot;
     }
 
     public static Map<String, Double> spotPrices(ScoreResponse score) {

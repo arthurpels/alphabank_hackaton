@@ -24,6 +24,7 @@ import com.alphabank.backend.enrichment.dto.MarketplaceResponse;
 import com.alphabank.backend.enrichment.dto.OfdResponse;
 import com.alphabank.backend.enums.ProductCode;
 import com.alphabank.backend.scoringclient.AnomalyClient;
+import com.alphabank.backend.scoringclient.MlVersionClient;
 import com.alphabank.backend.scoringclient.OfferGridClient;
 import com.alphabank.backend.scoringclient.ScoringClient;
 import com.alphabank.backend.scoringclient.SummaryClient;
@@ -58,6 +59,7 @@ public class FakeExternalServicesConfig {
             1490000L, 1470000L, 1430000L, 1400000L, 1460000L, 1480000L);
 
     public static final long POLICY_MAX_AMOUNT = 500_000_000L;
+    public static final String ENGINE_VERSION = "test-engine";
 
     private final Set<String> paidInns = new HashSet<>();
 
@@ -204,6 +206,12 @@ public class FakeExternalServicesConfig {
             });
             return new AnomaliesResponse(anomalies);
         };
+    }
+
+    @Bean
+    @Primary
+    public MlVersionClient fakeMlVersionClient() {
+        return () -> Optional.of(ENGINE_VERSION);
     }
 
     @Bean

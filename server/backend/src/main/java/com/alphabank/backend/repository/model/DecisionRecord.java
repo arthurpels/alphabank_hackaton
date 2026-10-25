@@ -17,5 +17,7 @@ public record DecisionRecord(
         boolean override,
         String comment,
         UUID reasonSpotId,
-        OffsetDateTime decidedAt) {
+        OffsetDateTime decidedAt,
+        UUID forkSnapshotId,
+        String requestHash) {
 }

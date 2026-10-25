@@ -100,6 +100,15 @@ GET /api/v1/demo/users              # без заголовка; ?role=CLIENT|UN
   источнику `status` (`OK` / `WARNING` / `BLOCKED`), `facts` — что подтвердилось, `problems` — стоп-факторы.
   Клиент видит это после «Рассчитать». В `DRAFT` — `409`.
 - `GET /applications/{id}/fork-history` — история вилки (видно, как сужалась).
+- `POST /applications/{id}/fork/verify` — проверка воспроизводимости последнего снимка вилки (M06).
+  Каждый снимок хранит полный `ScoreRequest` в каноническом JSON (ключи по алфавиту), его SHA-256,
+  ответ `/score`, `rulesVersion`, версию движка `ml` и вердикты разбора цели с `llm.*`. Решение
+  ссылается на снимок (`decision.forkSnapshotId`, `decision.requestHash`). `verify` проверяет хеш входа,
+  заново отправляет вход в `/score` и сравнивает ответ байт-в-байт. LLM не вызывается: её вердикт уже
+  внутри входа. Ответ — `{ reproducible, diff, rulesVersion, engineVersion, currentEngineVersion,
+  requestHash, verdicts }`; при расхождении в `diff` — путь и оба значения
+  (`{ "path": "$.rateTo", "expected": 19.5, "actual": 20.0 }`). Снимок без входа (рассчитан до M06) → `404`,
+  скоринг недоступен → `503`. Доступно клиенту (своя заявка) и андеррайтеру.
 - `GET /applications/{id}/history` — журнал событий заявки.
 
 ### Пятна и документы (`/applications/{id}/spots`)

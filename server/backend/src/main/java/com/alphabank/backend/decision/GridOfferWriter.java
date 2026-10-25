@@ -41,22 +41,26 @@ public class GridOfferWriter {
         OffsetDateTime now = OffsetDateTime.now(clock);
         for (int i = 0; i < offers.size(); i++) {
             Offer offer = offers.get(i);
+            ScoreRequest offerRequest = offerRequest(request, offer.productCode(), offer.amount(), offer.termMonths(),
+                    offer.collateralType());
             offerWriter.save(applicationId, product(offer), offer.amount(), offer.termMonths(), offer.collateralType(),
-                    request.asOf(),
-                    score(request, offer.productCode(), offer.amount(), offer.termMonths(), offer.collateralType()),
-                    status, now.plusNanos(i * 1_000L));
+                    offerRequest, score(offerRequest), status, now.plusNanos(i * 1_000L));
         }
         return offers.size();
     }
 
-    public ScoreResponse score(ScoreRequest request, ProductCode productCode, long amount,
-                               int termMonths, String collateralType) {
+    public ScoreRequest offerRequest(ScoreRequest request, ProductCode productCode, long amount,
+                                     int termMonths, String collateralType) {
         Collateral collateral = collateralType == null ? Collateral.DECLINED : Collateral.valueOf(collateralType);
-        return scoringClient.score(new ScoreRequest(request.asOf(), productCode, amount, termMonths,
+        return new ScoreRequest(request.asOf(), productCode, amount, termMonths,
                 request.egrulStatus(), request.registeredAt(), request.directorSince(), request.massAddress(),
                 request.creditScore(), request.delinq12m(), request.bkiCurrentOverdue(), request.taxDebt(),
                 request.unfiledReports(), request.monthlyRevenue(), request.stability(), request.purpose(),
-                collateral));
+                collateral);
+    }
+
+    public ScoreResponse score(ScoreRequest request) {
+        return scoringClient.score(request);
     }
 
     private ProductRecord product(Offer offer) {
