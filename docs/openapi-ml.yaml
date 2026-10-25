@@ -5,7 +5,7 @@ info:
   description: 'Контракт backend ↔ ml (T10). Его вызывает только бэкенд, наружу сервис не открыт.
 
 
-    - Модель и правила — `docs/scoring-model.md`, `ml/scoring_rules.yaml`, калькулятор `ml/scoring_calc.py`.
+    - Модель и правила — `docs/scoring-model.md`, `ml/scoring_rules.yaml`, движок `ml/scoring/engine.py`.
 
     - Сервис только считает: в моки и в БД не ходит. Ответы моков в входы факторов переводит бэкенд (T19).
 
@@ -20,7 +20,7 @@ info:
 
     - Фактор неизвестен — поле входа равно `null`.
 
-    - Примеры посчитаны калькулятором T06 по персонажам из `docs/synthetic-data.md` на 23.10.2026.'
+    - Примеры посчитаны настоящим `ml/scoring/engine.py` по персонажам из `docs/synthetic-data.md` на 23.10.2026.'
 servers:
 - url: http://ml:8001
   description: внутри docker compose
@@ -1511,6 +1511,188 @@ paths:
                   rulesVersion:
                     type: string
                     example: 2026-10-23.draft1
+  /rules:
+    get:
+      operationId: rules
+      tags:
+      - scoring
+      summary: Публичное представление правил скоринга
+      description: Продукты, факторы, пороги и стоп-факторы из действующей версии YAML-правил. Суммы указаны в копейках.
+      responses:
+        '200':
+          description: действующие правила
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RulesResponse'
+              examples:
+                current:
+                  summary: Действующая версия правил
+                  value:
+                    rulesVersion: 2026-10-23.draft1
+                    calcRatePct: 20.0
+                    products:
+                    - code: EQUIPMENT
+                      name: Кредит на оборудование
+                      baseRate: 22.0
+                      thresholds:
+                        approveMax: 20.0
+                        rejectMin: 24.0
+                      amount:
+                        min: 30000000
+                        max: 1000000000
+                      terms: [12, 24, 36]
+                      policy:
+                        metric: PTI
+                        cap: 0.3
+                      skipFactors: []
+                    - code: WORKING_CAPITAL
+                      name: Кредит на пополнение оборотных средств
+                      baseRate: 20.0
+                      thresholds:
+                        approveMax: 21.0
+                        rejectMin: 25.0
+                      amount:
+                        min: 10000000
+                        max: 1000000000
+                      terms: [6, 12, 24, 36]
+                      policy:
+                        metric: PTI
+                        cap: 0.3
+                      skipFactors: []
+                    - code: OVERDRAFT
+                      name: Овердрафт для бизнеса
+                      baseRate: 21.0
+                      thresholds:
+                        approveMax: 22.0
+                        rejectMin: 26.0
+                      amount:
+                        min: 5000000
+                        max: 300000000
+                      terms: [3, 6, 12]
+                      policy:
+                        metric: LIMIT_SHARE
+                        cap: 0.3
+                      skipFactors: [purpose, collateral]
+                    factors:
+                    - code: credit_history
+                      title: Кредитная история
+                      unknown: null
+                      rules:
+                      - condition: delinquencies_12m > 0 or credit_score < 500
+                        value: 2.0
+                      - condition: credit_score >= 700
+                        value: -1.0
+                      - condition: credit_score >= 600
+                        value: 0.0
+                      - condition: null
+                        value: 1.0
+                      overdraftRules: []
+                    - code: business_age
+                      title: Возраст бизнеса
+                      unknown: null
+                      rules:
+                      - condition: age_months < 12
+                        value: 1.5
+                      - condition: age_months < 36
+                        value: 0.5
+                      - condition: null
+                        value: -0.5
+                      overdraftRules: []
+                    - code: tax_discipline
+                      title: Налоговая дисциплина
+                      unknown: null
+                      rules:
+                      - condition: unfiled_reports > 0
+                        value: 1.0
+                      - condition: null
+                        value: 0.0
+                      overdraftRules: []
+                    - code: debt_load
+                      title: Подтверждённая выручка и долговая нагрузка
+                      unknown:
+                        best: -1.5
+                        worst: 2.0
+                        spotPricePp: 3.5
+                      rules:
+                      - condition: pti <= 0.05
+                        value: -1.5
+                      - condition: pti <= 0.10
+                        value: -0.5
+                      - condition: pti <= 0.25
+                        value: 0.5
+                      - condition: null
+                        value: 1.5
+                      overdraftRules:
+                      - condition: limit_share <= 0.15
+                        value: -0.5
+                      - condition: null
+                        value: 0.5
+                    - code: revenue_stability
+                      title: Стабильность выручки
+                      unknown:
+                        best: 0.0
+                        worst: 2.5
+                        spotPricePp: 2.5
+                      rules:
+                      - condition: series and no_anomalies
+                        value: 0.0
+                      - condition: anomaly_explained_accepted
+                        value: 0.0
+                      - condition: only_document
+                        value: 1.0
+                      - condition: anomaly_explanation_rejected
+                        value: 2.5
+                      overdraftRules: []
+                    - code: purpose
+                      title: Цель кредита
+                      unknown:
+                        best: -0.5
+                        worst: 1.0
+                        spotPricePp: 1.5
+                      rules:
+                      - condition: purpose_matches_product
+                        value: -0.5
+                      - condition: null
+                        value: 0.5
+                      overdraftRules: []
+                    - code: collateral
+                      title: Обеспечение
+                      unknown:
+                        best: -1.5
+                        worst: 0.0
+                        spotPricePp: 1.5
+                      rules:
+                      - condition: guarantee_or_pledge
+                        value: -1.5
+                      - condition: null
+                        value: 0.0
+                      overdraftRules: []
+                    stopFactors:
+                    - code: LIQUIDATION
+                      condition: egrul.status != 'ACTIVE'
+                      removable: false
+                      closeMethod: null
+                    - code: YOUNG_BUSINESS
+                      condition: age_months < 6
+                      removable: false
+                      closeMethod: null
+                    - code: NEW_DIRECTOR
+                      condition: director_months < 3
+                      removable: false
+                      closeMethod: null
+                    - code: MASS_ADDRESS
+                      condition: egrul.address.is_mass
+                      removable: false
+                      closeMethod: null
+                    - code: TAX_DEBT
+                      condition: fns.tax_debt.amount > 0
+                      removable: true
+                      closeMethod: PAY
+                    - code: BKI_OVERDUE
+                      condition: bki.delinquencies.current > 0
+                      removable: false
+                      closeMethod: null
 components:
   responses:
     ValidationError:
@@ -1791,6 +1973,171 @@ components:
         passes:
           type: boolean
           description: policy.ok и rateTo ≤ approveMax
+    RulesResponse:
+      type: object
+      required:
+      - rulesVersion
+      - calcRatePct
+      - products
+      - factors
+      - stopFactors
+      properties:
+        rulesVersion:
+          type: string
+        calcRatePct:
+          type: number
+          description: расчётная ставка для платежа, %
+        products:
+          type: array
+          items:
+            $ref: '#/components/schemas/RulesProduct'
+        factors:
+          type: array
+          items:
+            $ref: '#/components/schemas/RulesFactor'
+        stopFactors:
+          type: array
+          items:
+            $ref: '#/components/schemas/RulesStopFactor'
+    RulesProduct:
+      type: object
+      required:
+      - code
+      - name
+      - baseRate
+      - thresholds
+      - amount
+      - terms
+      - policy
+      - skipFactors
+      properties:
+        code:
+          $ref: '#/components/schemas/ProductCode'
+        name:
+          type: string
+        baseRate:
+          type: number
+          description: базовая ставка, %
+        thresholds:
+          $ref: '#/components/schemas/Thresholds'
+        amount:
+          $ref: '#/components/schemas/RulesAmount'
+        terms:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+          description: доступные сроки, месяцы
+        policy:
+          $ref: '#/components/schemas/RulesPolicy'
+        skipFactors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FactorCode'
+    RulesAmount:
+      type: object
+      required:
+      - min
+      - max
+      properties:
+        min:
+          type: integer
+          format: int64
+          minimum: 1
+          description: минимальная сумма, копейки
+        max:
+          type: integer
+          format: int64
+          minimum: 1
+          description: максимальная сумма, копейки
+    RulesPolicy:
+      type: object
+      required:
+      - metric
+      - cap
+      properties:
+        metric:
+          type: string
+          enum:
+          - PTI
+          - LIMIT_SHARE
+        cap:
+          type: number
+          description: допустимая доля продукта
+    RulesUnknown:
+      type: object
+      required:
+      - best
+      - worst
+      - spotPricePp
+      properties:
+        best:
+          type: number
+          description: лучший вклад неизвестного фактора, п.п.
+        worst:
+          type: number
+          description: худший вклад неизвестного фактора, п.п.
+        spotPricePp:
+          type: number
+          description: цена пятна = worst − best
+    RulesRule:
+      type: object
+      required:
+      - condition
+      - value
+      properties:
+        condition:
+          type: string
+          nullable: true
+          description: условие правила; null — правило по умолчанию
+        value:
+          type: number
+          description: вклад фактора, п.п.
+    RulesFactor:
+      type: object
+      required:
+      - code
+      - title
+      - unknown
+      - rules
+      - overdraftRules
+      properties:
+        code:
+          $ref: '#/components/schemas/FactorCode'
+        title:
+          type: string
+        unknown:
+          nullable: true
+          allOf:
+          - $ref: '#/components/schemas/RulesUnknown'
+        rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/RulesRule'
+        overdraftRules:
+          type: array
+          items:
+            $ref: '#/components/schemas/RulesRule'
+    RulesStopFactor:
+      type: object
+      required:
+      - code
+      - condition
+      - removable
+      - closeMethod
+      properties:
+        code:
+          $ref: '#/components/schemas/StopFactorCode'
+        condition:
+          type: string
+        removable:
+          type: boolean
+        closeMethod:
+          type: string
+          nullable: true
+          enum:
+          - PAY
+          - null
     Offer:
       type: object
       required:
