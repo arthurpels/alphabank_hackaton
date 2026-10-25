@@ -1,18 +1,17 @@
 from typing import Any
 
+from scoring.answer_rules import PURPOSE_ANSWERS, PurposeRules
 from scoring.llm import LlmClient, prompt_version
 from scoring.schemas import LlmMeta, ProductCode, Purpose, PurposeRequest, PurposeResponse, PurposeStatus
-
-LLM_ANSWERS = ("MATCH", "MISMATCH", "UNCLEAR")
-MAX_REASON_LENGTH = 500
 
 LLM_SCHEMA = {
     "type": "object",
     "properties": {
         "reason": {"type": "string"},
-        "purpose": {"type": "string", "enum": list(LLM_ANSWERS)},
+        "evidence": {"type": "string"},
+        "purpose": {"type": "string", "enum": list(PURPOSE_ANSWERS)},
     },
-    "required": ["reason", "purpose"],
+    "required": ["reason", "evidence", "purpose"],
 }
 
 
@@ -29,6 +28,7 @@ class PurposeClassifier:
         self.llm = llm
         self.prompts = prompts
         self.prompt_version = prompt_version(prompts["purpose"], LLM_SCHEMA)
+        self.rules = PurposeRules.from_config(prompts["purpose"]["rules"])
 
     def classify(self, request: PurposeRequest) -> PurposeResponse:
         product = request.product_code.value
@@ -65,21 +65,24 @@ class PurposeClassifier:
             product=product, product_purpose=prompts["products"].get(product, product), goal=goal
         )
         answer = self.llm.chat_json(prompts["system"], user, LLM_SCHEMA)
-        purpose = answer.content.get("purpose") if answer is not None else None
-        if purpose not in LLM_ANSWERS:
+        if answer is None:
             return self._keywords(PurposeStatus.UNAVAILABLE, None, applicable=True, matched=matched)
-        reason = answer.content.get("reason")
-        if isinstance(reason, str) and reason.strip():
-            reason = " ".join(reason.split())[:MAX_REASON_LENGTH]
+        verdict = self.rules.check(answer.content, goal)
+        if verdict.answer is None:
+            status, purpose = PurposeStatus.UNAVAILABLE, None
+        elif verdict.answer == "UNCLEAR":
+            status, purpose = PurposeStatus.UNCLEAR, None
         else:
-            reason = None
+            status, purpose = PurposeStatus.DECIDED, Purpose(verdict.answer)
         return PurposeResponse(
-            status=PurposeStatus.UNCLEAR if purpose == "UNCLEAR" else PurposeStatus.DECIDED,
-            purpose=None if purpose == "UNCLEAR" else Purpose(purpose),
+            status=status,
+            purpose=purpose,
             applicable=True,
             generated_by="LLM",
             matched_keywords=matched,
-            reason=reason,
+            reason=verdict.reason,
+            evidence=verdict.evidence,
+            violation=verdict.violation,
             llm=LlmMeta(
                 model=answer.model, digest=answer.digest, prompt_version=self.prompt_version, cached=answer.cached
             ),

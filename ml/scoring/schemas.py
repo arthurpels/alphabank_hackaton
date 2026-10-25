@@ -247,4 +247,8 @@ class PurposeResponse(CamelModel):
     generated_by: Literal["KEYWORDS", "LLM"]
     matched_keywords: list[str]
     reason: str | None = None
+    evidence: str | None = None
+    violation: (
+        Literal["FORMAT", "NO_EVIDENCE", "EVIDENCE_NOT_IN_GOAL", "GENERIC_EVIDENCE", "UNCERTAIN_REASON"] | None
+    ) = None
     llm: LlmMeta | None = None

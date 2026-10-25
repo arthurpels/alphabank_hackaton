@@ -898,7 +898,11 @@ paths:
         цель определена; `UNCLEAR` — цель пустая или LLM ответила «нельзя понять» (просим клиента уточнить);
         `UNAVAILABLE` — нужна LLM, но она выключена, не ответила, ответила не по формату или digest модели не совпал
         (ответ клиента уходит андеррайтеру, отказывать клиенту нельзя); `NOT_APPLICABLE` — продукт цель не учитывает.
-        При ответе LLM в `llm` — модель, digest и версия промпта. `generatedBy` показывает, кто решил, `reason` — объяснение LLM. Пустая цель — `null` без LLM. Для продуктов
+        При ответе LLM в `llm` — модель, digest и версия промпта.
+        Правила ответов LLM (M11, `ml/llm.yaml`, раздел `rules`): модель отвечает в порядке «обоснование → цитата из цели
+        клиента → ответ». `MATCH` и `MISMATCH` принимаются, только если цитата есть дословно в тексте клиента, называет
+        предмет покупки (не только общие слова) и обоснование не содержит сомнений; иначе — `UNCLEAR` с кодом в `violation`. Ответ не по формату — `UNAVAILABLE`
+        с `violation = FORMAT`. `generatedBy` показывает, кто решил, `reason` — объяснение LLM. Пустая цель — `null` без LLM. Для продуктов
         без словаря (овердрафт) — `applicable = false`.'
       requestBody:
         required: true
@@ -941,6 +945,8 @@ paths:
                     - кофемашин
                     - витрин
                     reason: null
+                    evidence: null
+                    violation: null
                     llm: null
                 mismatch:
                   summary: Станок за счёт оборотного кредита — цель не совпадает
@@ -952,6 +958,8 @@ paths:
                     matchedKeywords:
                     - станк
                     reason: null
+                    evidence: null
+                    violation: null
                     llm: null
                 ambiguous:
                   summary: Признаки обоих продуктов — без LLM цель не определена
@@ -964,6 +972,8 @@ paths:
                     - закуп
                     - оборудован
                     reason: null
+                    evidence: null
+                    violation: null
                     llm: null
         '422':
           $ref: '#/components/responses/ValidationError'
@@ -1585,6 +1595,25 @@ components:
           description: краткое объяснение LLM, если решала она; `null` — решил словарь
         status:
           $ref: '#/components/schemas/PurposeStatus'
+        evidence:
+          type: string
+          nullable: true
+          maxLength: 200
+          description: дословная цитата из цели клиента, на которой LLM основала ответ
+        violation:
+          type: string
+          nullable: true
+          enum:
+          - FORMAT
+          - NO_EVIDENCE
+          - EVIDENCE_NOT_IN_GOAL
+          - GENERIC_EVIDENCE
+          - UNCERTAIN_REASON
+          - null
+          description: 'какое правило ответов нарушила LLM: `FORMAT` — ответ не по схеме (статус `UNAVAILABLE`);
+            `NO_EVIDENCE` — нет цитаты; `EVIDENCE_NOT_IN_GOAL` — цитаты нет в тексте клиента; `GENERIC_EVIDENCE` — в цитате только общие слова
+            («на развитие бизнеса»), предмета покупки нет; `UNCERTAIN_REASON` — в
+            обосновании сомнение, а ответ уверенный (статус `UNCLEAR`)'
         llm:
           $ref: '#/components/schemas/LlmMeta'
     SpotType:

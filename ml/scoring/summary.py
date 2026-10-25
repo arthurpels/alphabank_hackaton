@@ -2,6 +2,7 @@ import json
 import re
 from typing import Any
 
+from scoring.answer_rules import SummaryRules
 from scoring.llm import LlmClient, prompt_version
 from scoring.schemas import (
     FactRef,
@@ -61,6 +62,7 @@ class Summarizer:
         self.llm = llm
         self.prompts = prompts
         self.prompt_version = prompt_version(prompts["summary"], LLM_SCHEMA)
+        self.rules = SummaryRules.from_config(prompts["summary"]["rules"])
 
     def summarize(self, request: SummaryRequest) -> UnderwritingSummary:
         if self.llm is not None and request.facts:
@@ -106,7 +108,7 @@ class Summarizer:
             refs = [
                 facts[fact_id] for fact_id in dict.fromkeys(fact_ids) if isinstance(fact_id, str) and fact_id in facts
             ]
-            if text and len(text) <= MAX_TEXT_LENGTH and refs:
+            if text and len(text) <= MAX_TEXT_LENGTH and refs and self.rules.allows(text):
                 items.append(SummaryItem(text=text, facts=refs))
         if not items:
             return None

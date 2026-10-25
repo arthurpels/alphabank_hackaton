@@ -19,7 +19,7 @@ class FakeOllama:
         self.chat_calls = 0
         self.down = False
         self.chat_status = 200
-        self.content = '{"purpose": "MATCH", "reason": "оборудование"}'
+        self.content = '{"reason": "оборудование", "evidence": "оборудования", "purpose": "MISMATCH"}'
         self.before_reply = None
 
     def handler(self, request: httpx.Request) -> httpx.Response:

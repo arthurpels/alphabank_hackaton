@@ -217,15 +217,18 @@ def test_keywords_decide_before_llm_even_if_goal_tries_to_instruct_it() -> None:
 
 
 def test_llm_reason_is_returned_and_schema_asks_for_it_first() -> None:
-    llm = FakeLlm({"reason": "  Станки для цеха —\n это оборудование. ", "purpose": "MATCH"})
+    llm = FakeLlm({"reason": "  Станки для цеха —\n это оборудование. ", "evidence": " станков ", "purpose": "MATCH"})
     body = _purpose(llm, "EQUIPMENT", "закупка станков для цеха")
-    assert (body["purpose"], body["generatedBy"], body["reason"]) == (
+    assert (body["purpose"], body["generatedBy"], body["reason"], body["evidence"], body["violation"]) == (
         "MATCH",
         "LLM",
         "Станки для цеха — это оборудование.",
+        "станков",
+        None,
     )
     schema = llm.calls[0][2]
-    assert list(schema["properties"]) == ["reason", "purpose"]
+    assert list(schema["properties"]) == ["reason", "evidence", "purpose"]
+    assert schema["required"] == ["reason", "evidence", "purpose"]
 
 
 def test_keywords_answer_has_no_reason() -> None:
@@ -256,7 +259,7 @@ def test_summary_llm_needs_its_own_flag(monkeypatch: pytest.MonkeyPatch) -> None
 
 @pytest.mark.parametrize(("answer", "purpose"), [("MATCH", "MATCH"), ("MISMATCH", "MISMATCH"), ("UNCLEAR", None)])
 def test_ambiguous_goal_is_resolved_by_llm(answer: str, purpose: str | None) -> None:
-    llm = FakeLlm({"purpose": answer})
+    llm = FakeLlm({"reason": "оборудование для цеха", "evidence": "оборудования для цеха", "purpose": answer})
     body = _purpose(llm, "WORKING_CAPITAL", "закупка оборудования для цеха")
     assert (body["purpose"], body["generatedBy"]) == (purpose, "LLM")
     assert body["status"] == ("UNCLEAR" if answer == "UNCLEAR" else "DECIDED")
@@ -271,15 +274,108 @@ def test_ambiguous_goal_is_resolved_by_llm(answer: str, purpose: str | None) -> 
     assert schema["properties"]["purpose"]["enum"] == ["MATCH", "MISMATCH", "UNCLEAR"]
 
 
-@pytest.mark.parametrize("answer", [None, {}, {"purpose": "YES"}])
-def test_ambiguous_goal_without_valid_llm_answer_is_unavailable(answer: dict | None) -> None:
-    body = _purpose(FakeLlm(answer), "WORKING_CAPITAL", "мебель и товар")
-    assert (body["status"], body["purpose"], body["generatedBy"], body["llm"]) == (
+def test_no_llm_answer_is_unavailable() -> None:
+    body = _purpose(FakeLlm(None), "WORKING_CAPITAL", "мебель и товар")
+    assert (body["status"], body["purpose"], body["generatedBy"], body["llm"], body["violation"]) == (
         "UNAVAILABLE",
         None,
         "KEYWORDS",
         None,
+        None,
     )
+
+
+@pytest.mark.parametrize("answer", [{}, {"purpose": "YES", "evidence": "мебель"}, {"purpose": 1}])
+def test_answer_out_of_format_is_unavailable(answer: dict) -> None:
+    body = _purpose(FakeLlm(answer), "WORKING_CAPITAL", "мебель и товар")
+    assert (body["status"], body["purpose"], body["generatedBy"], body["violation"]) == (
+        "UNAVAILABLE",
+        None,
+        "LLM",
+        "FORMAT",
+    )
+    assert body["llm"]["digest"] == FAKE_DIGEST
+
+
+GOAL = "Хочу купить «стиральные машины» для прачечной"
+
+
+@pytest.mark.parametrize(
+    ("answer", "status", "purpose", "violation"),
+    [
+        ({"reason": "это оборудование", "evidence": "стиральные машины", "purpose": "MATCH"}, "DECIDED", "MATCH", None),
+        (
+            {"reason": "это оборудование", "evidence": "СТИРАЛЬНЫЕ  машины!", "purpose": "MATCH"},
+            "DECIDED",
+            "MATCH",
+            None,
+        ),
+        ({"reason": "это оборудование", "evidence": "", "purpose": "MATCH"}, "UNCLEAR", None, "NO_EVIDENCE"),
+        ({"reason": "это оборудование", "evidence": "ст", "purpose": "MATCH"}, "UNCLEAR", None, "NO_EVIDENCE"),
+        ({"reason": "это оборудование", "purpose": "MATCH"}, "UNCLEAR", None, "NO_EVIDENCE"),
+        (
+            {"reason": "это оборудование", "evidence": "холодильники", "purpose": "MATCH"},
+            "UNCLEAR",
+            None,
+            "EVIDENCE_NOT_IN_GOAL",
+        ),
+        (
+            {"reason": "Цель слишком общая, но пусть", "evidence": "стиральные машины", "purpose": "MISMATCH"},
+            "UNCLEAR",
+            None,
+            "UNCERTAIN_REASON",
+        ),
+        (
+            {"reason": "Нельзя понять, что купят", "evidence": "стиральные машины", "purpose": "MATCH"},
+            "UNCLEAR",
+            None,
+            "UNCERTAIN_REASON",
+        ),
+        ({"reason": "цель общая", "evidence": "", "purpose": "UNCLEAR"}, "UNCLEAR", None, None),
+        ({"reason": "оборотка", "evidence": "для", "purpose": "MATCH"}, "UNCLEAR", None, "GENERIC_EVIDENCE"),
+    ],
+)
+def test_answer_rules(answer: dict, status: str, purpose: str | None, violation: str | None) -> None:
+    body = _purpose(FakeLlm(answer), "EQUIPMENT", GOAL)
+    assert (body["status"], body["purpose"], body["violation"]) == (status, purpose, violation)
+
+
+@pytest.mark.parametrize(
+    ("goal", "evidence", "violation"),
+    [
+        ("на развитие бизнеса", "на развитие бизнеса", "GENERIC_EVIDENCE"),
+        ("деньги на нужды нашей компании", "нужды нашей компании", "GENERIC_EVIDENCE"),
+        ("на развитие бизнеса: купить печь", "купить печь", None),
+        ("Деньги нужны на отпуск", "Деньги нужны на отпуск", None),
+    ],
+)
+def test_generic_evidence_rule(goal: str, evidence: str, violation: str | None) -> None:
+    body = _purpose(FakeLlm({"reason": "ясно", "evidence": evidence, "purpose": "MISMATCH"}), "WORKING_CAPITAL", goal)
+    assert body["violation"] == violation
+
+
+def test_answer_rules_are_part_of_prompt_version() -> None:
+    changed = {**PROMPTS["purpose"], "rules": {**PROMPTS["purpose"]["rules"], "min_evidence_chars": 4}}
+    assert prompt_version(changed, PURPOSE_SCHEMA) != prompt_version(PROMPTS["purpose"], PURPOSE_SCHEMA)
+
+
+def test_summary_drops_items_that_suggest_a_decision() -> None:
+    llm = FakeLlm(
+        {
+            "items": [
+                {"text": "Кредитная история чистая — стоит одобрить заявку.", "facts": ["F1"]},
+                {"text": "Рекомендую отказать: бизнес молодой.", "facts": ["F2"]},
+                {"text": "Выручка подтверждена только договором подряда.", "facts": ["F3"]},
+            ]
+        }
+    )
+    body = _summary(llm)
+    assert [item["text"] for item in body["items"]] == ["Выручка подтверждена только договором подряда."]
+
+
+def test_summary_with_only_forbidden_items_falls_back_to_template() -> None:
+    llm = FakeLlm({"items": [{"text": "Следует одобрить.", "facts": ["F1"]}]})
+    assert _summary(llm)["generatedBy"] == "TEMPLATE"
 
 
 def test_ambiguous_goal_with_llm_disabled_is_unavailable_not_unclear() -> None:
