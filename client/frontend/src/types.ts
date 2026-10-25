@@ -25,9 +25,27 @@ export interface Spot {
   lastAnswer?: SpotAnswer | null;
 }
 
+export type FactorCode =
+  | 'credit_history' | 'business_age' | 'tax_discipline' | 'debt_load'
+  | 'revenue_stability' | 'purpose' | 'collateral';
+
+export interface ForkFactor {
+  code: FactorCode;
+  title: string;
+  applicable: boolean;
+  known: boolean;
+  value?: number | null;
+  best?: number | null;
+  worst?: number | null;
+  spotPricePp?: number | null;
+  source?: SourceCode | null;
+}
+
 export interface Fork {
   rateFrom: number;
   rateTo: number;
+  factors?: ForkFactor[];
+  reproducible?: boolean | null;
   rulesVersion?: string | null;
   asOf?: string | null;
   zone: DecisionZone;

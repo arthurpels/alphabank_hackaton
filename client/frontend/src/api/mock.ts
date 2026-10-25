@@ -45,6 +45,8 @@ function setStatus(status: ApplicationStatus, patch: Partial<ApplicationDetails>
   enteredAt = Date.now();
 }
 
+const FACTOR_SPOT: Record<string, string> = { debt_load: 's1', revenue_stability: 's2', purpose: 's3', collateral: 's4' };
+
 function recalc(d: ApplicationDetails): ApplicationDetails {
   if (!d.fork) return d;
   let from = coffeeShop.fork!.rateFrom;
@@ -60,7 +62,13 @@ function recalc(d: ApplicationDetails): ApplicationDetails {
   const rateFrom = round(from);
   const rateTo = round(Math.max(from, to));
   const zone = rateFrom >= rejectMin ? 'REJECT' : rateTo <= approveMax ? 'APPROVE' : 'UNDERWRITER';
-  return { ...d, fork: { ...d.fork, rateFrom, rateTo, zone } };
+  const factors = coffeeShop.fork!.factors?.map((f) => {
+    const spot = d.spots.find((s) => s.id === FACTOR_SPOT[f.code]);
+    if (f.known || !spot || spot.status !== 'CLOSED') return f;
+    const value = round(f.best! + spot.pricePp * 0.13);
+    return { ...f, known: true, value, best: null, worst: null, spotPricePp: null };
+  });
+  return { ...d, fork: { ...d.fork, rateFrom, rateTo, zone, factors } };
 }
 
 const pad = (n: number) => String(n).padStart(2, '0');

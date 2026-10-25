@@ -18,9 +18,26 @@ export const BUILDER_ID = 'builder-application';
 const RULES_VERSION = '2026-10-23.draft1';
 const UW_ACTIONS: ApplicationDetails['application']['availableActions'] = ['REVIEW_SPOT', 'ADD_SPOT', 'DECIDE'];
 
-const fork = (rateFrom: number, rateTo: number, zone: Fork['zone'], approveMax = 20, rejectMin = 24): Fork => ({
+const BUILDER_FACTORS: NonNullable<Fork['factors']> = [
+  { code: 'credit_history', title: 'Кредитная история', applicable: true, known: true, value: -1, source: 'BKI' },
+  { code: 'business_age', title: 'Возраст бизнеса', applicable: true, known: true, value: -0.5, source: 'EGRUL' },
+  { code: 'tax_discipline', title: 'Налоговая дисциплина', applicable: true, known: true, value: 0, source: 'FNS' },
+  { code: 'purpose', title: 'Цель кредита', applicable: true, known: true, value: -0.5, source: null },
+  { code: 'revenue_stability', title: 'Стабильность выручки', applicable: true, known: false, best: 0, worst: 2.5, spotPricePp: 2.5, source: 'OFD' },
+  { code: 'collateral', title: 'Обеспечение', applicable: true, known: false, best: -1.5, worst: 0, spotPricePp: 1.5, source: null },
+];
+
+const fork = (
+  rateFrom: number,
+  rateTo: number,
+  zone: Fork['zone'],
+  approveMax = 20,
+  rejectMin = 24,
+  factors?: Fork['factors'],
+): Fork => ({
   rateFrom,
   rateTo,
+  ...(factors ? { factors } : {}),
   rulesVersion: RULES_VERSION,
   asOf: '2026-10-23',
   zone,
@@ -41,7 +58,7 @@ function initial(): ApplicationDetails {
       amount: 250000000,
       termMonths: 36,
     },
-    fork: fork(19, 23.5, 'UNDERWRITER'),
+    fork: fork(18.5, 22.5, 'UNDERWRITER', 20, 24, BUILDER_FACTORS),
     spots: [
       {
         id: 'u1',
@@ -131,8 +148,8 @@ const summary: UnderwritingSummary = {
       facts: [{ source: 'BKI', label: 'действующих просрочек нет' }],
     },
     {
-      text: 'Запрошенные условия в зоне андеррайтера: правый край вилки 23,5 % выше порога одобрения 20 %.',
-      facts: [{ source: 'ВИЛКА', label: 'от 19 % до 23,5 %' }],
+      text: 'Запрошенные условия в зоне андеррайтера: правый край вилки 22,5 % выше порога одобрения 20 %.',
+      facts: [{ source: 'ВИЛКА', label: 'от 18,5 % до 22,5 %' }],
     },
   ],
 };
@@ -231,6 +248,11 @@ export const underwriterMock = {
           ? {
               ...state.fork,
               rateTo: Math.max(state.fork.rateFrom, Math.round((state.fork.rateTo - spot.pricePp) * 10) / 10),
+              factors: state.fork.factors?.map((f) =>
+                !f.known && f.code === spot.scoringFactor
+                  ? { ...f, known: true, value: f.best, best: null, worst: null, spotPricePp: null }
+                  : f,
+              ),
             }
           : state.fork,
     };

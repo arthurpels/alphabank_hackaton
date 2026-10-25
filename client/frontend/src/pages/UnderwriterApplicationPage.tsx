@@ -8,6 +8,7 @@ import { loginAsUnderwriter } from '../auth';
 import { DocumentPreview } from '../components/DocumentPreview';
 import { ReproBlock } from '../components/ReproBlock';
 import { ForkBar } from '../components/ForkBar';
+import { ForkBreakdown } from '../components/ForkBreakdown';
 import {
   AddSpotForm,
   DecisionForm,
@@ -184,6 +185,7 @@ export default function UnderwriterApplicationPage() {
             approveMax={fork.thresholds.approveMax}
             rejectMin={fork.thresholds.rejectMin}
           />
+          <ForkBreakdown fork={fork} showSource />
         </section>
       )}
 
