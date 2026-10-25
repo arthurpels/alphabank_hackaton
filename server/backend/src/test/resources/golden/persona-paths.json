@@ -1,0 +1,1436 @@
+{
+  "coffee" : {
+    "steps" : [ {
+      "step" : "evaluate",
+      "status" : "COLLECTING",
+      "fork" : {
+        "rateFrom" : 17.0,
+        "rateTo" : 26.0,
+        "zone" : "UNDERWRITER",
+        "rulesVersion" : "2026-10-23.draft1",
+        "asOf" : "2026-10-23"
+      },
+      "spots" : [ {
+        "title" : "Продажи через кассу не видны",
+        "type" : "NO_DATA",
+        "status" : "OPEN",
+        "scoringFactor" : "debt_load",
+        "pricePp" : 3.5,
+        "removable" : null
+      }, {
+        "title" : "Не знаем, стабильна ли выручка — закроется, когда подключите источник",
+        "type" : "NO_DATA",
+        "status" : "OPEN",
+        "scoringFactor" : "revenue_stability",
+        "pricePp" : 2.5,
+        "removable" : null
+      }, {
+        "title" : "На что именно нужны деньги",
+        "type" : "NO_DATA",
+        "status" : "OPEN",
+        "scoringFactor" : "purpose",
+        "pricePp" : 1.5,
+        "removable" : null
+      }, {
+        "title" : "Залог или поручительство — по желанию",
+        "type" : "COLLATERAL",
+        "status" : "OPEN",
+        "scoringFactor" : "collateral",
+        "pricePp" : 1.5,
+        "removable" : null
+      } ]
+    }, {
+      "step" : "close Продажи через кассу не видны",
+      "status" : "COLLECTING",
+      "fork" : {
+        "rateFrom" : 18.0,
+        "rateTo" : 23.5,
+        "zone" : "UNDERWRITER",
+        "rulesVersion" : "2026-10-23.draft1",
+        "asOf" : "2026-10-23"
+      },
+      "spots" : [ {
+        "title" : "Продажи через кассу не видны",
+        "type" : "NO_DATA",
+        "status" : "CLOSED",
+        "scoringFactor" : "debt_load",
+        "pricePp" : 3.5,
+        "removable" : null
+      }, {
+        "title" : "Не знаем, стабильна ли выручка — закроется, когда подключите источник",
+        "type" : "NO_DATA",
+        "status" : "CLOSED",
+        "scoringFactor" : "revenue_stability",
+        "pricePp" : 2.5,
+        "removable" : null
+      }, {
+        "title" : "На что именно нужны деньги",
+        "type" : "NO_DATA",
+        "status" : "OPEN",
+        "scoringFactor" : "purpose",
+        "pricePp" : 1.5,
+        "removable" : null
+      }, {
+        "title" : "Залог или поручительство — по желанию",
+        "type" : "COLLATERAL",
+        "status" : "OPEN",
+        "scoringFactor" : "collateral",
+        "pricePp" : 1.5,
+        "removable" : null
+      }, {
+        "title" : "Почему в марте выручка упала на 45 %",
+        "type" : "ANOMALY",
+        "status" : "OPEN",
+        "scoringFactor" : "revenue_stability",
+        "pricePp" : 2.5,
+        "removable" : null
+      } ]
+    }, {
+      "step" : "close Почему в марте выручка упала на 45 %",
+      "status" : "COLLECTING",
+      "fork" : {
+        "rateFrom" : 18.0,
+        "rateTo" : 21.0,
+        "zone" : "UNDERWRITER",
+        "rulesVersion" : "2026-10-23.draft1",
+        "asOf" : "2026-10-23"
+      },
+      "spots" : [ {
+        "title" : "Продажи через кассу не видны",
+        "type" : "NO_DATA",
+        "status" : "CLOSED",
+        "scoringFactor" : "debt_load",
+        "pricePp" : 3.5,
+        "removable" : null
+      }, {
+        "title" : "Не знаем, стабильна ли выручка — закроется, когда подключите источник",
+        "type" : "NO_DATA",
+        "status" : "CLOSED",
+        "scoringFactor" : "revenue_stability",
+        "pricePp" : 2.5,
+        "removable" : null
+      }, {
+        "title" : "На что именно нужны деньги",
+        "type" : "NO_DATA",
+        "status" : "OPEN",
+        "scoringFactor" : "purpose",
+        "pricePp" : 1.5,
+        "removable" : null
+      }, {
+        "title" : "Залог или поручительство — по желанию",
+        "type" : "COLLATERAL",
+        "status" : "OPEN",
+        "scoringFactor" : "collateral",
+        "pricePp" : 1.5,
+        "removable" : null
+      }, {
+        "title" : "Почему в марте выручка упала на 45 %",
+        "type" : "ANOMALY",
+        "status" : "CLOSED",
+        "scoringFactor" : "revenue_stability",
+        "pricePp" : 2.5,
+        "removable" : null,
+        "lastAnswer" : {
+          "verdict" : "ACCEPTED",
+          "optionCode" : "RENOVATION",
+          "reviewedBy" : "SYSTEM",
+          "purpose" : null,
+          "anomaly" : {
+            "code" : "RENOVATION",
+            "classification" : null,
+            "check" : {
+              "verdict" : "ACCEPTED",
+              "rule" : "RENOVATION_ONE_OFF",
+              "explanation" : "Падение разовое: в апреле выручка вернулась к 98 % от уровня до падения"
+            }
+          }
+        }
+      } ]
+    }, {
+      "step" : "close На что именно нужны деньги",
+      "status" : "COLLECTING",
+      "fork" : {
+        "rateFrom" : 18.0,
+        "rateTo" : 19.5,
+        "zone" : "APPROVE",
+        "rulesVersion" : "2026-10-23.draft1",
+        "asOf" : "2026-10-23"
+      },
+      "spots" : [ {
+        "title" : "Продажи через кассу не видны",
+        "type" : "NO_DATA",
+        "status" : "CLOSED",
+        "scoringFactor" : "debt_load",
+        "pricePp" : 3.5,
+        "removable" : null
+      }, {
+        "title" : "Не знаем, стабильна ли выручка — закроется, когда подключите источник",
+        "type" : "NO_DATA",
+        "status" : "CLOSED",
+        "scoringFactor" : "revenue_stability",
+        "pricePp" : 2.5,
+        "removable" : null
+      }, {
+        "title" : "На что именно нужны деньги",
+        "type" : "NO_DATA",
+        "status" : "CLOSED",
+        "scoringFactor" : "purpose",
+        "pricePp" : 1.5,
+        "removable" : null,
+        "lastAnswer" : {
+          "verdict" : "ACCEPTED",
+          "optionCode" : "MATCH",
+          "reviewedBy" : "SYSTEM",
+          "purpose" : {
+            "status" : "DECIDED",
+            "purpose" : "MATCH",
+            "generatedBy" : "KEYWORDS"
+          },
+          "anomaly" : null
+        }
+      }, {
+        "title" : "Залог или поручительство — по желанию",
+        "type" : "COLLATERAL",
+        "status" : "OPEN",
+        "scoringFactor" : "collateral",
+        "pricePp" : 1.5,
+        "removable" : null
+      }, {
+        "title" : "Почему в марте выручка упала на 45 %",
+        "type" : "ANOMALY",
+        "status" : "CLOSED",
+        "scoringFactor" : "revenue_stability",
+        "pricePp" : 2.5,
+        "removable" : null,
+        "lastAnswer" : {
+          "verdict" : "ACCEPTED",
+          "optionCode" : "RENOVATION",
+          "reviewedBy" : "SYSTEM",
+          "purpose" : null,
+          "anomaly" : {
+            "code" : "RENOVATION",
+            "classification" : null,
+            "check" : {
+              "verdict" : "ACCEPTED",
+              "rule" : "RENOVATION_ONE_OFF",
+              "explanation" : "Падение разовое: в апреле выручка вернулась к 98 % от уровня до падения"
+            }
+          }
+        }
+      } ]
+    }, {
+      "step" : "submit",
+      "status" : "APPROVED",
+      "fork" : {
+        "rateFrom" : 18.0,
+        "rateTo" : 19.5,
+        "zone" : "APPROVE",
+        "rulesVersion" : "2026-10-23.draft1",
+        "asOf" : "2026-10-23"
+      },
+      "spots" : [ {
+        "title" : "Продажи через кассу не видны",
+        "type" : "NO_DATA",
+        "status" : "CLOSED",
+        "scoringFactor" : "debt_load",
+        "pricePp" : 3.5,
+        "removable" : null
+      }, {
+        "title" : "Не знаем, стабильна ли выручка — закроется, когда подключите источник",
+        "type" : "NO_DATA",
+        "status" : "CLOSED",
+        "scoringFactor" : "revenue_stability",
+        "pricePp" : 2.5,
+        "removable" : null
+      }, {
+        "title" : "На что именно нужны деньги",
+        "type" : "NO_DATA",
+        "status" : "CLOSED",
+        "scoringFactor" : "purpose",
+        "pricePp" : 1.5,
+        "removable" : null,
+        "lastAnswer" : {
+          "verdict" : "ACCEPTED",
+          "optionCode" : "MATCH",
+          "reviewedBy" : "SYSTEM",
+          "purpose" : {
+            "status" : "DECIDED",
+            "purpose" : "MATCH",
+            "generatedBy" : "KEYWORDS"
+          },
+          "anomaly" : null
+        }
+      }, {
+        "title" : "Залог или поручительство — по желанию",
+        "type" : "COLLATERAL",
+        "status" : "OPEN",
+        "scoringFactor" : "collateral",
+        "pricePp" : 1.5,
+        "removable" : null
+      }, {
+        "title" : "Почему в марте выручка упала на 45 %",
+        "type" : "ANOMALY",
+        "status" : "CLOSED",
+        "scoringFactor" : "revenue_stability",
+        "pricePp" : 2.5,
+        "removable" : null,
+        "lastAnswer" : {
+          "verdict" : "ACCEPTED",
+          "optionCode" : "RENOVATION",
+          "reviewedBy" : "SYSTEM",
+          "purpose" : null,
+          "anomaly" : {
+            "code" : "RENOVATION",
+            "classification" : null,
+            "check" : {
+              "verdict" : "ACCEPTED",
+              "rule" : "RENOVATION_ONE_OFF",
+              "explanation" : "Падение разовое: в апреле выручка вернулась к 98 % от уровня до падения"
+            }
+          }
+        }
+      } ]
+    } ],
+    "decision" : {
+      "type" : "APPROVED",
+      "decidedBy" : "SYSTEM",
+      "rulesVersion" : "2026-10-23.draft1",
+      "override" : false,
+      "comment" : "Правый край вилки 19.5 % ≤ порога одобрения 20.0 %",
+      "requestHash" : "86807ced35c8af11ed90d7ceed7214b83429c028db2e0d1965e569947c99cd67",
+      "reasonSpot" : null
+    },
+    "offers" : [ {
+      "productCode" : "EQUIPMENT",
+      "amount" : 200000000,
+      "termMonths" : 36,
+      "collateralType" : null,
+      "proposedBy" : "SYSTEM",
+      "status" : "OFFERED",
+      "isRequested" : true,
+      "isManual" : false,
+      "fork" : {
+        "rateFrom" : 18.0,
+        "rateTo" : 19.5,
+        "zone" : "APPROVE",
+        "rulesVersion" : "2026-10-23.draft1",
+        "asOf" : "2026-10-23"
+      }
+    } ],
+    "forkHistory" : [ {
+      "rateFrom" : 17.0,
+      "rateTo" : 26.0,
+      "zone" : "UNDERWRITER",
+      "rulesVersion" : "2026-10-23.draft1",
+      "asOf" : "2026-10-23"
+    }, {
+      "rateFrom" : 18.0,
+      "rateTo" : 23.5,
+      "zone" : "UNDERWRITER",
+      "rulesVersion" : "2026-10-23.draft1",
+      "asOf" : "2026-10-23"
+    }, {
+      "rateFrom" : 18.0,
+      "rateTo" : 21.0,
+      "zone" : "UNDERWRITER",
+      "rulesVersion" : "2026-10-23.draft1",
+      "asOf" : "2026-10-23"
+    }, {
+      "rateFrom" : 18.0,
+      "rateTo" : 19.5,
+      "zone" : "APPROVE",
+      "rulesVersion" : "2026-10-23.draft1",
+      "asOf" : "2026-10-23"
+    }, {
+      "rateFrom" : 18.0,
+      "rateTo" : 19.5,
+      "zone" : "APPROVE",
+      "rulesVersion" : "2026-10-23.draft1",
+      "asOf" : "2026-10-23"
+    } ],
+    "verify" : {
+      "reproducible" : true,
+      "requestHash" : "86807ced35c8af11ed90d7ceed7214b83429c028db2e0d1965e569947c99cd67",
+      "diff" : [ ]
+    }
+  },
+  "builder" : {
+    "steps" : [ {
+      "step" : "evaluate",
+      "status" : "COLLECTING",
+      "fork" : {
+        "rateFrom" : 17.0,
+        "rateTo" : 26.0,
+        "zone" : "UNDERWRITER",
+        "rulesVersion" : "2026-10-23.draft1",
+        "asOf" : "2026-10-23"
+      },
+      "spots" : [ {
+        "title" : "Не видим выручку: подключите кассу, маркетплейс или эквайринг",
+        "type" : "NO_DATA",
+        "status" : "OPEN",
+        "scoringFactor" : "debt_load",
+        "pricePp" : 3.5,
+        "removable" : null
+      }, {
+        "title" : "Не знаем, стабильна ли выручка",
+        "type" : "NO_DATA",
+        "status" : "OPEN",
+        "scoringFactor" : "revenue_stability",
+        "pricePp" : 2.5,
+        "removable" : null
+      }, {
+        "title" : "На что именно нужны деньги",
+        "type" : "NO_DATA",
+        "status" : "OPEN",
+        "scoringFactor" : "purpose",
+        "pricePp" : 1.5,
+        "removable" : null
+      }, {
+        "title" : "Залог или поручительство — по желанию",
+        "type" : "COLLATERAL",
+        "status" : "OPEN",
+        "scoringFactor" : "collateral",
+        "pricePp" : 1.5,
+        "removable" : null
+      } ]
+    }, {
+      "step" : "close На что именно нужны деньги",
+      "status" : "COLLECTING",
+      "fork" : {
+        "rateFrom" : 17.0,
+        "rateTo" : 24.5,
+        "zone" : "UNDERWRITER",
+        "rulesVersion" : "2026-10-23.draft1",
+        "asOf" : "2026-10-23"
+      },
+      "spots" : [ {
+        "title" : "Не видим выручку: подключите кассу, маркетплейс или эквайринг",
+        "type" : "NO_DATA",
+        "status" : "OPEN",
+        "scoringFactor" : "debt_load",
+        "pricePp" : 3.5,
+        "removable" : null
+      }, {
+        "title" : "Не знаем, стабильна ли выручка",
+        "type" : "NO_DATA",
+        "status" : "OPEN",
+        "scoringFactor" : "revenue_stability",
+        "pricePp" : 2.5,
+        "removable" : null
+      }, {
+        "title" : "На что именно нужны деньги",
+        "type" : "NO_DATA",
+        "status" : "CLOSED",
+        "scoringFactor" : "purpose",
+        "pricePp" : 1.5,
+        "removable" : null,
+        "lastAnswer" : {
+          "verdict" : "ACCEPTED",
+          "optionCode" : "MATCH",
+          "reviewedBy" : "SYSTEM",
+          "purpose" : {
+            "status" : "DECIDED",
+            "purpose" : "MATCH",
+            "generatedBy" : "KEYWORDS"
+          },
+          "anomaly" : null
+        }
+      }, {
+        "title" : "Залог или поручительство — по желанию",
+        "type" : "COLLATERAL",
+        "status" : "OPEN",
+        "scoringFactor" : "collateral",
+        "pricePp" : 1.5,
+        "removable" : null
+      } ]
+    }, {
+      "step" : "submit",
+      "status" : "UNDERWRITING",
+      "fork" : {
+        "rateFrom" : 17.0,
+        "rateTo" : 24.5,
+        "zone" : "UNDERWRITER",
+        "rulesVersion" : "2026-10-23.draft1",
+        "asOf" : "2026-10-23"
+      },
+      "spots" : [ {
+        "title" : "Не видим выручку: подключите кассу, маркетплейс или эквайринг",
+        "type" : "NO_DATA",
+        "status" : "OPEN",
+        "scoringFactor" : "debt_load",
+        "pricePp" : 3.5,
+        "removable" : null
+      }, {
+        "title" : "Не знаем, стабильна ли выручка",
+        "type" : "NO_DATA",
+        "status" : "OPEN",
+        "scoringFactor" : "revenue_stability",
+        "pricePp" : 2.5,
+        "removable" : null
+      }, {
+        "title" : "На что именно нужны деньги",
+        "type" : "NO_DATA",
+        "status" : "CLOSED",
+        "scoringFactor" : "purpose",
+        "pricePp" : 1.5,
+        "removable" : null,
+        "lastAnswer" : {
+          "verdict" : "ACCEPTED",
+          "optionCode" : "MATCH",
+          "reviewedBy" : "SYSTEM",
+          "purpose" : {
+            "status" : "DECIDED",
+            "purpose" : "MATCH",
+            "generatedBy" : "KEYWORDS"
+          },
+          "anomaly" : null
+        }
+      }, {
+        "title" : "Залог или поручительство — по желанию",
+        "type" : "COLLATERAL",
+        "status" : "OPEN",
+        "scoringFactor" : "collateral",
+        "pricePp" : 1.5,
+        "removable" : null
+      } ]
+    } ],
+    "decision" : null,
+    "offers" : [ ],
+    "forkHistory" : [ {
+      "rateFrom" : 17.0,
+      "rateTo" : 26.0,
+      "zone" : "UNDERWRITER",
+      "rulesVersion" : "2026-10-23.draft1",
+      "asOf" : "2026-10-23"
+    }, {
+      "rateFrom" : 17.0,
+      "rateTo" : 24.5,
+      "zone" : "UNDERWRITER",
+      "rulesVersion" : "2026-10-23.draft1",
+      "asOf" : "2026-10-23"
+    }, {
+      "rateFrom" : 17.0,
+      "rateTo" : 24.5,
+      "zone" : "UNDERWRITER",
+      "rulesVersion" : "2026-10-23.draft1",
+      "asOf" : "2026-10-23"
+    } ],
+    "verify" : {
+      "reproducible" : true,
+      "requestHash" : "af7987109d7fd02521c755dec117faf59846b6b20a7400335bcf3dd0160d0c41",
+      "diff" : [ ]
+    }
+  },
+  "seller" : {
+    "steps" : [ {
+      "step" : "evaluate",
+      "status" : "COLLECTING",
+      "fork" : {
+        "rateFrom" : 17.0,
+        "rateTo" : 26.0,
+        "zone" : "UNDERWRITER",
+        "rulesVersion" : "2026-10-23.draft1",
+        "asOf" : "2026-10-23"
+      },
+      "spots" : [ {
+        "title" : "Продажи на маркетплейсе не видны",
+        "type" : "NO_DATA",
+        "status" : "OPEN",
+        "scoringFactor" : "debt_load",
+        "pricePp" : 3.5,
+        "removable" : null
+      }, {
+        "title" : "Не знаем, стабильна ли выручка",
+        "type" : "NO_DATA",
+        "status" : "OPEN",
+        "scoringFactor" : "revenue_stability",
+        "pricePp" : 2.5,
+        "removable" : null
+      }, {
+        "title" : "На что именно нужны деньги",
+        "type" : "NO_DATA",
+        "status" : "OPEN",
+        "scoringFactor" : "purpose",
+        "pricePp" : 1.5,
+        "removable" : null
+      }, {
+        "title" : "Залог или поручительство — по желанию",
+        "type" : "COLLATERAL",
+        "status" : "OPEN",
+        "scoringFactor" : "collateral",
+        "pricePp" : 1.5,
+        "removable" : null
+      } ]
+    }, {
+      "step" : "close Продажи на маркетплейсе не видны",
+      "status" : "COLLECTING",
+      "fork" : {
+        "rateFrom" : 20.0,
+        "rateTo" : 23.0,
+        "zone" : "UNDERWRITER",
+        "rulesVersion" : "2026-10-23.draft1",
+        "asOf" : "2026-10-23"
+      },
+      "spots" : [ {
+        "title" : "Продажи на маркетплейсе не видны",
+        "type" : "NO_DATA",
+        "status" : "CLOSED",
+        "scoringFactor" : "debt_load",
+        "pricePp" : 3.5,
+        "removable" : null
+      }, {
+        "title" : "Не знаем, стабильна ли выручка",
+        "type" : "NO_DATA",
+        "status" : "CLOSED",
+        "scoringFactor" : "revenue_stability",
+        "pricePp" : 2.5,
+        "removable" : null
+      }, {
+        "title" : "На что именно нужны деньги",
+        "type" : "NO_DATA",
+        "status" : "OPEN",
+        "scoringFactor" : "purpose",
+        "pricePp" : 1.5,
+        "removable" : null
+      }, {
+        "title" : "Залог или поручительство — по желанию",
+        "type" : "COLLATERAL",
+        "status" : "OPEN",
+        "scoringFactor" : "collateral",
+        "pricePp" : 1.5,
+        "removable" : null
+      } ]
+    }, {
+      "step" : "close На что именно нужны деньги",
+      "status" : "COLLECTING",
+      "fork" : {
+        "rateFrom" : 20.0,
+        "rateTo" : 21.5,
+        "zone" : "UNDERWRITER",
+        "rulesVersion" : "2026-10-23.draft1",
+        "asOf" : "2026-10-23"
+      },
+      "spots" : [ {
+        "title" : "Продажи на маркетплейсе не видны",
+        "type" : "NO_DATA",
+        "status" : "CLOSED",
+        "scoringFactor" : "debt_load",
+        "pricePp" : 3.5,
+        "removable" : null
+      }, {
+        "title" : "Не знаем, стабильна ли выручка",
+        "type" : "NO_DATA",
+        "status" : "CLOSED",
+        "scoringFactor" : "revenue_stability",
+        "pricePp" : 2.5,
+        "removable" : null
+      }, {
+        "title" : "На что именно нужны деньги",
+        "type" : "NO_DATA",
+        "status" : "CLOSED",
+        "scoringFactor" : "purpose",
+        "pricePp" : 1.5,
+        "removable" : null,
+        "lastAnswer" : {
+          "verdict" : "ACCEPTED",
+          "optionCode" : "MATCH",
+          "reviewedBy" : "SYSTEM",
+          "purpose" : {
+            "status" : "DECIDED",
+            "purpose" : "MATCH",
+            "generatedBy" : "KEYWORDS"
+          },
+          "anomaly" : null
+        }
+      }, {
+        "title" : "Залог или поручительство — по желанию",
+        "type" : "COLLATERAL",
+        "status" : "OPEN",
+        "scoringFactor" : "collateral",
+        "pricePp" : 1.5,
+        "removable" : null
+      } ]
+    }, {
+      "step" : "submit",
+      "status" : "COUNTER_OFFER",
+      "fork" : {
+        "rateFrom" : 20.0,
+        "rateTo" : 21.5,
+        "zone" : "UNDERWRITER",
+        "rulesVersion" : "2026-10-23.draft1",
+        "asOf" : "2026-10-23"
+      },
+      "spots" : [ {
+        "title" : "Продажи на маркетплейсе не видны",
+        "type" : "NO_DATA",
+        "status" : "CLOSED",
+        "scoringFactor" : "debt_load",
+        "pricePp" : 3.5,
+        "removable" : null
+      }, {
+        "title" : "Не знаем, стабильна ли выручка",
+        "type" : "NO_DATA",
+        "status" : "CLOSED",
+        "scoringFactor" : "revenue_stability",
+        "pricePp" : 2.5,
+        "removable" : null
+      }, {
+        "title" : "На что именно нужны деньги",
+        "type" : "NO_DATA",
+        "status" : "CLOSED",
+        "scoringFactor" : "purpose",
+        "pricePp" : 1.5,
+        "removable" : null,
+        "lastAnswer" : {
+          "verdict" : "ACCEPTED",
+          "optionCode" : "MATCH",
+          "reviewedBy" : "SYSTEM",
+          "purpose" : {
+            "status" : "DECIDED",
+            "purpose" : "MATCH",
+            "generatedBy" : "KEYWORDS"
+          },
+          "anomaly" : null
+        }
+      }, {
+        "title" : "Залог или поручительство — по желанию",
+        "type" : "COLLATERAL",
+        "status" : "OPEN",
+        "scoringFactor" : "collateral",
+        "pricePp" : 1.5,
+        "removable" : null
+      } ]
+    } ],
+    "decision" : {
+      "type" : "ALTERNATIVE",
+      "decidedBy" : "SYSTEM",
+      "rulesVersion" : "2026-10-23.draft1",
+      "override" : false,
+      "comment" : "Система предлагает иные условия: вариантов 2",
+      "requestHash" : "5d5ce30ae21cbb06ed631154df506ee13a4e9dfd82731c512d45e77f219dc90c",
+      "reasonSpot" : null
+    },
+    "offers" : [ {
+      "productCode" : "WORKING_CAPITAL",
+      "amount" : 120000000,
+      "termMonths" : 36,
+      "collateralType" : null,
+      "proposedBy" : "SYSTEM",
+      "status" : "OFFERED",
+      "isRequested" : false,
+      "isManual" : false,
+      "fork" : {
+        "rateFrom" : 20.5,
+        "rateTo" : 20.5,
+        "zone" : "APPROVE",
+        "rulesVersion" : "2026-10-23.draft1",
+        "asOf" : "2026-10-23"
+      }
+    }, {
+      "productCode" : "OVERDRAFT",
+      "amount" : 12000000,
+      "termMonths" : 12,
+      "collateralType" : null,
+      "proposedBy" : "SYSTEM",
+      "status" : "OFFERED",
+      "isRequested" : false,
+      "isManual" : false,
+      "fork" : {
+        "rateFrom" : 22.0,
+        "rateTo" : 22.0,
+        "zone" : "APPROVE",
+        "rulesVersion" : "2026-10-23.draft1",
+        "asOf" : "2026-10-23"
+      }
+    } ],
+    "forkHistory" : [ {
+      "rateFrom" : 17.0,
+      "rateTo" : 26.0,
+      "zone" : "UNDERWRITER",
+      "rulesVersion" : "2026-10-23.draft1",
+      "asOf" : "2026-10-23"
+    }, {
+      "rateFrom" : 20.0,
+      "rateTo" : 23.0,
+      "zone" : "UNDERWRITER",
+      "rulesVersion" : "2026-10-23.draft1",
+      "asOf" : "2026-10-23"
+    }, {
+      "rateFrom" : 20.0,
+      "rateTo" : 21.5,
+      "zone" : "UNDERWRITER",
+      "rulesVersion" : "2026-10-23.draft1",
+      "asOf" : "2026-10-23"
+    }, {
+      "rateFrom" : 20.0,
+      "rateTo" : 21.5,
+      "zone" : "UNDERWRITER",
+      "rulesVersion" : "2026-10-23.draft1",
+      "asOf" : "2026-10-23"
+    } ],
+    "verify" : {
+      "reproducible" : true,
+      "requestHash" : "5d5ce30ae21cbb06ed631154df506ee13a4e9dfd82731c512d45e77f219dc90c",
+      "diff" : [ ]
+    }
+  },
+  "taxDebtUnpaid" : {
+    "steps" : [ {
+      "step" : "evaluate",
+      "status" : "COLLECTING",
+      "fork" : {
+        "rateFrom" : 15.0,
+        "rateTo" : 24.0,
+        "zone" : "UNDERWRITER",
+        "rulesVersion" : "2026-10-23.draft1",
+        "asOf" : "2026-10-23"
+      },
+      "spots" : [ {
+        "title" : "Долг в ФНС 3 412 ₽ — без погашения будет отказ",
+        "type" : "STOP_FACTOR",
+        "status" : "OPEN",
+        "scoringFactor" : null,
+        "pricePp" : 0.0,
+        "removable" : true
+      }, {
+        "title" : "Обороты по эквайрингу не видны",
+        "type" : "NO_DATA",
+        "status" : "OPEN",
+        "scoringFactor" : "debt_load",
+        "pricePp" : 3.5,
+        "removable" : null
+      }, {
+        "title" : "Не знаем, стабильна ли выручка",
+        "type" : "NO_DATA",
+        "status" : "OPEN",
+        "scoringFactor" : "revenue_stability",
+        "pricePp" : 2.5,
+        "removable" : null
+      }, {
+        "title" : "На что именно нужны деньги",
+        "type" : "NO_DATA",
+        "status" : "OPEN",
+        "scoringFactor" : "purpose",
+        "pricePp" : 1.5,
+        "removable" : null
+      }, {
+        "title" : "Залог или поручительство — по желанию",
+        "type" : "COLLATERAL",
+        "status" : "OPEN",
+        "scoringFactor" : "collateral",
+        "pricePp" : 1.5,
+        "removable" : null
+      } ]
+    }, {
+      "step" : "close Обороты по эквайрингу не видны",
+      "status" : "COLLECTING",
+      "fork" : {
+        "rateFrom" : 16.0,
+        "rateTo" : 19.0,
+        "zone" : "APPROVE",
+        "rulesVersion" : "2026-10-23.draft1",
+        "asOf" : "2026-10-23"
+      },
+      "spots" : [ {
+        "title" : "Долг в ФНС 3 412 ₽ — без погашения будет отказ",
+        "type" : "STOP_FACTOR",
+        "status" : "OPEN",
+        "scoringFactor" : null,
+        "pricePp" : 0.0,
+        "removable" : true
+      }, {
+        "title" : "Обороты по эквайрингу не видны",
+        "type" : "NO_DATA",
+        "status" : "CLOSED",
+        "scoringFactor" : "debt_load",
+        "pricePp" : 3.5,
+        "removable" : null
+      }, {
+        "title" : "Не знаем, стабильна ли выручка",
+        "type" : "NO_DATA",
+        "status" : "CLOSED",
+        "scoringFactor" : "revenue_stability",
+        "pricePp" : 2.5,
+        "removable" : null
+      }, {
+        "title" : "На что именно нужны деньги",
+        "type" : "NO_DATA",
+        "status" : "OPEN",
+        "scoringFactor" : "purpose",
+        "pricePp" : 1.5,
+        "removable" : null
+      }, {
+        "title" : "Залог или поручительство — по желанию",
+        "type" : "COLLATERAL",
+        "status" : "OPEN",
+        "scoringFactor" : "collateral",
+        "pricePp" : 1.5,
+        "removable" : null
+      } ]
+    }, {
+      "step" : "close На что именно нужны деньги",
+      "status" : "COLLECTING",
+      "fork" : {
+        "rateFrom" : 16.0,
+        "rateTo" : 17.5,
+        "zone" : "APPROVE",
+        "rulesVersion" : "2026-10-23.draft1",
+        "asOf" : "2026-10-23"
+      },
+      "spots" : [ {
+        "title" : "Долг в ФНС 3 412 ₽ — без погашения будет отказ",
+        "type" : "STOP_FACTOR",
+        "status" : "OPEN",
+        "scoringFactor" : null,
+        "pricePp" : 0.0,
+        "removable" : true
+      }, {
+        "title" : "Обороты по эквайрингу не видны",
+        "type" : "NO_DATA",
+        "status" : "CLOSED",
+        "scoringFactor" : "debt_load",
+        "pricePp" : 3.5,
+        "removable" : null
+      }, {
+        "title" : "Не знаем, стабильна ли выручка",
+        "type" : "NO_DATA",
+        "status" : "CLOSED",
+        "scoringFactor" : "revenue_stability",
+        "pricePp" : 2.5,
+        "removable" : null
+      }, {
+        "title" : "На что именно нужны деньги",
+        "type" : "NO_DATA",
+        "status" : "CLOSED",
+        "scoringFactor" : "purpose",
+        "pricePp" : 1.5,
+        "removable" : null,
+        "lastAnswer" : {
+          "verdict" : "ACCEPTED",
+          "optionCode" : "MATCH",
+          "reviewedBy" : "SYSTEM",
+          "purpose" : {
+            "status" : "DECIDED",
+            "purpose" : "MATCH",
+            "generatedBy" : "KEYWORDS"
+          },
+          "anomaly" : null
+        }
+      }, {
+        "title" : "Залог или поручительство — по желанию",
+        "type" : "COLLATERAL",
+        "status" : "OPEN",
+        "scoringFactor" : "collateral",
+        "pricePp" : 1.5,
+        "removable" : null
+      } ]
+    }, {
+      "step" : "submit",
+      "status" : "REJECTED",
+      "fork" : {
+        "rateFrom" : 16.0,
+        "rateTo" : 17.5,
+        "zone" : "APPROVE",
+        "rulesVersion" : "2026-10-23.draft1",
+        "asOf" : "2026-10-23"
+      },
+      "spots" : [ {
+        "title" : "Долг в ФНС 3 412 ₽ — без погашения будет отказ",
+        "type" : "STOP_FACTOR",
+        "status" : "OPEN",
+        "scoringFactor" : null,
+        "pricePp" : 0.0,
+        "removable" : true
+      }, {
+        "title" : "Обороты по эквайрингу не видны",
+        "type" : "NO_DATA",
+        "status" : "CLOSED",
+        "scoringFactor" : "debt_load",
+        "pricePp" : 3.5,
+        "removable" : null
+      }, {
+        "title" : "Не знаем, стабильна ли выручка",
+        "type" : "NO_DATA",
+        "status" : "CLOSED",
+        "scoringFactor" : "revenue_stability",
+        "pricePp" : 2.5,
+        "removable" : null
+      }, {
+        "title" : "На что именно нужны деньги",
+        "type" : "NO_DATA",
+        "status" : "CLOSED",
+        "scoringFactor" : "purpose",
+        "pricePp" : 1.5,
+        "removable" : null,
+        "lastAnswer" : {
+          "verdict" : "ACCEPTED",
+          "optionCode" : "MATCH",
+          "reviewedBy" : "SYSTEM",
+          "purpose" : {
+            "status" : "DECIDED",
+            "purpose" : "MATCH",
+            "generatedBy" : "KEYWORDS"
+          },
+          "anomaly" : null
+        }
+      }, {
+        "title" : "Залог или поручительство — по желанию",
+        "type" : "COLLATERAL",
+        "status" : "OPEN",
+        "scoringFactor" : "collateral",
+        "pricePp" : 1.5,
+        "removable" : null
+      } ]
+    } ],
+    "decision" : {
+      "type" : "REJECTED",
+      "decidedBy" : "SYSTEM",
+      "rulesVersion" : "2026-10-23.draft1",
+      "override" : false,
+      "comment" : "Не устранён стоп-фактор: Долг в ФНС 3 412 ₽ — без погашения будет отказ",
+      "requestHash" : "14c3c03709a773bcdbcca097b5cbf1d3acc9784725192dcfdac2f37a1a1f06e6",
+      "reasonSpot" : "Долг в ФНС 3 412 ₽ — без погашения будет отказ"
+    },
+    "offers" : [ ],
+    "forkHistory" : [ {
+      "rateFrom" : 15.0,
+      "rateTo" : 24.0,
+      "zone" : "UNDERWRITER",
+      "rulesVersion" : "2026-10-23.draft1",
+      "asOf" : "2026-10-23"
+    }, {
+      "rateFrom" : 16.0,
+      "rateTo" : 19.0,
+      "zone" : "APPROVE",
+      "rulesVersion" : "2026-10-23.draft1",
+      "asOf" : "2026-10-23"
+    }, {
+      "rateFrom" : 16.0,
+      "rateTo" : 17.5,
+      "zone" : "APPROVE",
+      "rulesVersion" : "2026-10-23.draft1",
+      "asOf" : "2026-10-23"
+    }, {
+      "rateFrom" : 16.0,
+      "rateTo" : 17.5,
+      "zone" : "APPROVE",
+      "rulesVersion" : "2026-10-23.draft1",
+      "asOf" : "2026-10-23"
+    } ],
+    "verify" : {
+      "reproducible" : true,
+      "requestHash" : "14c3c03709a773bcdbcca097b5cbf1d3acc9784725192dcfdac2f37a1a1f06e6",
+      "diff" : [ ]
+    }
+  },
+  "taxDebtPaid" : {
+    "steps" : [ {
+      "step" : "evaluate",
+      "status" : "COLLECTING",
+      "fork" : {
+        "rateFrom" : 15.0,
+        "rateTo" : 24.0,
+        "zone" : "UNDERWRITER",
+        "rulesVersion" : "2026-10-23.draft1",
+        "asOf" : "2026-10-23"
+      },
+      "spots" : [ {
+        "title" : "Долг в ФНС 3 412 ₽ — без погашения будет отказ",
+        "type" : "STOP_FACTOR",
+        "status" : "OPEN",
+        "scoringFactor" : null,
+        "pricePp" : 0.0,
+        "removable" : true
+      }, {
+        "title" : "Обороты по эквайрингу не видны",
+        "type" : "NO_DATA",
+        "status" : "OPEN",
+        "scoringFactor" : "debt_load",
+        "pricePp" : 3.5,
+        "removable" : null
+      }, {
+        "title" : "Не знаем, стабильна ли выручка",
+        "type" : "NO_DATA",
+        "status" : "OPEN",
+        "scoringFactor" : "revenue_stability",
+        "pricePp" : 2.5,
+        "removable" : null
+      }, {
+        "title" : "На что именно нужны деньги",
+        "type" : "NO_DATA",
+        "status" : "OPEN",
+        "scoringFactor" : "purpose",
+        "pricePp" : 1.5,
+        "removable" : null
+      }, {
+        "title" : "Залог или поручительство — по желанию",
+        "type" : "COLLATERAL",
+        "status" : "OPEN",
+        "scoringFactor" : "collateral",
+        "pricePp" : 1.5,
+        "removable" : null
+      } ]
+    }, {
+      "step" : "close Обороты по эквайрингу не видны",
+      "status" : "COLLECTING",
+      "fork" : {
+        "rateFrom" : 16.0,
+        "rateTo" : 19.0,
+        "zone" : "APPROVE",
+        "rulesVersion" : "2026-10-23.draft1",
+        "asOf" : "2026-10-23"
+      },
+      "spots" : [ {
+        "title" : "Долг в ФНС 3 412 ₽ — без погашения будет отказ",
+        "type" : "STOP_FACTOR",
+        "status" : "OPEN",
+        "scoringFactor" : null,
+        "pricePp" : 0.0,
+        "removable" : true
+      }, {
+        "title" : "Обороты по эквайрингу не видны",
+        "type" : "NO_DATA",
+        "status" : "CLOSED",
+        "scoringFactor" : "debt_load",
+        "pricePp" : 3.5,
+        "removable" : null
+      }, {
+        "title" : "Не знаем, стабильна ли выручка",
+        "type" : "NO_DATA",
+        "status" : "CLOSED",
+        "scoringFactor" : "revenue_stability",
+        "pricePp" : 2.5,
+        "removable" : null
+      }, {
+        "title" : "На что именно нужны деньги",
+        "type" : "NO_DATA",
+        "status" : "OPEN",
+        "scoringFactor" : "purpose",
+        "pricePp" : 1.5,
+        "removable" : null
+      }, {
+        "title" : "Залог или поручительство — по желанию",
+        "type" : "COLLATERAL",
+        "status" : "OPEN",
+        "scoringFactor" : "collateral",
+        "pricePp" : 1.5,
+        "removable" : null
+      } ]
+    }, {
+      "step" : "close На что именно нужны деньги",
+      "status" : "COLLECTING",
+      "fork" : {
+        "rateFrom" : 16.0,
+        "rateTo" : 17.5,
+        "zone" : "APPROVE",
+        "rulesVersion" : "2026-10-23.draft1",
+        "asOf" : "2026-10-23"
+      },
+      "spots" : [ {
+        "title" : "Долг в ФНС 3 412 ₽ — без погашения будет отказ",
+        "type" : "STOP_FACTOR",
+        "status" : "OPEN",
+        "scoringFactor" : null,
+        "pricePp" : 0.0,
+        "removable" : true
+      }, {
+        "title" : "Обороты по эквайрингу не видны",
+        "type" : "NO_DATA",
+        "status" : "CLOSED",
+        "scoringFactor" : "debt_load",
+        "pricePp" : 3.5,
+        "removable" : null
+      }, {
+        "title" : "Не знаем, стабильна ли выручка",
+        "type" : "NO_DATA",
+        "status" : "CLOSED",
+        "scoringFactor" : "revenue_stability",
+        "pricePp" : 2.5,
+        "removable" : null
+      }, {
+        "title" : "На что именно нужны деньги",
+        "type" : "NO_DATA",
+        "status" : "CLOSED",
+        "scoringFactor" : "purpose",
+        "pricePp" : 1.5,
+        "removable" : null,
+        "lastAnswer" : {
+          "verdict" : "ACCEPTED",
+          "optionCode" : "MATCH",
+          "reviewedBy" : "SYSTEM",
+          "purpose" : {
+            "status" : "DECIDED",
+            "purpose" : "MATCH",
+            "generatedBy" : "KEYWORDS"
+          },
+          "anomaly" : null
+        }
+      }, {
+        "title" : "Залог или поручительство — по желанию",
+        "type" : "COLLATERAL",
+        "status" : "OPEN",
+        "scoringFactor" : "collateral",
+        "pricePp" : 1.5,
+        "removable" : null
+      } ]
+    }, {
+      "step" : "close Долг в ФНС 3 412 ₽ — без погашения будет отказ",
+      "status" : "COLLECTING",
+      "fork" : {
+        "rateFrom" : 16.0,
+        "rateTo" : 17.5,
+        "zone" : "APPROVE",
+        "rulesVersion" : "2026-10-23.draft1",
+        "asOf" : "2026-10-23"
+      },
+      "spots" : [ {
+        "title" : "Долг в ФНС 3 412 ₽ — без погашения будет отказ",
+        "type" : "STOP_FACTOR",
+        "status" : "CLOSED",
+        "scoringFactor" : null,
+        "pricePp" : 0.0,
+        "removable" : true
+      }, {
+        "title" : "Обороты по эквайрингу не видны",
+        "type" : "NO_DATA",
+        "status" : "CLOSED",
+        "scoringFactor" : "debt_load",
+        "pricePp" : 3.5,
+        "removable" : null
+      }, {
+        "title" : "Не знаем, стабильна ли выручка",
+        "type" : "NO_DATA",
+        "status" : "CLOSED",
+        "scoringFactor" : "revenue_stability",
+        "pricePp" : 2.5,
+        "removable" : null
+      }, {
+        "title" : "На что именно нужны деньги",
+        "type" : "NO_DATA",
+        "status" : "CLOSED",
+        "scoringFactor" : "purpose",
+        "pricePp" : 1.5,
+        "removable" : null,
+        "lastAnswer" : {
+          "verdict" : "ACCEPTED",
+          "optionCode" : "MATCH",
+          "reviewedBy" : "SYSTEM",
+          "purpose" : {
+            "status" : "DECIDED",
+            "purpose" : "MATCH",
+            "generatedBy" : "KEYWORDS"
+          },
+          "anomaly" : null
+        }
+      }, {
+        "title" : "Залог или поручительство — по желанию",
+        "type" : "COLLATERAL",
+        "status" : "OPEN",
+        "scoringFactor" : "collateral",
+        "pricePp" : 1.5,
+        "removable" : null
+      } ]
+    }, {
+      "step" : "submit",
+      "status" : "APPROVED",
+      "fork" : {
+        "rateFrom" : 16.0,
+        "rateTo" : 17.5,
+        "zone" : "APPROVE",
+        "rulesVersion" : "2026-10-23.draft1",
+        "asOf" : "2026-10-23"
+      },
+      "spots" : [ {
+        "title" : "Долг в ФНС 3 412 ₽ — без погашения будет отказ",
+        "type" : "STOP_FACTOR",
+        "status" : "CLOSED",
+        "scoringFactor" : null,
+        "pricePp" : 0.0,
+        "removable" : true
+      }, {
+        "title" : "Обороты по эквайрингу не видны",
+        "type" : "NO_DATA",
+        "status" : "CLOSED",
+        "scoringFactor" : "debt_load",
+        "pricePp" : 3.5,
+        "removable" : null
+      }, {
+        "title" : "Не знаем, стабильна ли выручка",
+        "type" : "NO_DATA",
+        "status" : "CLOSED",
+        "scoringFactor" : "revenue_stability",
+        "pricePp" : 2.5,
+        "removable" : null
+      }, {
+        "title" : "На что именно нужны деньги",
+        "type" : "NO_DATA",
+        "status" : "CLOSED",
+        "scoringFactor" : "purpose",
+        "pricePp" : 1.5,
+        "removable" : null,
+        "lastAnswer" : {
+          "verdict" : "ACCEPTED",
+          "optionCode" : "MATCH",
+          "reviewedBy" : "SYSTEM",
+          "purpose" : {
+            "status" : "DECIDED",
+            "purpose" : "MATCH",
+            "generatedBy" : "KEYWORDS"
+          },
+          "anomaly" : null
+        }
+      }, {
+        "title" : "Залог или поручительство — по желанию",
+        "type" : "COLLATERAL",
+        "status" : "OPEN",
+        "scoringFactor" : "collateral",
+        "pricePp" : 1.5,
+        "removable" : null
+      } ]
+    } ],
+    "decision" : {
+      "type" : "APPROVED",
+      "decidedBy" : "SYSTEM",
+      "rulesVersion" : "2026-10-23.draft1",
+      "override" : false,
+      "comment" : "Правый край вилки 17.5 % ≤ порога одобрения 21.0 %",
+      "requestHash" : "06917c49a5c6addad8b8f8a626d6f976e22db29dec4f55fc1b1105bf6ae131bd",
+      "reasonSpot" : null
+    },
+    "offers" : [ {
+      "productCode" : "WORKING_CAPITAL",
+      "amount" : 80000000,
+      "termMonths" : 12,
+      "collateralType" : null,
+      "proposedBy" : "SYSTEM",
+      "status" : "OFFERED",
+      "isRequested" : true,
+      "isManual" : false,
+      "fork" : {
+        "rateFrom" : 16.0,
+        "rateTo" : 17.5,
+        "zone" : "APPROVE",
+        "rulesVersion" : "2026-10-23.draft1",
+        "asOf" : "2026-10-23"
+      }
+    } ],
+    "forkHistory" : [ {
+      "rateFrom" : 15.0,
+      "rateTo" : 24.0,
+      "zone" : "UNDERWRITER",
+      "rulesVersion" : "2026-10-23.draft1",
+      "asOf" : "2026-10-23"
+    }, {
+      "rateFrom" : 16.0,
+      "rateTo" : 19.0,
+      "zone" : "APPROVE",
+      "rulesVersion" : "2026-10-23.draft1",
+      "asOf" : "2026-10-23"
+    }, {
+      "rateFrom" : 16.0,
+      "rateTo" : 17.5,
+      "zone" : "APPROVE",
+      "rulesVersion" : "2026-10-23.draft1",
+      "asOf" : "2026-10-23"
+    }, {
+      "rateFrom" : 16.0,
+      "rateTo" : 17.5,
+      "zone" : "APPROVE",
+      "rulesVersion" : "2026-10-23.draft1",
+      "asOf" : "2026-10-23"
+    }, {
+      "rateFrom" : 16.0,
+      "rateTo" : 17.5,
+      "zone" : "APPROVE",
+      "rulesVersion" : "2026-10-23.draft1",
+      "asOf" : "2026-10-23"
+    } ],
+    "verify" : {
+      "reproducible" : true,
+      "requestHash" : "06917c49a5c6addad8b8f8a626d6f976e22db29dec4f55fc1b1105bf6ae131bd",
+      "diff" : [ ]
+    }
+  },
+  "shell" : {
+    "steps" : [ {
+      "step" : "evaluate",
+      "status" : "COLLECTING",
+      "fork" : {
+        "rateFrom" : 17.0,
+        "rateTo" : 26.0,
+        "zone" : "UNDERWRITER",
+        "rulesVersion" : "2026-10-23.draft1",
+        "asOf" : "2026-10-23"
+      },
+      "spots" : [ {
+        "title" : "Директор назначен меньше 3 месяцев назад",
+        "type" : "STOP_FACTOR",
+        "status" : "OPEN",
+        "scoringFactor" : null,
+        "pricePp" : 0.0,
+        "removable" : false
+      }, {
+        "title" : "Адрес регистрации массовый",
+        "type" : "STOP_FACTOR",
+        "status" : "OPEN",
+        "scoringFactor" : null,
+        "pricePp" : 0.0,
+        "removable" : false
+      } ]
+    }, {
+      "step" : "submit",
+      "status" : "REJECTED",
+      "fork" : {
+        "rateFrom" : 17.0,
+        "rateTo" : 26.0,
+        "zone" : "UNDERWRITER",
+        "rulesVersion" : "2026-10-23.draft1",
+        "asOf" : "2026-10-23"
+      },
+      "spots" : [ {
+        "title" : "Директор назначен меньше 3 месяцев назад",
+        "type" : "STOP_FACTOR",
+        "status" : "OPEN",
+        "scoringFactor" : null,
+        "pricePp" : 0.0,
+        "removable" : false
+      }, {
+        "title" : "Адрес регистрации массовый",
+        "type" : "STOP_FACTOR",
+        "status" : "OPEN",
+        "scoringFactor" : null,
+        "pricePp" : 0.0,
+        "removable" : false
+      } ]
+    } ],
+    "decision" : {
+      "type" : "REJECTED",
+      "decidedBy" : "SYSTEM",
+      "rulesVersion" : "2026-10-23.draft1",
+      "override" : false,
+      "comment" : "Неустранимый стоп-фактор: Директор назначен меньше 3 месяцев назад",
+      "requestHash" : "2cc36fd3e5ab452bd89b023d893cfe46069306ea7fdc51fe5862f055a7d663f3",
+      "reasonSpot" : "Директор назначен меньше 3 месяцев назад"
+    },
+    "offers" : [ ],
+    "forkHistory" : [ {
+      "rateFrom" : 17.0,
+      "rateTo" : 26.0,
+      "zone" : "UNDERWRITER",
+      "rulesVersion" : "2026-10-23.draft1",
+      "asOf" : "2026-10-23"
+    }, {
+      "rateFrom" : 17.0,
+      "rateTo" : 26.0,
+      "zone" : "UNDERWRITER",
+      "rulesVersion" : "2026-10-23.draft1",
+      "asOf" : "2026-10-23"
+    } ],
+    "verify" : {
+      "reproducible" : true,
+      "requestHash" : "2cc36fd3e5ab452bd89b023d893cfe46069306ea7fdc51fe5862f055a7d663f3",
+      "diff" : [ ]
+    }
+  }
+}

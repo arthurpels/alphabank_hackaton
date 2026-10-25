@@ -16,6 +16,8 @@
 | Spring JDBC (`spring-boot-starter-jdbc`) | 3.3.4 | Apache-2.0 | доступ к PostgreSQL (HikariCP) |
 | Flyway (`flyway-core`, `flyway-database-postgresql`) | 10.10.0 (BOM) | Apache-2.0 | миграции схемы БД при старте |
 | PostgreSQL JDBC Driver | 42.7.4 (BOM) | BSD-2-Clause | драйвер подключения к PostgreSQL |
+| Testcontainers (`junit-jupiter`, `postgresql`; тесты) | 1.19.8 (BOM) | MIT | golden-master тест: Postgres, моки и `ml` в контейнерах (M27) |
+| docker-java (через Testcontainers; тесты) | 3.3.6 | Apache-2.0 | клиент Docker API для Testcontainers |
 
 ## Mocks (`mocks/`)
 
