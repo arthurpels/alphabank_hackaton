@@ -1636,7 +1636,7 @@ components:
         currentEngineVersion:
           type: string
           nullable: true
-          description: версия движка `ml` сейчас; отличие от `engineVersion` при `reproducible: true` значит, что код менялся, но ответ тот же
+          description: 'версия движка `ml` сейчас; отличие от `engineVersion` при `reproducible: true` значит, что код менялся, но ответ тот же'
         requestHash:
           type: string
           description: SHA-256 канонического `ScoreRequest` из снимка
