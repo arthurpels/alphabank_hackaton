@@ -4,12 +4,17 @@ from pathlib import Path
 
 from fastapi import FastAPI
 
+from scoring.answers import AnswerClassifier, AnswerVerifier
 from scoring.engine import Engine
 from scoring.llm import LlmClient, LlmSettings, OllamaClient, load_prompts
 from scoring.purpose import PurposeClassifier
 from scoring.schemas import (
     AnomaliesRequest,
     AnomaliesResponse,
+    AnswerClassifyRequest,
+    AnswerClassifyResponse,
+    AnswerVerifyRequest,
+    AnswerVerifyResponse,
     LlmHealth,
     OfferGridResponse,
     PurposeRequest,
@@ -37,6 +42,8 @@ llm: LlmClient | None = CachedLlm(ollama, verdict_cache) if ollama and verdict_c
 warmup = LlmWarmup(ollama, verdict_cache)
 prompts = load_prompts(PROMPTS_PATH)
 purpose_classifier = PurposeClassifier(engine.purpose_keywords, llm, prompts)
+answer_classifier = AnswerClassifier(engine.answer_keywords, llm, prompts)
+answer_verifier = AnswerVerifier(engine.answer_checks, engine.anomaly_detector)
 summarizer = Summarizer(llm if llm_settings.summary_enabled else None, prompts)
 
 
@@ -73,6 +80,16 @@ def offer_grid(request: ScoreRequest) -> OfferGridResponse:
 @app.post("/anomalies", response_model=AnomaliesResponse, tags=["scoring"])
 def detect_anomalies(request: AnomaliesRequest) -> AnomaliesResponse:
     return engine.detect_anomalies(request)
+
+
+@app.post("/answers/classify", response_model=AnswerClassifyResponse, tags=["llm"])
+def classify_answer(request: AnswerClassifyRequest) -> AnswerClassifyResponse:
+    return answer_classifier.classify(request)
+
+
+@app.post("/answers/verify", response_model=AnswerVerifyResponse, tags=["scoring"])
+def verify_answer(request: AnswerVerifyRequest) -> AnswerVerifyResponse:
+    return answer_verifier.verify(request)
 
 
 @app.post("/purpose", response_model=PurposeResponse, tags=["llm"])

@@ -204,6 +204,8 @@ class Engine:
             self.grid = _grid(raw["offer_grid"], self.products)
             self.anomaly_detector = AnomalyDetector(raw["anomalies"])
             self.purpose_keywords = {product: list(words) for product, words in raw["purpose_keywords"].items()}
+            self.answer_keywords = dict(raw["answer_keywords"])
+            self.answer_checks = dict(raw["answer_checks"])
         except (KeyError, TypeError, ConditionError) as exc:
             raise RulesError(f"некорректный файл правил: {exc}") from exc
 

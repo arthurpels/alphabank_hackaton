@@ -24,6 +24,8 @@ GRID_EXAMPLES = load_examples("/offers/grid")
 ANOMALY_EXAMPLES = load_examples("/anomalies")
 PURPOSE_EXAMPLES = load_examples("/purpose")
 SUMMARY_EXAMPLES = load_examples("/summary")
+CLASSIFY_EXAMPLES = load_examples("/answers/classify")
+VERIFY_EXAMPLES = load_examples("/answers/verify")
 
 
 def post(endpoint: str, payload: dict) -> dict:
