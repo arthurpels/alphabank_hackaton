@@ -12,7 +12,7 @@ from scoring.engine import Engine
 from scoring.schemas import AnomaliesRequest, Series
 
 ML_DIR = Path(__file__).resolve().parents[1]
-SPEC_PATH = ML_DIR.parent / "docs" / "synthetic-population.md"
+SPEC_PATH = ML_DIR.parent / "docs" / "internal" / "synthetic-population.md"
 RULES_PATH = ML_DIR / "scoring_rules.yaml"
 OUT_DIR = Path(__file__).resolve().parent / "out"
 
@@ -280,7 +280,7 @@ def write(rows: list[dict], out_dir: Path, seed: int, engine: Engine) -> dict:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Генератор синтетической популяции по docs/synthetic-population.md")
+    parser = argparse.ArgumentParser(description="Генератор синтетической популяции по docs/internal/synthetic-population.md")
     parser.add_argument("--size", type=int, default=POPULATION_SIZE)
     parser.add_argument("--seed", type=int, default=SEED)
     parser.add_argument("--out", type=Path, default=OUT_DIR)

@@ -58,7 +58,7 @@ LLM нужна только там, где словарь не понял фор
 Eval без Ollama, на записанных ответах той же модели:
 
 ```bash
-docker run --rm -v "$PWD":/repo -w /repo/ml --entrypoint python alphabank-hackathon-ml eval/run.py --check --report ../docs/ml-quality.md
+docker run --rm -v "$PWD":/repo -w /repo/ml --entrypoint python alphabank-hackathon-ml eval/run.py --check --report ../docs/internal/ml-quality.md
 ```
 
 Команда пересоздаёт таблицы, матрицы ошибок, долю решений словарём/LLM и детерминизм между двумя
@@ -72,7 +72,7 @@ docker run --rm -v "$PWD":/repo -w /repo/ml --entrypoint python alphabank-hackat
 docker run --rm -v "$PWD":/repo -w /repo/ml --entrypoint sh alphabank-hackathon-ml -c "pip install -q -r requirements-dev.txt && python -m calibration.report"
 ```
 
-Она детерминированно создаёт популяцию, пересчитывает `docs/calibration.md` и кандидата
+Она детерминированно создаёт популяцию, пересчитывает `docs/internal/calibration.md` и кандидата
 `ml/calibration/candidate_rules.yaml`. Сводка и графики ниже берутся из этого отчёта.
 
 Проверка живой модели и перезапуска (первая команда скачивает модель, `--record` дописывает ответы

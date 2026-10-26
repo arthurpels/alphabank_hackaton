@@ -30,7 +30,8 @@ flowchart LR
 
 Браузер работает только с бэкендом. Бэкенд хранит заявки в PostgreSQL, запрашивает внешние источники
 (ЕГРЮЛ, ФНС, БКИ, ОФД, маркетплейс, эквайринг) у сервиса моков и считает вилку в скоринг-сервисе `ml`.
-Локальная LLM с открытыми весами подключается к `ml` отдельным профилем и по умолчанию выключена.
+Локальная LLM с открытыми весами работает в отдельном сервисе `ollama` (профиль `llm`) и по умолчанию включена;
+без неё всё работает на правилах и словарях.
 Кредитное решение принимают детерминированные правила. Схема, потоки, хранение состояния, безопасность и
 надёжность — `docs/architecture.md`.
 
@@ -39,13 +40,14 @@ flowchart LR
 | Что | Требование |
 |---|---|
 | Docker | Docker Engine с Docker Compose v2 (команда `docker compose`, а не `docker-compose`) |
-| Память | без LLM — от 8 ГБ ОЗУ на машине; с LLM (`qwen3:4b` на CPU) — от 16 ГБ |
-| Диск | около 5 ГБ под образы и зависимости; с LLM ещё около 2,5 ГБ под модель |
+| Память | с LLM (по умолчанию, `qwen3:4b` на CPU) — от 16 ГБ ОЗУ на машине; без LLM — от 8 ГБ |
+| Диск | около 10 ГБ свободного места под сборку образов и зависимости; с LLM ещё около 2,5 ГБ под модель |
 | Сеть | только при первой сборке: скачать образы, зависимости и (для режима LLM) модель; дальше всё работает локально |
 | Свободные порты | `5173` (сайт), `8080` (бэкенд), `8001` (скоринг), `8002` (моки), `5432` (PostgreSQL) |
 
 Для служебных скриптов (`scripts/check-determinism`, `scripts/demo-ml-prepare`) дополнительно нужны
-bash, Python 3.9+ и Node.js (newman запускается через `npx`).
+bash, Python 3.9+ и Node.js (newman запускается через `npx`). В Windows скрипты `scripts/*` запускаются из
+Git Bash.
 
 ## 4. Запуск
 
@@ -99,7 +101,7 @@ scripts/reset-demo
 | `ML_URL` | `http://ml:8001` | адрес скоринг-сервиса для бэкенда | не нужно |
 | `MOCKS_URL` | `http://mocks:8002` | адрес моков для бэкенда | не нужно |
 | `DEMO_DATE` | `2026-10-23` | дата первого расчёта заявки; от неё считаются возраст бизнеса и срок директора | не менять: от неё зависят исходы персонажей |
-| `LLM_ENABLED` | `false` | включить локальную LLM в `ml` | режимы LLM, см. ниже |
+| `LLM_ENABLED` | `true` | локальная LLM в `ml` | `false` — режим off, см. ниже |
 | `OLLAMA_URL` | `http://ollama:11434` | адрес Ollama для `ml` | Ollama запущена на хосте |
 | `OLLAMA_MODEL` | `qwen3:4b` | модель | не нужно |
 | `OLLAMA_MODEL_DIGEST` | `359d7dd4…fae7` | закреплённая сборка модели: другая сборка под тем же тегом не используется | не нужно |
@@ -123,8 +125,8 @@ scripts/reset-demo
 
 | Режим | Что происходит | Как включить |
 |---|---|---|
-| **off** (по умолчанию) | только правила и словари; то, что словарь не решил, уходит специалисту | ничего не делать (`LLM_ENABLED=false`) |
-| **live** | локальная модель `qwen3:4b` в Ollama, ответы кешируются | `scripts/demo-ml-prepare live` на запущенном стенде; чтобы режим сохранился после перезапуска — в `.env` `LLM_ENABLED=true` и запуск `docker compose --profile llm up -d`. Первый раз скачивается модель (около 2,5 ГБ) |
+| **live** (по умолчанию) | локальная модель `qwen3:4b` в Ollama, ответы кешируются | запуск из раздела 4: `LLM_ENABLED=true` в `.env` и `docker compose --profile llm up --build`. Первый раз скачивается модель (около 2,5 ГБ); прогреть кеш — `scripts/demo-ml-prepare live` |
+| **off** | только правила и словари; то, что словарь не решил, уходит специалисту | в `.env` `LLM_ENABLED=false`, запуск `docker compose up --build` без профиля `llm` |
 | **replay** | записанные ответы той же модели, Ollama не нужна | `scripts/demo-ml-prepare replay`; в `.env` — `LLM_ENABLED=true`, `LLM_REPLAY_PATH=/app/eval/replay/llm_answers.jsonl` |
 
 Подробно, с запасным планом и витриной ИИ, — `docs/demo-ml.md`.
@@ -256,37 +258,39 @@ cd server/backend && mvn test -Dtest=PersonaGoldenMasterTest -Dgolden.update=tru
 
 ## 10. Карта документации
 
+**Обязательные по ТЗ**
+
+| Что | Файл |
+|---|---|
+| README, архитектура, окружение, запуск, сценарий проверки | `README.md` |
+| Архитектурная схема | `docs/architecture.md` |
+| Описание API | `docs/api.md` |
+| OpenAPI | `docs/openapi.yaml` (публичный API), `docs/openapi-ml.yaml` (скоринг), `docs/openapi-mocks.yaml` (моки); Swagger UI — в таблице раздела 4 |
+| Коллекция запросов | `docs/credit-pipeline.postman_collection.json`, `docs/local.postman_environment.json` |
+| Диаграмма состояний заявки | `docs/day1_backend_application-states.md` |
+| Модель данных | `docs/day1_backend_data-model.md` |
+| Тестовые сценарии | `docs/test-scenarios.md` |
+| Синтетические тестовые данные и учётные записи | `docs/synthetic-data.md` |
+| Сторонние компоненты, модели, смоделированные интеграции | `THIRD_PARTY_NOTICES.md` |
+
+**Постановка задачи и рекомендации ТЗ**
+
 | Что | Файл |
 |---|---|
 | Идея решения | `docs/concept.md` |
-| Задачи и боли клиента (JTBD) | `docs/jtbd.md` |
-| Исследование кредитного конвейера МСБ | `docs/day1_backend_domain-research.md` |
-| Модель кредитного процесса | `docs/day1_backend_process-model.md` |
-| Границы MVP и упрощения | `docs/mvp-scope.md` |
+| Исследование предметной области и потребностей (JTBD) | `docs/jtbd.md`, `docs/day1_backend_domain-research.md` |
+| Модель кредитного процесса: границы, этапы, участники, данные, результаты | `docs/day1_backend_process-model.md` |
 | Варианты использования и основной сценарий | `docs/use-cases.md` |
-| Экраны клиента и андеррайтера | `docs/screens.md`, `docs/day1_frontend_design-system.md` |
-| **Архитектурная схема** | `docs/architecture.md` |
-| **Диаграмма состояний заявки** | `docs/day1_backend_application-states.md` |
-| **Модель данных** | `docs/day1_backend_data-model.md` |
-| **Описание API** | `docs/api.md` |
-| **OpenAPI** | `docs/openapi.yaml` (публичный API), `docs/openapi-ml.yaml` (скоринг), `docs/openapi-mocks.yaml` (моки) |
-| **Коллекция запросов** | `docs/credit-pipeline.postman_collection.json`, `docs/local.postman_environment.json` |
-| **Тестовые сценарии** | `docs/test-scenarios.md` |
-| Синтетические данные персонажей | `docs/synthetic-data.md` |
-| Моки внешних источников | `docs/day1_backend_external-mocks.md` |
-| Модель скоринга | `docs/scoring-model.md` |
-| Таблица решений автопроверки | `docs/decision-table.md`, `docs/decision-table.json` |
-| Политика ИИ и детерминизма | `docs/ai-policy.md` |
-| ML на демо | `docs/demo-ml.md` |
-| Качество ML, калибровка | `docs/ml-quality.md`, `docs/calibration.md`, `docs/synthetic-population.md` |
-| Реестр решений | `docs/decisions.md` |
-| Соответствие требованиям ТЗ | `docs/requirements-checklist.md` |
-| Текст ТЗ | `docs/tz_credits.md` |
-| Процесс разработки: доски задач | `docs/kanban.md`, `docs/kanban2.md` |
-| Сторонние компоненты и лицензии | `THIRD_PARTY_NOTICES.md` |
+| Границы MVP и упрощения | `docs/mvp-scope.md` |
+| Модель принятия решения: скоринг и таблица решений | `docs/scoring-model.md`, `docs/decision-table.md`, `docs/decision-table.json` |
+| Смоделированные внешние источники | `docs/day1_backend_external-mocks.md` |
+| Роль ИИ и детерминизм | `docs/ai-policy.md`, запуск режимов LLM — `docs/demo-ml.md` |
+| Реестр продуктовых и технических решений | `docs/decisions.md` |
 
-Жирным выделены артефакты, обязательные по ТЗ. Префиксы `day1_backend_` и `day1_frontend_` остались от
-первого дня работы: это основные, актуальные документы.
+Префиксы `day1_backend_` остались от первого дня работы: это основные, актуальные документы.
+
+**Материалы команды** — в `docs/internal/`, для проверки не нужны: текст ТЗ, чек-лист соответствия ТЗ,
+доски задач, спецификация экранов, отчёты о качестве ML и калибровке скоринга.
 
 ## 11. Что сознательно не делали
 

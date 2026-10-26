@@ -259,7 +259,7 @@ def main() -> int:
     parser.add_argument("--record", action="store_true", help="live: записать ответы модели в файл replay")
     parser.add_argument("--sets", nargs="+", choices=[golden.name for golden in SETS],
                         default=[golden.name for golden in SETS], help="какие наборы прогнать")
-    parser.add_argument("--report", type=Path, help="заменить блок eval в этом файле (docs/ml-quality.md)")
+    parser.add_argument("--report", type=Path, help="заменить блок eval в этом файле (docs/internal/ml-quality.md)")
     parser.add_argument("--check", action="store_true",
                         help="код выхода 1, если точность цели < 90 %, есть расхождения или нет записанных ответов")
     args = parser.parse_args()

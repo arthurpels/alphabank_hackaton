@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Создаёт метки, вехи и задачи на GitHub из docs/kanban.md (или другого файла доски) через gh CLI."""
+"""Создаёт метки, вехи и задачи на GitHub из docs/internal/kanban.md (или другого файла доски) через gh CLI."""
 
 import argparse
 import json
@@ -8,7 +8,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-KANBAN = Path(__file__).resolve().parent.parent / "docs" / "kanban.md"
+KANBAN = Path(__file__).resolve().parent.parent / "docs" / "internal" / "kanban.md"
 
 ROLES = {"Лид": "lead", "Б1": "b1", "Б2": "b2", "Ф": "front", "А": "analyst"}
 ROLE_COLOR = "5319e7"
@@ -23,7 +23,7 @@ META = re.compile(
 TASK_REF = re.compile(r"\b[TM]\d{2}\b")
 
 
-def parse(text, source="docs/kanban.md"):
+def parse(text, source="docs/internal/kanban.md"):
     tasks, current = [], None
     for line in text.splitlines():
         if m := HEADER.match(line):
@@ -71,7 +71,7 @@ def main():
     ap.add_argument("--assign", default="", help="роль=логин через запятую: lead=…,b1=…,b2=…,front=…,analyst=…")
     ap.add_argument("--project", help="название GitHub Project (доски), куда добавить задачи")
     ap.add_argument("--only", help="создать только эти задачи: T01,T02")
-    ap.add_argument("--file", type=Path, default=KANBAN, help="файл доски, по умолчанию docs/kanban.md")
+    ap.add_argument("--file", type=Path, default=KANBAN, help="файл доски, по умолчанию docs/internal/kanban.md")
     args = ap.parse_args()
 
     kanban = args.file.resolve()

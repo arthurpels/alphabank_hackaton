@@ -11,7 +11,7 @@ from scoring.engine import Engine
 from scoring.schemas import ScoreRequest
 
 ML_DIR = Path(__file__).resolve().parents[1]
-REPORT_PATH = ML_DIR.parent / "docs" / "calibration.md"
+REPORT_PATH = ML_DIR.parent / "docs" / "internal" / "calibration.md"
 CANDIDATE_PATH = Path(__file__).resolve().parent / "candidate_rules.yaml"
 CONTRACT_PATH = ML_DIR.parent / "docs" / "openapi-ml.yaml"
 PERSONAS = ("coffeeStart", "coffee", "builder", "wb", "fns", "shell")

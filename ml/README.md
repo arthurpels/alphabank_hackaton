@@ -20,11 +20,11 @@ docker run --rm -v "$PWD":/repo -w /repo/ml --entrypoint sh alphabank-hackathon-
 Одна команда, без Ollama, на записанных ответах модели:
 
 ```bash
-docker run --rm -v "$PWD":/repo -w /repo/ml --entrypoint python alphabank-hackathon-ml eval/run.py --check --report ../docs/ml-quality.md
+docker run --rm -v "$PWD":/repo -w /repo/ml --entrypoint python alphabank-hackathon-ml eval/run.py --check --report ../docs/internal/ml-quality.md
 ```
 
 Печатает точность (всего, без спорных строк, по видам), кто решил (словарь или LLM),
-детерминизм между прогонами, матрицу и список ошибок и обновляет блок eval в `docs/ml-quality.md`.
+детерминизм между прогонами, матрицу и список ошибок и обновляет блок eval в `docs/internal/ml-quality.md`.
 `--check` — код выхода 1, если точность цели ниже 90 %, есть расхождения между прогонами или для
 входа нет записанного ответа модели.
 
@@ -38,7 +38,7 @@ docker compose --profile llm up -d ollama ollama-pull
 ```
 
 ```bash
-docker compose run --rm --no-deps -v "$PWD":/repo -w /repo/ml --entrypoint python ml eval/run.py --mode live --record --runs 2 --report ../docs/ml-quality.md
+docker compose run --rm --no-deps -v "$PWD":/repo -w /repo/ml --entrypoint python ml eval/run.py --mode live --record --runs 2 --report ../docs/internal/ml-quality.md
 ```
 
 `--mode live` ходит в Ollama напрямую, без кеша вердиктов: два прогона подряд — настоящая проверка
