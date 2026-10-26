@@ -291,14 +291,11 @@
 |---|---|
 | Получает | `GET /underwriting/queue[?status=…]`: `applicationId`, `companyName`, `inn`, `productCode`, `amount`, `termMonths`, `status`, `fork`, `openSpots`, `onReviewSpots`, `submittedAt` |
 | Показывает | таблица (`Table` + `Status`), все колонки равной ширины, данные по центру: «Компания» (название и ИНН), «Продукт», «Сумма» (сумма и срок), «Ставка» («от X% до Y%»), «Пятна» («N открыто», «N на проверке»), «Статус» |
-| Фильтры | «Все», «На рассмотрении» (`UNDERWRITING`), «Ждём клиента» (`INFO_REQUESTED`) ⚠️ от себя |
-| Пустое состояние | «Очередь пуста. Новые заявки появятся здесь, когда клиенты их отправят» ⚠️ от себя |
+| Вкладки | «Все в работе» (`UNDERWRITING` и `INFO_REQUESTED`), «На рассмотрении» (`UNDERWRITING`), «Ждём клиента» (`INFO_REQUESTED`), «Завершённые» (`APPROVED`, `COUNTER_OFFER`, `REJECTED`, `SIGNING`, `ISSUED`, `CANCELLED`, новые сверху) ⚠️ от себя |
+| Пустое состояние | «Очередь пуста. Новые заявки появятся здесь, когда клиенты их отправят»; на вкладке «Завершённые» — «Завершённых заявок пока нет» ⚠️ от себя |
 | Действие | клик по строке → 3.2 |
 
 **Статус:** сделано на моках (в моке одна заявка — ИП Петров, сценарий ИП-строителя).
-| Получает | `GET /underwriting/queue`: `applicationId`, `companyName`, `inn`, `productCode`, `amount`, `termMonths`, `status`, `fork`, `openSpots`, `onReviewSpots`, `submittedAt` |
-| Показывает | таблица (`Table` + `Status`), вкладки «Все в работе», «На рассмотрении» (`UNDERWRITING`), «Ждём клиента» (`INFO_REQUESTED`) ⚠️ от себя и «Завершённые» (`APPROVED`, `COUNTER_OFFER`, `REJECTED`, `SIGNING`, `ISSUED`, `CANCELLED`, новые сверху) |
-| Действие | открыть карточку |
 
 ### 3.2. Карточка заявки — `/underwriter/application?id=…`
 Блоки сверху вниз:
