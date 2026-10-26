@@ -8,11 +8,14 @@ import json
 import re
 import sys
 from datetime import date
+from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
-import yaml
+from scoring.engine import Engine, months_between
+from scoring.schemas import AnomaliesRequest, ScoreRequest, Series, SeriesPoint, SourceCode
 
-from scoring_calc import AS_OF, Engine, months_between
+AS_OF = date(2026, 10, 23)
+ENGINE = Engine.from_yaml(Path(__file__).with_name("scoring_rules.yaml"))
 
 M12 = ["2025-10", "2025-11", "2025-12", "2026-01", "2026-02", "2026-03",
        "2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09"]
@@ -46,11 +49,11 @@ P = {
                 "tax_debt": {"amount": 0, "currency": "RUB", "as_of": "2026-10-15"},
                 "unfiled_reports": 0, "tax_system": "USN"},
         "ofd": {"source": "OFD", "inn": "7701234560",
-                "months": [{"month": m, "revenue": v} for m, v in zip(M12, coffee_ofd)],
+                "months": [{"month": m, "revenue": v} for m, v in zip(M12, coffee_ofd, strict=True)],
                 "share_of_total_revenue": 0.7},
         "acquiring": {"source": "ACQUIRING", "inn": "7701234560",
                       "months": [{"month": m, "turnover": int(round(v * 0.67, -4)), "tx_count": round(v * 0.67 / 233)}
-                                 for m, v in zip(M12, coffee_ofd)],
+                                 for m, v in zip(M12, coffee_ofd, strict=True)],
                       "avg_ticket": 233},
     },
     "builder": {
@@ -92,7 +95,7 @@ P = {
                 "unfiled_reports": 0, "tax_system": "USN"},
         "marketplace": {"source": "MARKETPLACE", "inn": "590987654351",
                         "months": [{"month": m, "gmv": int(round(p / 0.75, -4)), "payout": p, "returns_pct": r}
-                                   for m, p, r in zip(M6, wb_payout, wb_returns)],
+                                   for m, p, r in zip(M6, wb_payout, wb_returns, strict=True)],
                         "rating": 4.6, "store_age_months": 14},
     },
     "fns": {
@@ -111,7 +114,8 @@ P = {
                 "tax_debt": {"amount": 3412, "currency": "RUB", "as_of": "2026-10-15"},
                 "unfiled_reports": 0, "tax_system": "OSN"},
         "acquiring": {"source": "ACQUIRING", "inn": "7725555556",
-                      "months": [{"month": m, "turnover": v, "tx_count": round(v / 4800)} for m, v in zip(M12, fns_acq)],
+                      "months": [{"month": m, "turnover": v, "tx_count": round(v / 4800)}
+                                 for m, v in zip(M12, fns_acq, strict=True)],
                       "avg_ticket": 4800},
     },
     "shell": {
@@ -129,23 +133,24 @@ P = {
                 "tax_debt": {"amount": 0, "currency": "RUB", "as_of": "2026-10-15"},
                 "unfiled_reports": 0, "tax_system": "OSN"},
         "acquiring": {"source": "ACQUIRING", "inn": "7719999994",
-                      "months": [{"month": m, "turnover": v, "tx_count": round(v / 1500)} for m, v in zip(M6, shell_acq)],
+                      "months": [{"month": m, "turnover": v, "tx_count": round(v / 1500)}
+                                 for m, v in zip(M6, shell_acq, strict=True)],
                       "avg_ticket": 1500},
     },
 }
 
 
 # --- производные: из ответов моков в вход скоринга -------------------------------
-def anomalies(series: list[int]) -> list[str]:
-    """Простые правила T26: падение месяц к месяцу > 30 %, рост > ×3."""
-    out = []
-    for i in range(1, len(series)):
-        prev, cur = series[i - 1], series[i]
-        if cur < prev * 0.7:
-            out.append(f"падение {round((1 - cur / prev) * 100)} % в месяце {i + 1}")
-        if cur > prev * 3:
-            out.append(f"рост ×{cur / prev:.1f} в месяце {i + 1}")
-    return out
+def money(value: float) -> int:
+    return int((Decimal(str(value)) * 100).quantize(Decimal(1), rounding=ROUND_HALF_UP))
+
+
+def anomalies(values: list[int], months: list[str], source: SourceCode) -> list[str]:
+    request = AnomaliesRequest(series=[Series(
+        source=source,
+        points=[SeriesPoint(month=month, value=money(value)) for month, value in zip(months, values, strict=True)],
+    )])
+    return [anomaly.title for anomaly in ENGINE.detect_anomalies(request).anomalies]
 
 
 def base_input(p):
@@ -157,53 +162,86 @@ def base_input(p):
                 tax_debt=f["tax_debt"]["amount"], unfiled_reports=f["unfiled_reports"])
 
 
+def score_request(persona: dict, updates: dict) -> ScoreRequest:
+    application = persona["app"]
+    values = {**base_input(persona), **updates}
+    monthly_revenue = values.get("monthly_revenue")
+    return ScoreRequest(
+        as_of=AS_OF,
+        product_code=application["product"],
+        amount=money(application["amount"]),
+        term_months=application["term"],
+        egrul_status=values["egrul_status"],
+        registered_at=values["registered_at"],
+        director_since=values["director_since"],
+        mass_address=values["mass_address"],
+        credit_score=values["credit_score"],
+        delinq_12m=values["delinq_12m"],
+        bki_current_overdue=values["bki_current_overdue"],
+        tax_debt=money(values["tax_debt"]),
+        unfiled_reports=values["unfiled_reports"],
+        monthly_revenue=None if monthly_revenue is None else money(monthly_revenue),
+        stability=None if values.get("stability") is None else values["stability"].upper(),
+        purpose=None if values.get("purpose") is None else values["purpose"].upper(),
+        collateral=None if values.get("collateral") is None else values["collateral"].upper(),
+    )
+
+
 def avg(xs):
     return sum(xs) / len(xs)
 
 
+SCENARIOS = {
+    "coffee": [("ИНН", {}), ("ОФД", {"monthly_revenue": avg(coffee_ofd), "stability": "anomaly_open"}),
+               ("март принят", {"monthly_revenue": avg(coffee_ofd), "stability": "explained"}),
+               ("цель", {"monthly_revenue": avg(coffee_ofd), "stability": "explained", "purpose": "match"})],
+    "builder": [("ИНН", {}), ("цель", {"purpose": "match"}),
+                ("договор принят", {"purpose": "match", "stability": "document",
+                                    "monthly_revenue": P["builder"]["document"]["amount"] / 12})],
+    "wb": [("ИНН", {}), ("маркетплейс", {"monthly_revenue": avg(wb_payout), "stability": "clean"}),
+           ("цель", {"monthly_revenue": avg(wb_payout), "stability": "clean", "purpose": "match"})],
+    "fns": [("ИНН", {}),
+            ("эквайринг+цель", {"monthly_revenue": avg(fns_acq), "stability": "clean", "purpose": "match"}),
+            ("погасил", {"monthly_revenue": avg(fns_acq), "stability": "clean", "purpose": "match", "tax_debt": 0})],
+    "shell": [("ИНН", {})],
+}
+
+
 def check():
-    e = Engine(yaml.safe_load(open(Path(__file__).with_name("scoring_rules.yaml"), encoding="utf-8")))
     print("Производные:")
-    for k, series in [("coffee OFD", coffee_ofd), ("fns acquiring", fns_acq), ("wb payout", wb_payout),
-                      ("shell acquiring", shell_acq)]:
-        print(f"  {k}: среднее {avg(series):,.0f}, аномалии: {anomalies(series) or 'нет'}")
+    for k, values, months, source in [
+        ("coffee OFD", coffee_ofd, M12, SourceCode.OFD),
+        ("fns acquiring", fns_acq, M12, SourceCode.ACQUIRING),
+        ("wb payout", wb_payout, M6, SourceCode.MARKETPLACE),
+        ("shell acquiring", shell_acq, M6, SourceCode.ACQUIRING),
+    ]:
+        print(f"  {k}: среднее {avg(values):,.0f}, аномалии: {anomalies(values, months, source) or 'нет'}")
     print(f"  wb returns max {max(wb_returns)} % (порог 20 %)")
     for k in P:
         e_ = P[k]["egrul"]
         print(f"  {k}: возраст {months_between(date.fromisoformat(e_['registered_at']), AS_OF)} мес, "
               f"директор {months_between(date.fromisoformat(e_['director']['appointed_at']), AS_OF)} мес")
 
-    scen = {
-        "coffee": [("ИНН", {}), ("ОФД", {"monthly_revenue": avg(coffee_ofd), "stability": "anomaly_open"}),
-                   ("март принят", {"monthly_revenue": avg(coffee_ofd), "stability": "explained"}),
-                   ("цель", {"monthly_revenue": avg(coffee_ofd), "stability": "explained", "purpose": "match"})],
-        "builder": [("ИНН", {}), ("цель", {"purpose": "match"}),
-                    ("договор принят", {"purpose": "match", "stability": "document",
-                                        "monthly_revenue": P["builder"]["document"]["amount"] / 12})],
-        "wb": [("ИНН", {}), ("маркетплейс", {"monthly_revenue": avg(wb_payout), "stability": "clean"}),
-               ("цель", {"monthly_revenue": avg(wb_payout), "stability": "clean", "purpose": "match"})],
-        "fns": [("ИНН", {}), ("эквайринг+цель", {"monthly_revenue": avg(fns_acq), "stability": "clean", "purpose": "match"}),
-                ("погасил", {"monthly_revenue": avg(fns_acq), "stability": "clean", "purpose": "match", "tax_debt": 0})],
-        "shell": [("ИНН", {})],
-    }
     print("\nВилки:")
-    for k, steps in scen.items():
-        a = P[k]["app"]
-        c0 = base_input(P[k])
+    for k, steps in SCENARIOS.items():
         for label, upd in steps:
-            c = {**c0, **upd}
-            fk = e.fork(c, a["product"], a["amount"], a["term"])
-            m = f" нагрузка {fk['metric'] * 100:.1f}%" if fk["metric"] is not None else ""
-            print(f"  {k} · {label}: {fk['lo']}–{fk['hi']}{m} · пятна {[(n, w) for n, w in fk['spots']]}"
-                  f" · стоп {e.stop_factors(c)}")
-        v, why, _ = e.decide({**c0, **steps[-1][1]}, a["product"], a["amount"], a["term"])
-        if v == "COUNTER_OFFER":
-            why = [(o[0], o[1], o[2], o[3], o[4]["hi"], round(o[4]["metric"] * 100, 1)) for o in why]
-        print(f"  {k} → {v}: {why}")
+            result = ENGINE.score(score_request(P[k], upd))
+            metric = result.policy.value
+            m = f" нагрузка {metric * 100:.1f}%" if metric is not None else ""
+            spots = [(factor.code, factor.spot_price_pp) for factor in result.factors
+                     if factor.applicable and not factor.known]
+            stops = [stop.code for stop in result.stop_factors]
+            print(f"  {k} · {label}: {result.rate_from}–{result.rate_to}{m} · пятна {spots} · стоп {stops}")
+        grid = ENGINE.offer_grid(score_request(P[k], steps[-1][1]))
+        offers = [(offer.product_code.value, offer.amount // 100, offer.term_months, offer.collateral_type,
+                   offer.rate_from, offer.rate_to, offer.policy.value) for offer in grid.offers]
+        print(f"  {k} → passes={result.passes}, сетка {offers}")
         if k == "builder":
-            print("   при подаче:", e.decide({**c0, **steps[1][1]}, a["product"], a["amount"], a["term"])[:2])
+            submitted = ENGINE.score(score_request(P[k], steps[1][1]))
+            print(f"   при подаче: passes={submitted.passes}")
         if k == "fns":
-            print("   без погашения:", e.decide({**c0, **steps[1][1]}, a["product"], a["amount"], a["term"])[:2])
+            unpaid = ENGINE.score(score_request(P[k], steps[1][1]))
+            print(f"   без погашения: passes={unpaid.passes}, стоп {[stop.code for stop in unpaid.stop_factors]}")
 
 
 def dump(obj, ind=0):

@@ -16,5 +16,6 @@ public record ForkSnapshotRecord(
         String rulesVersion,
         LocalDate asOf,
         OffsetDateTime calculatedAt,
+        Boolean reproducible,
         SnapshotTrace trace) {
 }

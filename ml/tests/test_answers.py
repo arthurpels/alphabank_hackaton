@@ -6,6 +6,7 @@ from typing import Any
 import pytest
 
 from main import PROMPTS_PATH, engine
+from scoring.answer_rules import AnswerRules, locate_evidence, normalize_text
 from scoring.answers import LLM_SCHEMA, AnswerClassifier, shift_month
 from scoring.llm import LlmAnswer, load_prompts, prompt_version
 from scoring.schemas import AnswerClassifyRequest
@@ -292,3 +293,36 @@ def test_answers_reject_invalid_input() -> None:
     assert (
         client.post("/answers/verify", json={"anomaly": DROP, "answerCode": "MAYBE", "series": []}).status_code == 422
     )
+
+
+@pytest.mark.parametrize(
+    ("evidence", "text"),
+    [
+        ("парикмах херской", "кресла и мойки для парикмахерской"),
+        ("купить бетономешалку и стро строительные леса", "купить бетономешалку и строительные леса"),
+        ("купить ткани и фурнатуру для пошива", "купить ткани и фурнитуру для пошива"),
+        ("оплатить юриста и бухгалатера", "оплатить юриста и бухгалтера"),
+        ("бензин и соля доставки", "бензин и солярка для доставки"),
+    ],
+)
+def test_evidence_with_copy_glitches_is_found(evidence: str, text: str) -> None:
+    assert locate_evidence(evidence, text) is not None
+
+
+@pytest.mark.parametrize(
+    ("evidence", "text"),
+    [
+        ("капремонт фасада", "был ремонт точка закрывалась"),
+        ("покупка станка", "на развитие бизнеса"),
+        ("ремонт", "на развитие бизнеса"),
+        ("ремонт кровли", "был ремонт зала, потом долго ремонтировали кухню, а через месяц ещё и крышу"),
+    ],
+)
+def test_invented_evidence_is_rejected(evidence: str, text: str) -> None:
+    assert locate_evidence(evidence, normalize_text(text)) is None
+
+
+def test_glitched_evidence_keeps_negation_check() -> None:
+    rules = AnswerRules.from_config(PROMPTS["answers"]["rules"], ["не", "нет", "без", "ни"])
+    verdict = rules.check({"reason": "ремонт", "evidence": "ремоннта", "code": "RENOVATION"}, "ремонта не было")
+    assert verdict.violation == "NEGATED_EVIDENCE"

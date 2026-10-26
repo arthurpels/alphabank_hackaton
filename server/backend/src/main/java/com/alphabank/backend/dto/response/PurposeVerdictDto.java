@@ -13,5 +13,8 @@ public record PurposeVerdictDto(
         String generatedBy,
         List<String> matchedKeywords,
         String reason,
-        LlmMetaDto llm) {
+        String evidence,
+        String violation,
+        LlmMetaDto llm,
+        ProfileCheckDto profile) {
 }

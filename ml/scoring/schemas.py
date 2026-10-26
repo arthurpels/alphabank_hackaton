@@ -231,6 +231,7 @@ class UnderwritingSummary(CamelModel):
 class PurposeRequest(CamelModel):
     product_code: ProductCode
     goal: str | None = Field(default=None, max_length=1000)
+    okved: str | None = Field(default=None, pattern=r"^\d{2}(\.\d{1,2}){0,2}$")
 
 
 class PurposeStatus(str, Enum):
@@ -238,6 +239,25 @@ class PurposeStatus(str, Enum):
     UNCLEAR = "UNCLEAR"
     UNAVAILABLE = "UNAVAILABLE"
     NOT_APPLICABLE = "NOT_APPLICABLE"
+
+
+class ProfileStatus(str, Enum):
+    FITS = "FITS"
+    DOES_NOT_FIT = "DOES_NOT_FIT"
+    UNCLEAR = "UNCLEAR"
+    NOT_CHECKED = "NOT_CHECKED"
+
+
+class ProfileCheck(CamelModel):
+    okved: str
+    activity: str | None
+    status: ProfileStatus
+    reason: str | None = None
+    evidence: str | None = None
+    violation: (
+        Literal["FORMAT", "NO_EVIDENCE", "EVIDENCE_NOT_IN_GOAL", "UNIVERSAL_PURCHASE", "UNCERTAIN_REASON"] | None
+    ) = None
+    llm: LlmMeta | None = None
 
 
 class PurposeResponse(CamelModel):
@@ -249,9 +269,13 @@ class PurposeResponse(CamelModel):
     reason: str | None = None
     evidence: str | None = None
     violation: (
-        Literal["FORMAT", "NO_EVIDENCE", "EVIDENCE_NOT_IN_GOAL", "GENERIC_EVIDENCE", "UNCERTAIN_REASON"] | None
+        Literal[
+            "FORMAT", "NO_EVIDENCE", "EVIDENCE_NOT_IN_GOAL", "GENERIC_EVIDENCE", "UNCERTAIN_REASON", "MANIPULATION"
+        ]
+        | None
     ) = None
     llm: LlmMeta | None = None
+    profile: ProfileCheck | None = None
 
 
 class AnswerCode(str, Enum):

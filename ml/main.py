@@ -2,12 +2,16 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+import yaml
 from fastapi import FastAPI
 
 from scoring.answers import AnswerClassifier, AnswerVerifier
 from scoring.engine import Engine
 from scoring.llm import LlmClient, LlmSettings, OllamaClient, load_prompts
+from scoring.profile import ProfileChecker
 from scoring.purpose import PurposeClassifier
+from scoring.replay import open_replay
+from scoring.rules import RulesResponse
 from scoring.schemas import (
     AnomaliesRequest,
     AnomaliesResponse,
@@ -32,16 +36,26 @@ from scoring.warmup import LlmWarmup
 BASE_DIR = Path(__file__).resolve().parent
 RULES_PATH = BASE_DIR / "scoring_rules.yaml"
 PROMPTS_PATH = BASE_DIR / "llm.yaml"
+OKVED_PATH = BASE_DIR / "okved.yaml"
 ENGINE_VERSION = engine_version(BASE_DIR)
 
 engine = Engine.from_yaml(RULES_PATH)
+rules = RulesResponse.from_yaml(RULES_PATH)
 llm_settings = LlmSettings.from_env()
-ollama = OllamaClient(llm_settings) if llm_settings.enabled else None
+replay = open_replay(llm_settings.replay_path)
+ollama = OllamaClient(llm_settings) if llm_settings.enabled and replay is None else None
 verdict_cache = open_cache(llm_settings.cache_path) if ollama is not None else None
-llm: LlmClient | None = CachedLlm(ollama, verdict_cache) if ollama and verdict_cache else ollama
+llm: LlmClient | None = replay or (CachedLlm(ollama, verdict_cache) if ollama and verdict_cache else ollama)
 warmup = LlmWarmup(ollama, verdict_cache)
 prompts = load_prompts(PROMPTS_PATH)
-purpose_classifier = PurposeClassifier(engine.purpose_keywords, llm, prompts)
+okved_classes = yaml.safe_load(OKVED_PATH.read_text(encoding="utf-8"))["classes"]
+purpose_classifier = PurposeClassifier(
+    engine.purpose_keywords,
+    llm,
+    prompts,
+    ProfileChecker(okved_classes, llm, prompts),
+    dictionary=engine.purpose_dictionary,
+)
 answer_classifier = AnswerClassifier(engine.answer_keywords, llm, prompts)
 answer_verifier = AnswerVerifier(engine.answer_checks, engine.anomaly_detector)
 summarizer = Summarizer(llm if llm_settings.summary_enabled else None, prompts)
@@ -65,6 +79,11 @@ def health() -> dict[str, str]:
 @app.get("/health/llm", response_model=LlmHealth, tags=["llm"])
 def llm_health() -> LlmHealth:
     return warmup.health()
+
+
+@app.get("/rules", response_model=RulesResponse, tags=["scoring"])
+def get_rules() -> RulesResponse:
+    return rules
 
 
 @app.post("/score", response_model=ScoreResponse, tags=["scoring"])

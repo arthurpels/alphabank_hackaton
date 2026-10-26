@@ -104,7 +104,7 @@ class DecisionTableTest {
                         .asDouble());
         ForkSnapshotRecord snapshot = new ForkSnapshotRecord(UUID.randomUUID(), applicationId, score.rateFrom(),
                 score.rateTo(), score.thresholds().approveMax(), score.thresholds().rejectMin(), score.rulesVersion(),
-                request.asOf(), NOW, null);
+                request.asOf(), NOW, null, null);
 
         ForkCalculationService forkCalculationService = mock(ForkCalculationService.class);
         SpotRepository spotRepository = mock(SpotRepository.class);

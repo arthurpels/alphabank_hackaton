@@ -49,6 +49,7 @@ class LlmSettings:
     summary_enabled: bool = False
     model_digest: str | None = None
     cache_path: str = DEFAULT_CACHE_PATH
+    replay_path: str = ""
 
     @classmethod
     def from_env(cls) -> "LlmSettings":
@@ -61,6 +62,7 @@ class LlmSettings:
             summary_enabled=enabled and _flag("LLM_SUMMARY_ENABLED"),
             model_digest=_env("OLLAMA_MODEL_DIGEST", "").lower() or None,
             cache_path=_env("LLM_CACHE_PATH", DEFAULT_CACHE_PATH),
+            replay_path=_env("LLM_REPLAY_PATH", ""),
         )
 
 

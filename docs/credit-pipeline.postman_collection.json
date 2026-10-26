@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "3f2f4e74-8af3-5314-9f56-9bf5249f5bd1",
     "name": "Кредитный конвейер «Белые пятна»",
-    "description": "Запросы по тестовым сценариям из docs/test-scenarios.md: папка на каждый сценарий, запросы в порядке шагов. Перед прогоном: scripts/reset-demo. Окружение — local.postman_environment.json.",
+    "description": "Запросы по тестовым сценариям из docs/test-scenarios.md: папка на каждый сценарий, запросы в порядке шагов. Перед прогоном: scripts/reset-demo. Окружение — local.postman_environment.json.\n\nДетерминизм (M32): в конце папок TS-01…TS-06 — карточка, история вилки и verify; папка «ML · детерминизм» — запросы к ml/. Два прогона с сравнением — scripts/check-determinism.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "event": [
@@ -85,6 +85,26 @@
     },
     {
       "key": "offer_WORKING_CAPITAL_120000000_36",
+      "value": ""
+    },
+    {
+      "key": "ml_score",
+      "value": ""
+    },
+    {
+      "key": "ml_offers_grid",
+      "value": ""
+    },
+    {
+      "key": "ml_anomalies",
+      "value": ""
+    },
+    {
+      "key": "ml_answers_classify",
+      "value": ""
+    },
+    {
+      "key": "ml_answers_verify",
       "value": ""
     }
   ],
@@ -518,6 +538,111 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Детерминизм · карточка",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_coffee}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Детерминизм · история вилки",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_coffee}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/fork-history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "fork-history"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Детерминизм · verify",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_coffee}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/fork/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "fork",
+                "verify"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "const verify = pm.response.json();",
+                  "pm.test('последний снимок вилки воспроизводим (M06)', function () { pm.expect(verify.reproducible).to.eql(true); });",
+                  "pm.test('расхождений нет', function () { pm.expect(verify.diff).to.eql([]); });"
                 ]
               }
             }
@@ -1178,6 +1303,111 @@
               }
             }
           ]
+        },
+        {
+          "name": "Детерминизм · карточка",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_builder}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Детерминизм · история вилки",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_builder}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/fork-history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "fork-history"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Детерминизм · verify",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_builder}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/fork/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "fork",
+                "verify"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "const verify = pm.response.json();",
+                  "pm.test('последний снимок вилки воспроизводим (M06)', function () { pm.expect(verify.reproducible).to.eql(true); });",
+                  "pm.test('расхождений нет', function () { pm.expect(verify.diff).to.eql([]); });"
+                ]
+              }
+            }
+          ]
         }
       ],
       "description": "Сценарий TS-02. Запросы с пометкой [Андеррайтер] выполняются от имени андеррайтера."
@@ -1468,6 +1698,111 @@
                   "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
                   "pm.test('статус заявки ISSUED', function () { pm.expect(pm.response.json().application.status).to.eql('ISSUED'); });",
                   "pm.test('сумма договора 120000000', function () { pm.expect(pm.response.json().contract.amount).to.eql(120000000); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Детерминизм · карточка",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_wb}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Детерминизм · история вилки",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_wb}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/fork-history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "fork-history"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Детерминизм · verify",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_wb}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/fork/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "fork",
+                "verify"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "const verify = pm.response.json();",
+                  "pm.test('последний снимок вилки воспроизводим (M06)', function () { pm.expect(verify.reproducible).to.eql(true); });",
+                  "pm.test('расхождений нет', function () { pm.expect(verify.diff).to.eql([]); });"
                 ]
               }
             }
@@ -1834,6 +2169,111 @@
               }
             }
           ]
+        },
+        {
+          "name": "Детерминизм · карточка",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_techsnab}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Детерминизм · история вилки",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_techsnab}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/fork-history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "fork-history"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Детерминизм · verify",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_techsnab}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/fork/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "fork",
+                "verify"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "const verify = pm.response.json();",
+                  "pm.test('последний снимок вилки воспроизводим (M06)', function () { pm.expect(verify.reproducible).to.eql(true); });",
+                  "pm.test('расхождений нет', function () { pm.expect(verify.diff).to.eql([]); });"
+                ]
+              }
+            }
+          ]
         }
       ],
       "description": "Сценарий TS-04."
@@ -2073,6 +2513,111 @@
               }
             }
           ]
+        },
+        {
+          "name": "Детерминизм · карточка",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_techsnab}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Детерминизм · история вилки",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_techsnab}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/fork-history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "fork-history"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Детерминизм · verify",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_techsnab}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/fork/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "fork",
+                "verify"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "const verify = pm.response.json();",
+                  "pm.test('последний снимок вилки воспроизводим (M06)', function () { pm.expect(verify.reproducible).to.eql(true); });",
+                  "pm.test('расхождений нет', function () { pm.expect(verify.diff).to.eql([]); });"
+                ]
+              }
+            }
+          ]
         }
       ],
       "description": "Сценарий TS-05."
@@ -2188,6 +2733,111 @@
                   "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
                   "pm.test('статус заявки REJECTED', function () { pm.expect(pm.response.json().application.status).to.eql('REJECTED'); });",
                   "pm.test('решение принял SYSTEM', function () { pm.expect(pm.response.json().decision.decidedBy).to.eql('SYSTEM'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Детерминизм · карточка",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_shell}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Детерминизм · история вилки",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_shell}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/fork-history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "fork-history"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Детерминизм · verify",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_shell}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/fork/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "fork",
+                "verify"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "const verify = pm.response.json();",
+                  "pm.test('последний снимок вилки воспроизводим (M06)', function () { pm.expect(verify.reproducible).to.eql(true); });",
+                  "pm.test('расхождений нет', function () { pm.expect(verify.diff).to.eql([]); });"
                 ]
               }
             }
@@ -2359,6 +3009,466 @@
         }
       ],
       "description": "Сценарий TS-07."
+    },
+    {
+      "name": "ML · детерминизм",
+      "description": "Запросы к скоринг-сервису ml/ (M32): каждый запрос дважды, ответ обязан совпасть байт в байт. Тела — примеры из docs/openapi-ml.yaml. Сравнение между прогонами — scripts/check-determinism.",
+      "item": [
+        {
+          "name": "Версия движка и правил",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{mlUrl}}/health",
+              "host": [
+                "{{mlUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('есть версия правил', function () { pm.expect(pm.response.json().rulesVersion).to.be.a('string'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Вилка Кофейни /score (1)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{mlUrl}}/score",
+              "host": [
+                "{{mlUrl}}"
+              ],
+              "path": [
+                "score"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"asOf\": \"2026-10-23\",\n  \"productCode\": \"EQUIPMENT\",\n  \"amount\": 200000000,\n  \"termMonths\": 36,\n  \"egrulStatus\": \"ACTIVE\",\n  \"registeredAt\": \"2019-04-15\",\n  \"directorSince\": \"2019-04-15\",\n  \"massAddress\": false,\n  \"creditScore\": 712,\n  \"delinq12m\": 0,\n  \"bkiCurrentOverdue\": 0,\n  \"taxDebt\": 0,\n  \"unfiledReports\": 0,\n  \"monthlyRevenue\": 140666667,\n  \"stability\": \"EXPLAINED\",\n  \"purpose\": \"MATCH\",\n  \"collateral\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.collectionVariables.set('ml_score', pm.response.text());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Вилка Кофейни /score (2)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{mlUrl}}/score",
+              "host": [
+                "{{mlUrl}}"
+              ],
+              "path": [
+                "score"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"asOf\": \"2026-10-23\",\n  \"productCode\": \"EQUIPMENT\",\n  \"amount\": 200000000,\n  \"termMonths\": 36,\n  \"egrulStatus\": \"ACTIVE\",\n  \"registeredAt\": \"2019-04-15\",\n  \"directorSince\": \"2019-04-15\",\n  \"massAddress\": false,\n  \"creditScore\": 712,\n  \"delinq12m\": 0,\n  \"bkiCurrentOverdue\": 0,\n  \"taxDebt\": 0,\n  \"unfiledReports\": 0,\n  \"monthlyRevenue\": 140666667,\n  \"stability\": \"EXPLAINED\",\n  \"purpose\": \"MATCH\",\n  \"collateral\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('повторный ответ совпадает байт в байт', function () { pm.expect(pm.response.text()).to.eql(pm.collectionVariables.get('ml_score')); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Сетка иных условий WB /offers/grid (1)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{mlUrl}}/offers/grid",
+              "host": [
+                "{{mlUrl}}"
+              ],
+              "path": [
+                "offers",
+                "grid"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"asOf\": \"2026-10-23\",\n  \"productCode\": \"WORKING_CAPITAL\",\n  \"amount\": 150000000,\n  \"termMonths\": 12,\n  \"egrulStatus\": \"ACTIVE\",\n  \"registeredAt\": \"2024-05-20\",\n  \"directorSince\": \"2024-05-20\",\n  \"massAddress\": false,\n  \"creditScore\": 680,\n  \"delinq12m\": 0,\n  \"bkiCurrentOverdue\": 0,\n  \"taxDebt\": 0,\n  \"unfiledReports\": 0,\n  \"monthlyRevenue\": 40000000,\n  \"stability\": \"CLEAN\",\n  \"purpose\": \"MATCH\",\n  \"collateral\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.collectionVariables.set('ml_offers_grid', pm.response.text());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Сетка иных условий WB /offers/grid (2)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{mlUrl}}/offers/grid",
+              "host": [
+                "{{mlUrl}}"
+              ],
+              "path": [
+                "offers",
+                "grid"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"asOf\": \"2026-10-23\",\n  \"productCode\": \"WORKING_CAPITAL\",\n  \"amount\": 150000000,\n  \"termMonths\": 12,\n  \"egrulStatus\": \"ACTIVE\",\n  \"registeredAt\": \"2024-05-20\",\n  \"directorSince\": \"2024-05-20\",\n  \"massAddress\": false,\n  \"creditScore\": 680,\n  \"delinq12m\": 0,\n  \"bkiCurrentOverdue\": 0,\n  \"taxDebt\": 0,\n  \"unfiledReports\": 0,\n  \"monthlyRevenue\": 40000000,\n  \"stability\": \"CLEAN\",\n  \"purpose\": \"MATCH\",\n  \"collateral\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('повторный ответ совпадает байт в байт', function () { pm.expect(pm.response.text()).to.eql(pm.collectionVariables.get('ml_offers_grid')); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Аномалии Кофейни /anomalies (1)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{mlUrl}}/anomalies",
+              "host": [
+                "{{mlUrl}}"
+              ],
+              "path": [
+                "anomalies"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"series\": [\n    {\n      \"source\": \"OFD\",\n      \"points\": [\n        {\n          \"month\": \"2025-10\",\n          \"value\": 141000000\n        },\n        {\n          \"month\": \"2025-11\",\n          \"value\": 138000000\n        },\n        {\n          \"month\": \"2025-12\",\n          \"value\": 156000000\n        },\n        {\n          \"month\": \"2026-01\",\n          \"value\": 145000000\n        },\n        {\n          \"month\": \"2026-02\",\n          \"value\": 152000000\n        },\n        {\n          \"month\": \"2026-03\",\n          \"value\": 83000000\n        },\n        {\n          \"month\": \"2026-04\",\n          \"value\": 149000000\n        },\n        {\n          \"month\": \"2026-05\",\n          \"value\": 147000000\n        },\n        {\n          \"month\": \"2026-06\",\n          \"value\": 143000000\n        },\n        {\n          \"month\": \"2026-07\",\n          \"value\": 140000000\n        },\n        {\n          \"month\": \"2026-08\",\n          \"value\": 146000000\n        },\n        {\n          \"month\": \"2026-09\",\n          \"value\": 148000000\n        }\n      ]\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.collectionVariables.set('ml_anomalies', pm.response.text());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Аномалии Кофейни /anomalies (2)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{mlUrl}}/anomalies",
+              "host": [
+                "{{mlUrl}}"
+              ],
+              "path": [
+                "anomalies"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"series\": [\n    {\n      \"source\": \"OFD\",\n      \"points\": [\n        {\n          \"month\": \"2025-10\",\n          \"value\": 141000000\n        },\n        {\n          \"month\": \"2025-11\",\n          \"value\": 138000000\n        },\n        {\n          \"month\": \"2025-12\",\n          \"value\": 156000000\n        },\n        {\n          \"month\": \"2026-01\",\n          \"value\": 145000000\n        },\n        {\n          \"month\": \"2026-02\",\n          \"value\": 152000000\n        },\n        {\n          \"month\": \"2026-03\",\n          \"value\": 83000000\n        },\n        {\n          \"month\": \"2026-04\",\n          \"value\": 149000000\n        },\n        {\n          \"month\": \"2026-05\",\n          \"value\": 147000000\n        },\n        {\n          \"month\": \"2026-06\",\n          \"value\": 143000000\n        },\n        {\n          \"month\": \"2026-07\",\n          \"value\": 140000000\n        },\n        {\n          \"month\": \"2026-08\",\n          \"value\": 146000000\n        },\n        {\n          \"month\": \"2026-09\",\n          \"value\": 148000000\n        }\n      ]\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('повторный ответ совпадает байт в байт', function () { pm.expect(pm.response.text()).to.eql(pm.collectionVariables.get('ml_anomalies')); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ответ «ремонт» /answers/classify (1)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{mlUrl}}/answers/classify",
+              "host": [
+                "{{mlUrl}}"
+              ],
+              "path": [
+                "answers",
+                "classify"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Был ремонт, точка закрывалась на 2 недели\",\n  \"anomaly\": {\n    \"code\": \"REVENUE_DROP\",\n    \"month\": \"2026-03\",\n    \"changePct\": -45,\n    \"source\": \"OFD\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.collectionVariables.set('ml_answers_classify', pm.response.text());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ответ «ремонт» /answers/classify (2)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{mlUrl}}/answers/classify",
+              "host": [
+                "{{mlUrl}}"
+              ],
+              "path": [
+                "answers",
+                "classify"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Был ремонт, точка закрывалась на 2 недели\",\n  \"anomaly\": {\n    \"code\": \"REVENUE_DROP\",\n    \"month\": \"2026-03\",\n    \"changePct\": -45,\n    \"source\": \"OFD\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('повторный ответ совпадает байт в байт', function () { pm.expect(pm.response.text()).to.eql(pm.collectionVariables.get('ml_answers_classify')); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Сезонность Теплицы /answers/verify (1)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{mlUrl}}/answers/verify",
+              "host": [
+                "{{mlUrl}}"
+              ],
+              "path": [
+                "answers",
+                "verify"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"anomaly\": {\n    \"code\": \"REVENUE_DROP\",\n    \"month\": \"2026-03\",\n    \"changePct\": -45,\n    \"source\": \"OFD\"\n  },\n  \"answerCode\": \"SEASONAL\",\n  \"series\": [\n    {\n      \"source\": \"OFD\",\n      \"points\": [\n        {\n          \"month\": \"2024-10\",\n          \"value\": 240000000\n        },\n        {\n          \"month\": \"2024-11\",\n          \"value\": 230000000\n        },\n        {\n          \"month\": \"2024-12\",\n          \"value\": 280000000\n        },\n        {\n          \"month\": \"2025-01\",\n          \"value\": 220000000\n        },\n        {\n          \"month\": \"2025-02\",\n          \"value\": 260000000\n        },\n        {\n          \"month\": \"2025-03\",\n          \"value\": 140000000\n        },\n        {\n          \"month\": \"2025-04\",\n          \"value\": 250000000\n        },\n        {\n          \"month\": \"2025-05\",\n          \"value\": 270000000\n        },\n        {\n          \"month\": \"2025-06\",\n          \"value\": 300000000\n        },\n        {\n          \"month\": \"2025-07\",\n          \"value\": 320000000\n        },\n        {\n          \"month\": \"2025-08\",\n          \"value\": 310000000\n        },\n        {\n          \"month\": \"2025-09\",\n          \"value\": 270000000\n        },\n        {\n          \"month\": \"2025-10\",\n          \"value\": 245000000\n        },\n        {\n          \"month\": \"2025-11\",\n          \"value\": 235000000\n        },\n        {\n          \"month\": \"2025-12\",\n          \"value\": 285000000\n        },\n        {\n          \"month\": \"2026-01\",\n          \"value\": 225000000\n        },\n        {\n          \"month\": \"2026-02\",\n          \"value\": 265000000\n        },\n        {\n          \"month\": \"2026-03\",\n          \"value\": 145000000\n        },\n        {\n          \"month\": \"2026-04\",\n          \"value\": 255000000\n        },\n        {\n          \"month\": \"2026-05\",\n          \"value\": 275000000\n        },\n        {\n          \"month\": \"2026-06\",\n          \"value\": 305000000\n        },\n        {\n          \"month\": \"2026-07\",\n          \"value\": 325000000\n        },\n        {\n          \"month\": \"2026-08\",\n          \"value\": 315000000\n        },\n        {\n          \"month\": \"2026-09\",\n          \"value\": 275000000\n        }\n      ]\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.collectionVariables.set('ml_answers_verify', pm.response.text());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Сезонность Теплицы /answers/verify (2)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{mlUrl}}/answers/verify",
+              "host": [
+                "{{mlUrl}}"
+              ],
+              "path": [
+                "answers",
+                "verify"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"anomaly\": {\n    \"code\": \"REVENUE_DROP\",\n    \"month\": \"2026-03\",\n    \"changePct\": -45,\n    \"source\": \"OFD\"\n  },\n  \"answerCode\": \"SEASONAL\",\n  \"series\": [\n    {\n      \"source\": \"OFD\",\n      \"points\": [\n        {\n          \"month\": \"2024-10\",\n          \"value\": 240000000\n        },\n        {\n          \"month\": \"2024-11\",\n          \"value\": 230000000\n        },\n        {\n          \"month\": \"2024-12\",\n          \"value\": 280000000\n        },\n        {\n          \"month\": \"2025-01\",\n          \"value\": 220000000\n        },\n        {\n          \"month\": \"2025-02\",\n          \"value\": 260000000\n        },\n        {\n          \"month\": \"2025-03\",\n          \"value\": 140000000\n        },\n        {\n          \"month\": \"2025-04\",\n          \"value\": 250000000\n        },\n        {\n          \"month\": \"2025-05\",\n          \"value\": 270000000\n        },\n        {\n          \"month\": \"2025-06\",\n          \"value\": 300000000\n        },\n        {\n          \"month\": \"2025-07\",\n          \"value\": 320000000\n        },\n        {\n          \"month\": \"2025-08\",\n          \"value\": 310000000\n        },\n        {\n          \"month\": \"2025-09\",\n          \"value\": 270000000\n        },\n        {\n          \"month\": \"2025-10\",\n          \"value\": 245000000\n        },\n        {\n          \"month\": \"2025-11\",\n          \"value\": 235000000\n        },\n        {\n          \"month\": \"2025-12\",\n          \"value\": 285000000\n        },\n        {\n          \"month\": \"2026-01\",\n          \"value\": 225000000\n        },\n        {\n          \"month\": \"2026-02\",\n          \"value\": 265000000\n        },\n        {\n          \"month\": \"2026-03\",\n          \"value\": 145000000\n        },\n        {\n          \"month\": \"2026-04\",\n          \"value\": 255000000\n        },\n        {\n          \"month\": \"2026-05\",\n          \"value\": 275000000\n        },\n        {\n          \"month\": \"2026-06\",\n          \"value\": 305000000\n        },\n        {\n          \"month\": \"2026-07\",\n          \"value\": 325000000\n        },\n        {\n          \"month\": \"2026-08\",\n          \"value\": 315000000\n        },\n        {\n          \"month\": \"2026-09\",\n          \"value\": 275000000\n        }\n      ]\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('повторный ответ совпадает байт в байт', function () { pm.expect(pm.response.text()).to.eql(pm.collectionVariables.get('ml_answers_verify')); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     },
     {
       "name": "Негативные проверки API",

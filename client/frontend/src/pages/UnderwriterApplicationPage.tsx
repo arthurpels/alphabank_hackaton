@@ -8,6 +8,7 @@ import { loginAsUnderwriter } from '../auth';
 import { DocumentPreview } from '../components/DocumentPreview';
 import { ReproBlock } from '../components/ReproBlock';
 import { ForkBar } from '../components/ForkBar';
+import { ForkBreakdown } from '../components/ForkBreakdown';
 import {
   AddSpotForm,
   DecisionForm,
@@ -24,13 +25,21 @@ import '../App.css';
 
 const SECONDARY = 'var(--color-light-text-secondary)';
 
+function humanizeValidation(msg: string): string {
+  const amount = msg.match(/amount вне диапазона продукта \w+: от (\d+) до (\d+) коп/);
+  if (amount) return `Сумма вне допустимых границ продукта: от ${rub(Number(amount[1]))} до ${rub(Number(amount[2]))}.`;
+  const term = msg.match(/termMonths для продукта \w+ — один из \[([\d,\s]+)\]/);
+  if (term) return `Срок для этого продукта — один из: ${term[1].replace(/\s/g, '').split(',').join(', ')} мес.`;
+  return msg;
+}
+
 function errorText(e: unknown): string {
   if (e instanceof ApiError) {
     if (e.code === 'NETWORK') return 'Нет связи с сервером. Попробуйте ещё раз.';
     if (e.code === 'FORBIDDEN') return 'Это действие доступно только сотруднику банка.';
     if (e.code === 'SOURCE_UNAVAILABLE') return 'Источник данных временно недоступен. Попробуйте позже.';
     if (e.code === 'INVALID_TRANSITION') return 'Действие сейчас недоступно: заявка уже в другом статусе.';
-    return e.message;
+    return e.code === 'VALIDATION_ERROR' ? humanizeValidation(e.message) : e.message;
   }
   return 'Что-то пошло не так. Попробуйте ещё раз.';
 }
@@ -50,6 +59,7 @@ export default function UnderwriterApplicationPage() {
   const [summary, setSummary] = useState<UnderwritingSummary | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [decideError, setDecideError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [preview, setPreview] = useState<Blob | null>(null);
   const [summaryGaveUp, setSummaryGaveUp] = useState(false);
@@ -94,13 +104,15 @@ export default function UnderwriterApplicationPage() {
   const run = useCallback(async (key: string, call: () => Promise<ApplicationDetails>) => {
     setBusy(key);
     setError(null);
+    setDecideError(null);
     setSummaryGaveUp(false);
     try {
       const next = await call();
       setData(next);
       loadSummary(next.application.id);
     } catch (e) {
-      setError(errorText(e));
+      if (key === 'decide') setDecideError(errorText(e));
+      else setError(errorText(e));
     } finally {
       setBusy(null);
     }
@@ -184,6 +196,7 @@ export default function UnderwriterApplicationPage() {
             approveMax={fork.thresholds.approveMax}
             rejectMin={fork.thresholds.rejectMin}
           />
+          <ForkBreakdown fork={fork} showSource />
         </section>
       )}
 
@@ -209,6 +222,7 @@ export default function UnderwriterApplicationPage() {
         <DecisionForm
           data={data}
           busy={busy === 'decide'}
+          error={decideError}
           onDecide={(body) => run('decide', () => api.makeDecision(application.id, body))}
         />
       ) : (

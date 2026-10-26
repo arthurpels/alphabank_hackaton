@@ -85,6 +85,10 @@ class ForkVerificationIntegrationTest {
                 .andExpect(jsonPath("$.engineVersion").value(FakeExternalServicesConfig.ENGINE_VERSION))
                 .andExpect(jsonPath("$.currentEngineVersion").value(FakeExternalServicesConfig.ENGINE_VERSION));
 
+        mvc.perform(get(API + "/" + id).header(DemoUserAuthFilter.HEADER, COFFEE))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fork.reproducible").value(true));
+
         String request = column("score_request", snapshotId);
         assertThat(column("request_hash", snapshotId)).isEqualTo(canonicalJson.sha256(request)).hasSize(64);
         assertThat(request).startsWith("{\"amount\":200000000,\"asOf\":\"2026-10-23\",\"bkiCurrentOverdue\":0");
@@ -114,6 +118,10 @@ class ForkVerificationIntegrationTest {
                 .andExpect(jsonPath("$.diff[0].path").value("$.rateTo"))
                 .andExpect(jsonPath("$.diff[0].expected").value(99.0))
                 .andExpect(jsonPath("$.diff[0].actual").value(rateTo));
+
+        mvc.perform(get(API + "/" + id).header(DemoUserAuthFilter.HEADER, COFFEE))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fork.reproducible").value(false));
     }
 
     @Test
@@ -169,6 +177,10 @@ class ForkVerificationIntegrationTest {
         verify(COFFEE, id)
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+
+        mvc.perform(get(API + "/" + id).header(DemoUserAuthFilter.HEADER, COFFEE))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fork.factors").isEmpty());
     }
 
     @Test

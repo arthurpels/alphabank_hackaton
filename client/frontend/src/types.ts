@@ -25,9 +25,27 @@ export interface Spot {
   lastAnswer?: SpotAnswer | null;
 }
 
+export type FactorCode =
+  | 'credit_history' | 'business_age' | 'tax_discipline' | 'debt_load'
+  | 'revenue_stability' | 'purpose' | 'collateral';
+
+export interface ForkFactor {
+  code: FactorCode;
+  title: string;
+  applicable: boolean;
+  known: boolean;
+  value?: number | null;
+  best?: number | null;
+  worst?: number | null;
+  spotPricePp?: number | null;
+  source?: SourceCode | null;
+}
+
 export interface Fork {
   rateFrom: number;
   rateTo: number;
+  factors?: ForkFactor[];
+  reproducible?: boolean | null;
   rulesVersion?: string | null;
   asOf?: string | null;
   zone: DecisionZone;
@@ -188,6 +206,7 @@ export interface SpotAnswer {
   createdAt: string;
   reviewedAt?: string | null;
   purposeVerdict?: PurposeVerdict | null;
+  anomalyVerdict?: AnomalyVerdict | null;
 }
 
 export type ScoringFactor = 'debt_load' | 'revenue_stability' | 'purpose' | 'collateral';
@@ -289,7 +308,47 @@ export interface PurposeVerdict {
   generatedBy: 'KEYWORDS' | 'LLM';
   matchedKeywords: string[];
   reason?: string | null;
+  evidence?: string | null;
+  violation?: string | null;
   llm?: LlmMeta | null;
+  profile?: PurposeProfile | null;
+}
+
+export interface PurposeProfile {
+  okved: string;
+  activity?: string | null;
+  status: 'FITS' | 'DOES_NOT_FIT' | 'UNCLEAR' | 'NOT_CHECKED';
+  reason?: string | null;
+  evidence?: string | null;
+  violation?: string | null;
+  llm?: LlmMeta | null;
+}
+
+export type AnomalyCause = 'RENOVATION' | 'SEASONAL' | 'CLIENT_LOST' | 'OTHER';
+
+export interface AnomalyVerdict {
+  anomaly?: {
+    code: 'REVENUE_DROP' | 'REVENUE_SPIKE';
+    month: string;
+    changePct: number;
+    source?: SourceCode | null;
+  } | null;
+  code?: AnomalyCause | null;
+  classification?: {
+    status: 'DECIDED' | 'UNAVAILABLE';
+    code?: AnomalyCause | null;
+    generatedBy: 'KEYWORDS' | 'LLM';
+    matchedKeywords: string[];
+    reason?: string | null;
+    evidence?: string | null;
+    violation?: string | null;
+    llm?: LlmMeta | null;
+  } | null;
+  check?: {
+    verdict: 'ACCEPTED' | 'REVIEW';
+    rule?: string | null;
+    explanation: string;
+  } | null;
 }
 
 export interface FieldDiff {
@@ -314,4 +373,43 @@ export interface ForkVerification {
   calculatedAt: string;
   verdicts: UsedVerdict[];
   diff: FieldDiff[];
+}
+
+export interface RulesRule {
+  condition: string | null;
+  value: number;
+}
+
+export interface RulesFactor {
+  code: FactorCode;
+  title: string;
+  unknown: { best: number; worst: number; spotPricePp: number } | null;
+  rules: RulesRule[];
+  overdraftRules: RulesRule[];
+}
+
+export interface RulesProduct {
+  code: ProductCode;
+  name: string;
+  baseRate: number;
+  thresholds: { approveMax: number; rejectMin: number };
+  amount: { min: number; max: number };
+  terms: number[];
+  policy: { metric: 'PTI' | 'LIMIT_SHARE'; cap: number };
+  skipFactors: FactorCode[];
+}
+
+export interface RulesStopFactor {
+  code: string;
+  condition: string;
+  removable: boolean;
+  closeMethod: 'PAY' | null;
+}
+
+export interface RulesResponse {
+  rulesVersion: string;
+  calcRatePct: number;
+  products: RulesProduct[];
+  factors: RulesFactor[];
+  stopFactors: RulesStopFactor[];
 }

@@ -97,29 +97,29 @@ export function ReproBlock({ applicationId, rulesVersion }: { applicationId: str
       )}
 
       {result?.reproducible && (
-        <div className="notice notice--good repro__result">
-          <CheckmarkCircleMIcon className="repro__icon" />
+        <div className="notice notice--good repro__result repro__result--center">
+          <b className="repro__title">
+            <CheckmarkCircleMIcon className="repro__icon" />
+            Решение воспроизводимо · правила {result.rulesVersion}
+          </b>
           <div>
-            <b>Решение воспроизводимо · правила {result.rulesVersion}</b>
-            <div>
-              Пересчёт дал тот же ответ, что сохранён в заявке. Расчёт снимка: {ruDate(result.calculatedAt)}.
-            </div>
-            {engineChanged && <div>Код расчёта обновился с момента решения, но ответ остался тем же.</div>}
+            Пересчёт дал тот же ответ, что сохранён в заявке. Расчёт снимка: {ruDate(result.calculatedAt)}.
           </div>
+          {engineChanged && <div>Код расчёта обновился с момента решения, но ответ остался тем же.</div>}
         </div>
       )}
 
       {result && !result.reproducible && (
         <>
-          <div className="notice notice--bad repro__result">
-            <CrossCircleMIcon className="repro__icon" />
+          <div className="notice notice--bad repro__result repro__result--center">
+            <b className="repro__title">
+              <CrossCircleMIcon className="repro__icon" />
+              Пересчёт не совпал с сохранённым · правила {result.rulesVersion}
+            </b>
             <div>
-              <b>Пересчёт не совпал с сохранённым · правила {result.rulesVersion}</b>
-              <div>
-                {result.diff.some((d) => d.path === 'requestHash')
-                  ? 'Сохранённые входные данные расчёта изменились после решения.'
-                  : 'Заново посчитанная вилка отличается от сохранённой.'}
-              </div>
+              {result.diff.some((d) => d.path === 'requestHash')
+                ? 'Сохранённые входные данные расчёта изменились после решения.'
+                : 'Заново посчитанная вилка отличается от сохранённой.'}
             </div>
           </div>
           {result.diff.length > 0 && <DiffTable diff={result.diff} />}

@@ -6,6 +6,7 @@ import { Text } from '@alfalab/core-components/text';
 import { Typography } from '@alfalab/core-components/typography';
 import { ApiError, USE_MOCKS, api } from '../api';
 import { ForkBar } from '../components/ForkBar';
+import { ForkBreakdown } from '../components/ForkBreakdown';
 import { CloseSpotDialog } from '../components/CloseSpotDialog';
 import { SpotCard } from '../components/SpotCard';
 import {
@@ -198,6 +199,7 @@ export default function ApplicationPage() {
             rejectMin={fork.thresholds.rejectMin}
           />
           <div className={`notice notice--${notice.tone}`}>{notice.text}</div>
+          <ForkBreakdown fork={fork} />
           <div className="checks-link">
             <Button view="text" size={32} onClick={() => navigate(`/client/check?id=${application.id}`)}>
               Что банк проверил о компании

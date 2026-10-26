@@ -12,6 +12,7 @@ import java.util.stream.Collectors;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
+import com.alphabank.backend.dto.response.AnomalyVerdictDto;
 import com.alphabank.backend.dto.response.PurposeVerdictDto;
 import com.alphabank.backend.enums.AnswerVerdict;
 import com.alphabank.backend.repository.SpotAnswerRepository;
@@ -35,10 +36,10 @@ public class JdbcSpotAnswerRepository implements SpotAnswerRepository {
         jdbc.sql("""
                         INSERT INTO spot_answer (id, spot_id, option_code, text, document_id, contract_amount,
                                                  contract_term_months, verdict, reviewed_by, review_comment,
-                                                 created_at, reviewed_at, purpose_verdict)
+                                                 created_at, reviewed_at, purpose_verdict, anomaly_verdict)
                         VALUES (:id, :spotId, :optionCode, :text, :documentId, :contractAmount,
                                 :contractTermMonths, :verdict, :reviewedBy, :reviewComment, :createdAt, :reviewedAt,
-                                CAST(:purposeVerdict AS jsonb))
+                                CAST(:purposeVerdict AS jsonb), CAST(:anomalyVerdict AS jsonb))
                         """)
                 .param("id", answer.id())
                 .param("spotId", answer.spotId())
@@ -53,6 +54,7 @@ public class JdbcSpotAnswerRepository implements SpotAnswerRepository {
                 .param("createdAt", answer.createdAt())
                 .param("reviewedAt", answer.reviewedAt())
                 .param("purposeVerdict", toJson(answer.purposeVerdict()))
+                .param("anomalyVerdict", toJson(answer.anomalyVerdict()))
                 .update();
     }
 
@@ -64,7 +66,8 @@ public class JdbcSpotAnswerRepository implements SpotAnswerRepository {
         return jdbc.sql("""
                         SELECT DISTINCT ON (spot_id) id, spot_id, option_code, text, document_id, contract_amount,
                                contract_term_months, verdict, reviewed_by, review_comment, created_at, reviewed_at,
-                               purpose_verdict::text AS purpose_verdict
+                               purpose_verdict::text AS purpose_verdict,
+                               anomaly_verdict::text AS anomaly_verdict
                         FROM spot_answer
                         WHERE spot_id IN (:spotIds)
                         ORDER BY spot_id, created_at DESC, id
@@ -81,7 +84,8 @@ public class JdbcSpotAnswerRepository implements SpotAnswerRepository {
         return jdbc.sql("""
                         SELECT a.id, a.spot_id, a.option_code, a.text, a.document_id, a.contract_amount,
                                a.contract_term_months, a.verdict, a.reviewed_by, a.review_comment, a.created_at,
-                               a.reviewed_at, a.purpose_verdict::text AS purpose_verdict
+                               a.reviewed_at, a.purpose_verdict::text AS purpose_verdict,
+                               a.anomaly_verdict::text AS anomaly_verdict
                         FROM spot_answer a
                         JOIN spot s ON s.id = a.spot_id
                         WHERE s.application_id = :applicationId AND s.status = 'CLOSED'
@@ -115,7 +119,8 @@ public class JdbcSpotAnswerRepository implements SpotAnswerRepository {
         return jdbc.sql("""
                         SELECT id, spot_id, option_code, text, document_id, contract_amount, contract_term_months,
                                verdict, reviewed_by, review_comment, created_at, reviewed_at,
-                               purpose_verdict::text AS purpose_verdict
+                               purpose_verdict::text AS purpose_verdict,
+                               anomaly_verdict::text AS anomaly_verdict
                         FROM spot_answer
                         WHERE spot_id = :spotId
                         ORDER BY created_at, id
@@ -139,28 +144,29 @@ public class JdbcSpotAnswerRepository implements SpotAnswerRepository {
                 rs.getString("review_comment"),
                 rs.getObject("created_at", OffsetDateTime.class),
                 rs.getObject("reviewed_at", OffsetDateTime.class),
-                fromJson(rs.getString("purpose_verdict")));
+                fromJson(rs.getString("purpose_verdict"), PurposeVerdictDto.class),
+                fromJson(rs.getString("anomaly_verdict"), AnomalyVerdictDto.class));
     }
 
-    private String toJson(PurposeVerdictDto verdict) {
+    private String toJson(Object verdict) {
         if (verdict == null) {
             return null;
         }
         try {
             return objectMapper.writeValueAsString(verdict);
         } catch (JsonProcessingException e) {
-            throw new IllegalArgumentException("Не удалось сохранить вердикт по цели", e);
+            throw new IllegalArgumentException("Не удалось сохранить вердикт ответа", e);
         }
     }
 
-    private PurposeVerdictDto fromJson(String json) {
+    private <T> T fromJson(String json, Class<T> type) {
         if (json == null) {
             return null;
         }
         try {
-            return objectMapper.readValue(json, PurposeVerdictDto.class);
+            return objectMapper.readValue(json, type);
         } catch (JsonProcessingException e) {
-            throw new IllegalStateException("Некорректный вердикт по цели в БД", e);
+            throw new IllegalStateException("Некорректный вердикт ответа в БД", e);
         }
     }
 }

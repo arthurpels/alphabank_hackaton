@@ -15,4 +15,6 @@ public interface ForkSnapshotRepository {
     List<ForkSnapshotRecord> findByApplicationId(UUID applicationId);
 
     Optional<ForkSnapshotRecord> findById(UUID id);
+
+    void updateReproducible(UUID id, boolean reproducible);
 }

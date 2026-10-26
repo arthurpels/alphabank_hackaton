@@ -26,6 +26,7 @@ import com.alphabank.backend.enums.ProductCode;
 import com.alphabank.backend.scoringclient.AnomalyClient;
 import com.alphabank.backend.scoringclient.MlVersionClient;
 import com.alphabank.backend.scoringclient.OfferGridClient;
+import com.alphabank.backend.scoringclient.RulesClient;
 import com.alphabank.backend.scoringclient.ScoringClient;
 import com.alphabank.backend.scoringclient.SummaryClient;
 import com.alphabank.backend.scoringclient.dto.AnomaliesResponse;
@@ -110,24 +111,24 @@ public class FakeExternalServicesConfig {
             }
 
             @Override
-            public Optional<OfdResponse> ofdRevenue(String inn) {
+            public Optional<OfdResponse> ofdRevenue(String inn, int requestedMonths) {
                 if (!COFFEE_INN.equals(inn)) {
                     return Optional.empty();
                 }
                 List<OfdResponse.MonthRevenue> months = new ArrayList<>();
-                for (int i = 0; i < MONTHS.size(); i++) {
+                for (int i = Math.max(0, MONTHS.size() - requestedMonths); i < MONTHS.size(); i++) {
                     months.add(new OfdResponse.MonthRevenue(MONTHS.get(i), COFFEE_OFD.get(i)));
                 }
                 return Optional.of(new OfdResponse("OFD", inn, months, 0.7));
             }
 
             @Override
-            public Optional<MarketplaceResponse> marketplaceSales(String inn) {
+            public Optional<MarketplaceResponse> marketplaceSales(String inn, int months) {
                 return Optional.empty();
             }
 
             @Override
-            public Optional<AcquiringResponse> acquiringTurnover(String inn) {
+            public Optional<AcquiringResponse> acquiringTurnover(String inn, int months) {
                 return Optional.empty();
             }
 
@@ -210,6 +211,27 @@ public class FakeExternalServicesConfig {
     @Primary
     public MlVersionClient fakeMlVersionClient() {
         return () -> Optional.of(ENGINE_VERSION);
+    }
+
+    @Bean
+    @Primary
+    public RulesClient fakeRulesClient() {
+        return () -> {
+            com.fasterxml.jackson.databind.node.ObjectNode rules =
+                    com.fasterxml.jackson.databind.node.JsonNodeFactory.instance.objectNode();
+            rules.put("rulesVersion", "2026-10-23.draft1");
+            rules.put("calcRatePct", 15.0);
+            rules.putArray("products");
+            rules.putArray("factors");
+            rules.putArray("stopFactors");
+            return rules;
+        };
+    }
+
+    @Bean
+    @Primary
+    public CountingAnswerClient fakeAnswerClient() {
+        return new CountingAnswerClient();
     }
 
     @Bean

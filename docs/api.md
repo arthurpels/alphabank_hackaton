@@ -9,7 +9,8 @@
 
 ## Базовые сведения
 
-- База URL: `http://localhost:8080/api/v1` (порт хоста — `BACKEND_PORT` в `.env`).
+- База URL: `http://localhost:8080/api/v1` (порт хоста — `BACKEND_PORT` в `.env`); исключения — `GET /health`,
+  Swagger UI и `/v3/api-docs` в корне `http://localhost:8080`.
 - Все тела — JSON в кодировке UTF-8; загрузка документа — `multipart/form-data`.
 - Деньги — **в копейках** (`200000000` = 2 000 000 ₽), ставки и цены пятен — в % и п.п.
 - Даты — ISO 8601 (`2026-10-23`), `registeredAt` и сроки — `YYYY-MM-DD`.
@@ -76,6 +77,9 @@ GET /api/v1/demo/users              # без заголовка; ?role=CLIENT|UN
 - `GET /me` — текущий пользователь и его компания.
 - `GET /products` — продуктовая сетка: `code` (`EQUIPMENT`, `WORKING_CAPITAL`,
   `OVERDRAFT`), `name`, `minAmount`/`maxAmount` (копейки), `allowedTerms`.
+- `GET /rules` — действующие правила скоринга из ML: `rulesVersion`, продукты и пороги,
+  факторы, вклады и диапазоны неизвестных значений. Публичный endpoint, `X-Demo-User`
+  не нужен; недоступность ML → `503 SOURCE_UNAVAILABLE`.
 
 ### Жизненный цикл заявки (`/applications`)
 
@@ -86,6 +90,10 @@ GET /api/v1/demo/users              # без заголовка; ?role=CLIENT|UN
 - `GET /applications` — список заявок текущего клиента.
 - `GET /applications/{id}` — карточка: параметры, компания, статус, вилка
   (`fork`: `rateFrom`/`rateTo`, `zone`, `thresholds`), пятна, офферы, решение.
+  В `fork.factors` — сохранённое разложение `/score`: вклад известного фактора `value`
+  или диапазон неизвестного `best`/`worst`, цена пятна `spotPricePp` и `source`.
+  ML при чтении вилки повторно не вызывается; для снимков до M06 `factors` пустой.
+  `fork.reproducible` — результат последней проверки (`null`, если её ещё не было).
   Клиенту — только свои; андеррайтеру — любая.
 - `PATCH /applications/{id}` — поменять сумму/срок/цель (только `DRAFT`, `COLLECTING`).
 - `POST /applications/{id}/evaluate` — **первичный расчёт**: бэкенд ходит в моки
@@ -125,7 +133,23 @@ GET /api/v1/demo/users              # без заголовка; ?role=CLIENT|UN
     `lastAnswer.purposeVerdict` и пишется в журнал. Пересчёты вилки и повтор того же текста модель не вызывают.
     `UNCLEAR` означает, что модель ответила «непонятно»: пятно остаётся `OPEN`, нужен более конкретный текст.
     `UNAVAILABLE` или таймаут означает, что модель не ответила: ответ сохраняется как `PENDING`, пятно уходит
-    андеррайтеру в `ON_REVIEW`, отказа из-за недоступности LLM нет;
+    андеррайтеру в `ON_REVIEW`, отказа из-за недоступности LLM нет.
+    `MISMATCH` (цель не подходит продукту) пятно не закрывает: ответ `PENDING`, пятно `ON_REVIEW` у андеррайтера
+    с цитатой и обоснованием модели в журнале — это не отказ. Принял андеррайтер — фактор «цель» считается как
+    «не соответствует» (+0,5 п.п.). Андеррайтер видит в `lastAnswer` текст клиента и вердикт
+    (`purposeVerdict.reason`, `purposeVerdict.evidence`, `purposeVerdict.violation`) и на закрытых пятнах.
+    Цель сверяется и с деятельностью компании (M33): бэкенд передаёт в `/purpose` основной ОКВЭД из ЕГРЮЛ;
+    если цель подходит продукту, но LLM находит, что она не похожа на деятельность компании (кофемашины у
+    производителя компьютеров), ответ уходит андеррайтеру в `ON_REVIEW` с причиной в журнале — это не отказ;
+    итог в `lastAnswer.purposeVerdict.profile`. Траты, нужные любому бизнесу (офисная техника, мебель,
+    транспорт, аренда, зарплата, налоги), подходят всегда; без LLM сверка не выполняется (`NOT_CHECKED`).
+    Ответ на аномалию выручки (M16): вариант-кнопкой (`optionCode`: `RENOVATION`, `SEASONAL`, `CLIENT_LOST`) или
+    свободным текстом — его разбирает `/answers/classify` (словарь, затем LLM). Причину проверяет данными
+    `/answers/verify` по ряду источника за 24 месяца: подтвердилась — пятно `CLOSED` системой с правилом в журнале
+    (Кофейня: «Был ремонт» → `RENOVATION_ONE_OFF`); нет, причина без проверки данными (`CLIENT_LOST`, `OTHER`),
+    попытка управлять проверкой или LLM недоступна — `PENDING`, пятно `ON_REVIEW` у андеррайтера. Разбор и проверка
+    хранятся в `lastAnswer.anomalyVerdict`; тот же текст модель повторно не разбирает. Вариант, которого нет в
+    `answerOptions` пятна, — `400`;
   - `UPLOAD` — `{ method, documentId, text?, contractAmount?, contractTermMonths? }`
     (сумма/срок договора — если пятно по фактору `debt_load`);
   - `PAY` — `{ method }` (погашение долга ФНС, повторный запрос делает система);
@@ -160,7 +184,8 @@ GET /api/v1/demo/users              # без заголовка; ?role=CLIENT|UN
 
 ### Служебное
 
-- `GET /health` — для compose-healthcheck: `{ "status": "ok", "dependencies":
+- `GET /health` — для compose-healthcheck. Лежит **в корне, а не под `/api/v1`**:
+  `http://localhost:8080/health`, заголовок `X-Demo-User` не нужен. Ответ: `{ "status": "ok", "dependencies":
   { "ml": "up", "mocks": "up" } }` (поле `dependencies` — информационное).
 
 ## Сквозной пример: ООО «Кофейня»
@@ -196,8 +221,9 @@ POST …/spots/{spotId}/close
 { "method": "CONNECT_SOURCE", "sourceCode": "OFD", "consent": true }
 
 Цель кредита: { "method": "ANSWER", "text": "Кофемашины и витрина" }
-Обеспечение: { "method": "ADD_COLLATERAL", "collateralType": "GUARANTEE" }
 ```
+
+Пятно про залог Кофейня оставляет открытым: вилка сходится в зоне одобрения и без обеспечения.
 
 После каждого закрытия вилка пересчитывается и сужается (`fork-history` это показывает).
 ОФД пришлёт ряд с падением марта — появится `ANOMALY` «выручка упала»:

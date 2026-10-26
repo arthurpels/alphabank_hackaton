@@ -1,3 +1,5 @@
+import json
+
 import httpx
 import pytest
 
@@ -138,7 +140,10 @@ def test_cache_key_covers_model_digest_prompt_and_schema(changed: tuple) -> None
 
 def test_purpose_reports_cached_verdict(ollama: FakeOllama, cache: VerdictCache) -> None:
     classifier = PurposeClassifier(
-        engine.purpose_keywords, CachedLlm(ollama.client(), cache), load_prompts(PROMPTS_PATH)
+        engine.purpose_keywords,
+        CachedLlm(ollama.client(), cache),
+        load_prompts(PROMPTS_PATH),
+        dictionary=engine.purpose_dictionary,
     )
     request = PurposeRequest(product_code="WORKING_CAPITAL", goal="закупка оборудования для цеха")
     first = classifier.classify(request).model_dump(by_alias=True, mode="json")
@@ -195,3 +200,30 @@ def test_health_llm_endpoint_reports_disabled_by_default() -> None:
         "digest": None,
         "cachedVerdicts": None,
     }
+
+
+def test_import_records_fills_cache_once(tmp_path) -> None:
+    from scoring.verdicts import import_records
+
+    records = tmp_path / "answers.jsonl"
+    entry = {"key": "k1", "model": "qwen3:4b", "digest": DIGEST, "content": {"purpose": "MATCH"}}
+    records.write_text(json.dumps(entry) + "\n\n", encoding="utf-8")
+    cache = VerdictCache(tmp_path / "verdicts.sqlite")
+    assert import_records(cache, records) == 1
+    assert import_records(cache, records) == 0
+    assert cache.get("k1") == LlmAnswer(content={"purpose": "MATCH"}, model="qwen3:4b", digest=DIGEST, cached=True)
+
+
+def test_imported_replay_answers_are_served_by_live_cache(ollama: FakeOllama, tmp_path) -> None:
+    from scoring.verdicts import import_records
+
+    key = cache_key("qwen3:4b", DIGEST, "sys", "user", SCHEMA)
+    records = tmp_path / "answers.jsonl"
+    records.write_text(
+        json.dumps({"key": key, "model": "qwen3:4b", "digest": DIGEST, "content": {"purpose": "MISMATCH"}}) + "\n",
+        encoding="utf-8",
+    )
+    cache = VerdictCache(tmp_path / "verdicts.sqlite")
+    import_records(cache, records)
+    answer = CachedLlm(ollama.client(), cache).chat_json("sys", "user", SCHEMA)
+    assert (answer.content, answer.cached, ollama.chat_calls) == ({"purpose": "MISMATCH"}, True, 0)

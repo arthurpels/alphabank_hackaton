@@ -81,6 +81,44 @@ class PurposeVerdictIntegrationTest {
     }
 
     @Test
+    void goalNotLikeCompanyActivityGoesToSpecialist() throws Exception {
+        String id = evaluated();
+
+        answerPurpose(id, "трактор для доставки")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath(PURPOSE + ".status").value("ON_REVIEW"))
+                .andExpect(jsonPath(PURPOSE + ".lastAnswer.verdict").value("PENDING"))
+                .andExpect(jsonPath(PURPOSE + ".lastAnswer.optionCode").value("MATCH"))
+                .andExpect(jsonPath(PURPOSE + ".lastAnswer.purposeVerdict.purpose").value("MATCH"))
+                .andExpect(jsonPath(PURPOSE + ".lastAnswer.purposeVerdict.profile.status").value("DOES_NOT_FIT"))
+                .andExpect(jsonPath(PURPOSE + ".lastAnswer.purposeVerdict.profile.okved").value("56.30"));
+
+        assertThat(purposeClient.lastRequest().okved()).isEqualTo("56.30");
+        List<String> reasons = JsonPath.read(history(id), "$[?(@.payload.profileStatus == 'DOES_NOT_FIT')].reason");
+        assertThat(reasons).containsExactly("Цель не похожа на деятельность компании (" + CountingPurposeClient.ACTIVITY
+                + "): трактор — ответ передан на проверку специалисту — решило правило: словарь целей");
+    }
+
+    @Test
+    void goalNotForProductGoesToSpecialistWithModelEvidence() throws Exception {
+        String id = evaluated();
+
+        answerPurpose(id, "отпуск для команды")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath(PURPOSE + ".status").value("ON_REVIEW"))
+                .andExpect(jsonPath(PURPOSE + ".lastAnswer.verdict").value("PENDING"))
+                .andExpect(jsonPath(PURPOSE + ".lastAnswer.optionCode").value("MISMATCH"))
+                .andExpect(jsonPath(PURPOSE + ".lastAnswer.text").value("отпуск для команды"))
+                .andExpect(jsonPath(PURPOSE + ".lastAnswer.purposeVerdict.reason")
+                        .value("Отпуск сотрудников — не покупка оборудования"))
+                .andExpect(jsonPath(PURPOSE + ".lastAnswer.purposeVerdict.evidence").value("отпуск"));
+
+        List<String> reasons = JsonPath.read(history(id), "$[?(@.payload.verdict == 'PENDING')].reason");
+        assertThat(reasons).hasSize(1);
+        assertThat(reasons.get(0)).startsWith("Цель не подходит продукту: отпуск — ответ передан на проверку специалисту");
+    }
+
+    @Test
     void ruleVerdictIsJournaledAsKeywords() throws Exception {
         String id = evaluated();
 

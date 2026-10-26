@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@alfalab/core-components/button';
 import { Checkbox } from '@alfalab/core-components/checkbox';
 import { Input } from '@alfalab/core-components/input';
 import { Table } from '@alfalab/core-components/table';
 import { Textarea } from '@alfalab/core-components/textarea';
 import { CheckmarkCircleMIcon } from '@alfalab/icons-glyph/CheckmarkCircleMIcon';
+import { api } from '../api';
 import { PRODUCT_NAMES } from '../constants';
 import { pct, rub } from '../format';
 import type {
@@ -13,6 +14,7 @@ import type {
   DecisionRequest,
   DecisionType,
   Offer,
+  Product,
   ProductCode,
   ScoringFactor,
   Spot,
@@ -20,7 +22,7 @@ import type {
   SpotType,
   UnderwritingSummary,
 } from '../types';
-import { answerAuthor, summaryAuthor, WAIT_TEXT } from '../verdictLabels';
+import { answerAuthor, modelVerdict, summaryAuthor, WAIT_TEXT } from '../verdictLabels';
 import { AuthorBadge } from './AuthorBadge';
 import './UnderwriterBlocks.css';
 
@@ -102,10 +104,11 @@ function AnswerView({ spot, onOpenDocument }: { spot: Spot; onOpenDocument: (doc
   if (!a) return null;
   const option = spot.answerOptions?.find((o) => o.code === a.optionCode)?.label ?? a.optionCode;
   const author = answerAuthor(spot, a);
+  const model = modelVerdict(spot, a);
   return (
     <div className="answer">
       <div className="answer__label">Ответ клиента</div>
-      {option && <div className="answer__row">Вариант: {option}</div>}
+      {option && !a.purposeVerdict && <div className="answer__row">Вариант: {option}</div>}
       {a.text && <div className="answer__row">{a.text}</div>}
       {a.contractAmount != null && (
         <div className="answer__row">
@@ -118,6 +121,14 @@ function AnswerView({ spot, onOpenDocument }: { spot: Spot; onOpenDocument: (doc
           <Button view="text" size={32} onClick={() => onOpenDocument(a.documentId!)}>
             Открыть документ
           </Button>
+        </div>
+      )}
+      {model && (
+        <div className="answer__model">
+          <div className="answer__label">Вердикт: {model.title}</div>
+          {model.evidence && <div className="answer__row">Цитата: «{model.evidence}»</div>}
+          {model.reason && <div className="answer__row">Обоснование: {model.reason}</div>}
+          {model.violation && <div className="answer__row answer__row--bad">Нарушение: {model.violation}</div>}
         </div>
       )}
       {a.verdict === 'REJECTED' && a.reviewComment && (
@@ -222,15 +233,14 @@ export function SpotsReview(props: {
         <details className="uw-closed">
           <summary>Закрытые пятна ({closed.length})</summary>
           <ul>
-            {closed.map((s) => {
-              const author = answerAuthor(s);
-              return (
-                <li key={s.id}>
+            {closed.map((s) => (
+              <li key={s.id}>
+                <div>
                   <CheckmarkCircleMIcon className="uw-closed__check" /> {s.title}
-                  {author && <AuthorBadge author={author} />}
-                </li>
-              );
-            })}
+                </div>
+                <AnswerView spot={s} onOpenDocument={onOpenDocument} />
+              </li>
+            ))}
           </ul>
         </details>
       )}
@@ -388,9 +398,14 @@ const PRODUCT_OPTIONS = (Object.keys(PRODUCT_NAMES) as ProductCode[]).map((c) =>
 export function DecisionForm(props: {
   data: ApplicationDetails;
   busy: boolean;
+  error?: string | null;
   onDecide: (body: DecisionRequest) => void;
 }) {
-  const { data, busy, onDecide } = props;
+  const { data, busy, error, onDecide } = props;
+  const [products, setProducts] = useState<Product[]>([]);
+  useEffect(() => {
+    api.listProducts().then(setProducts).catch(() => undefined);
+  }, []);
   const calculated = data.offers.filter((o) => o.status === 'CALCULATED');
   const [type, setType] = useState<DecisionType | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
@@ -405,21 +420,33 @@ export function DecisionForm(props: {
   const toggle = (id: string) =>
     setSelected((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
 
-  const errors: string[] = [];
   const count = selected.length + (manual ? 1 : 0);
+  const product = products.find((p) => p.code === mProduct);
+  const errs: { count?: string; amount?: string; term?: string; reason?: string; comment?: string } = {};
   if (type === 'ALTERNATIVE') {
-    if (count < 1 || count > 3) errors.push('Отметьте от 1 до 3 вариантов');
-    if (manual && (!Number(mAmount) || !Number(mTerm))) errors.push('Укажите сумму и срок своего варианта');
-    if (manual && !comment.trim()) errors.push('Для своего варианта нужен комментарий');
+    if (count < 1 || count > 3) errs.count = 'Отметьте от 1 до 3 вариантов';
+    if (manual) {
+      const amountKop = Number(mAmount) * 100;
+      if (!Number(mAmount)) errs.amount = 'Укажите сумму';
+      else if (product && (amountKop < product.minAmount || amountKop > product.maxAmount)) {
+        errs.amount = `Сумма — от ${rub(product.minAmount)} до ${rub(product.maxAmount)}`;
+      }
+      if (!Number(mTerm)) errs.term = 'Укажите срок';
+      else if (product && !product.allowedTerms.includes(Number(mTerm))) {
+        errs.term = `Срок — один из: ${product.allowedTerms.join(', ')} мес.`;
+      }
+      if (!comment.trim()) errs.comment = 'Для своего варианта нужен комментарий';
+    }
   }
   if (type === 'REJECTED') {
-    if (!reason) errors.push('Выберите пятно-причину отказа');
-    if (!comment.trim()) errors.push('При отказе нужен комментарий');
+    if (!reason) errs.reason = 'Выберите пятно-причину отказа';
+    if (!comment.trim()) errs.comment = 'При отказе нужен комментарий';
   }
+  const shown = (key: keyof typeof errs) => (touched ? errs[key] : undefined);
 
   const submit = () => {
     setTouched(true);
-    if (!type || errors.length > 0) return;
+    if (!type || Object.keys(errs).length > 0) return;
     const body: DecisionRequest = { type };
     if (comment.trim()) body.comment = comment.trim();
     if (type === 'ALTERNATIVE') {
@@ -452,6 +479,7 @@ export function DecisionForm(props: {
             Отметьте 1–3 варианта в таблице выше{calculated.length === 0 ? ' (подходящих нет — задайте свой)' : ''}.
             Выбрано: {count}.
           </p>
+          {shown('count') && <div className="uw-form__error">{shown('count')}</div>}
           <Checkbox checked={manual} label="Задать свой вариант" onChange={(_, { checked }) => setManual(checked)} />
           {manual && (
             <>
@@ -462,6 +490,7 @@ export function DecisionForm(props: {
                   label="Сумма, ₽"
                   inputMode="numeric"
                   value={mAmount}
+                  error={shown('amount')}
                   onChange={(_, { value }) => setMAmount(value.replace(/\D/g, ''))}
                 />
                 <Input
@@ -469,6 +498,7 @@ export function DecisionForm(props: {
                   label="Срок, мес."
                   inputMode="numeric"
                   value={mTerm}
+                  error={shown('term')}
                   onChange={(_, { value }) => setMTerm(value.replace(/\D/g, ''))}
                 />
               </div>
@@ -488,6 +518,7 @@ export function DecisionForm(props: {
               </label>
             ))}
           </div>
+          {shown('reason') && <div className="uw-form__error">{shown('reason')}</div>}
         </div>
       )}
 
@@ -498,15 +529,10 @@ export function DecisionForm(props: {
             label={type === 'APPROVED' ? 'Комментарий (по желанию)' : 'Комментарий'}
             minRows={2}
             value={comment}
+            error={shown('comment')}
             onChange={(_, { value }) => setComment(value)}
           />
-          {touched && errors.length > 0 && (
-            <div className="notice notice--bad">
-              {errors.map((e) => (
-                <div key={e}>{e}</div>
-              ))}
-            </div>
-          )}
+          {error && <div className="notice notice--bad">{error}</div>}
           <div className="uw__actions">
             <Button view="accent" size={48} loading={busy} onClick={submit}>
               Вынести решение

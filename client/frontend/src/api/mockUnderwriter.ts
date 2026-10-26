@@ -18,9 +18,26 @@ export const BUILDER_ID = 'builder-application';
 const RULES_VERSION = '2026-10-23.draft1';
 const UW_ACTIONS: ApplicationDetails['application']['availableActions'] = ['REVIEW_SPOT', 'ADD_SPOT', 'DECIDE'];
 
-const fork = (rateFrom: number, rateTo: number, zone: Fork['zone'], approveMax = 20, rejectMin = 24): Fork => ({
+const BUILDER_FACTORS: NonNullable<Fork['factors']> = [
+  { code: 'credit_history', title: 'Кредитная история', applicable: true, known: true, value: -1, source: 'BKI' },
+  { code: 'business_age', title: 'Возраст бизнеса', applicable: true, known: true, value: -0.5, source: 'EGRUL' },
+  { code: 'tax_discipline', title: 'Налоговая дисциплина', applicable: true, known: true, value: 0, source: 'FNS' },
+  { code: 'purpose', title: 'Цель кредита', applicable: true, known: true, value: -0.5, source: null },
+  { code: 'revenue_stability', title: 'Стабильность выручки', applicable: true, known: false, best: 0, worst: 2.5, spotPricePp: 2.5, source: 'OFD' },
+  { code: 'collateral', title: 'Обеспечение', applicable: true, known: false, best: -1.5, worst: 0, spotPricePp: 1.5, source: null },
+];
+
+const fork = (
+  rateFrom: number,
+  rateTo: number,
+  zone: Fork['zone'],
+  approveMax = 20,
+  rejectMin = 24,
+  factors?: Fork['factors'],
+): Fork => ({
   rateFrom,
   rateTo,
+  ...(factors ? { factors } : {}),
   rulesVersion: RULES_VERSION,
   asOf: '2026-10-23',
   zone,
@@ -41,7 +58,7 @@ function initial(): ApplicationDetails {
       amount: 250000000,
       termMonths: 36,
     },
-    fork: fork(19, 23.5, 'UNDERWRITER'),
+    fork: fork(18.5, 22.5, 'UNDERWRITER', 20, 24, BUILDER_FACTORS),
     spots: [
       {
         id: 'u1',
@@ -90,6 +107,35 @@ function initial(): ApplicationDetails {
         addedBy: 'SYSTEM',
         source: 'FNS',
       },
+      {
+        id: 'u4',
+        type: 'NO_DATA',
+        title: 'На что нужны деньги',
+        clientHint: 'Опишите, что покупаете.',
+        scoringFactor: 'purpose',
+        pricePp: 1.5,
+        closeMethod: 'ANSWER',
+        status: 'CLOSED',
+        addedBy: 'SYSTEM',
+        lastAnswer: {
+          id: 'a4',
+          text: 'Оснащение нового цеха: ленточная пила и сверлильный станок',
+          verdict: 'ACCEPTED',
+          reviewedBy: 'SYSTEM',
+          createdAt: nowIso(),
+          purposeVerdict: {
+            productCode: 'EQUIPMENT',
+            status: 'DECIDED',
+            purpose: 'MATCH',
+            generatedBy: 'LLM',
+            matchedKeywords: [],
+            reason: 'Пила и станок для цеха — покупка оборудования.',
+            evidence: 'ленточная пила и сверлильный станок',
+            violation: null,
+            llm: { model: 'qwen3:4b', digest: '359d7dd4bcdab3d86b87d73ac27966f4dbb9f5efdfcc75d34a8764a09474fae7', promptVersion: 'bba46b2556f0', cached: false },
+          },
+        },
+      },
     ],
     offers: [
       { id: 'o1', productCode: 'EQUIPMENT', amount: 250000000, termMonths: 36, fork: fork(21, 23.5, 'UNDERWRITER'), proposedBy: 'SYSTEM', status: 'CALCULATED', isRequested: true, isManual: false },
@@ -131,8 +177,8 @@ const summary: UnderwritingSummary = {
       facts: [{ source: 'BKI', label: 'действующих просрочек нет' }],
     },
     {
-      text: 'Запрошенные условия в зоне андеррайтера: правый край вилки 23,5 % выше порога одобрения 20 %.',
-      facts: [{ source: 'ВИЛКА', label: 'от 19 % до 23,5 %' }],
+      text: 'Запрошенные условия в зоне андеррайтера: правый край вилки 22,5 % выше порога одобрения 20 %.',
+      facts: [{ source: 'ВИЛКА', label: 'от 18,5 % до 22,5 %' }],
     },
   ],
 };
@@ -231,6 +277,11 @@ export const underwriterMock = {
           ? {
               ...state.fork,
               rateTo: Math.max(state.fork.rateFrom, Math.round((state.fork.rateTo - spot.pricePp) * 10) / 10),
+              factors: state.fork.factors?.map((f) =>
+                !f.known && f.code === spot.scoringFactor
+                  ? { ...f, known: true, value: f.best, best: null, worst: null, spotPricePp: null }
+                  : f,
+              ),
             }
           : state.fork,
     };

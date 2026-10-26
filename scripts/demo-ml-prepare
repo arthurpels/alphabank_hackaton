@@ -1,0 +1,133 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+MODE="${1:-live}"
+ML_URL="http://localhost:${ML_PORT:-8001}"
+REPLAY_IN_CONTAINER="/app/eval/replay/llm_answers.jsonl"
+
+wait_ml() {
+  for _ in $(seq 1 60); do
+    curl -fs "$ML_URL/health" > /dev/null && return 0
+    sleep 2
+  done
+  return 1
+}
+
+llm_status() {
+  curl -fs "$ML_URL/health/llm" | python3 -c "import json, sys; print(json.load(sys.stdin)['status'])" 2> /dev/null || echo "unreachable"
+}
+
+wait_llm_ready() {
+  for _ in $(seq 1 "$1"); do
+    [ "$(llm_status)" = "ready" ] && return 0
+    sleep 5
+  done
+  return 1
+}
+
+env_value() {
+  grep -E "^$1=" .env 2> /dev/null | tail -1 | cut -d= -f2-
+}
+
+host_ollama_url() {
+  local url="${OLLAMA_URL:-$(env_value OLLAMA_URL)}"
+  case "$url" in
+    *host.docker.internal*|*localhost*|*127.0.0.1*)
+      echo "$url" | sed -E 's#host\.docker\.internal|127\.0\.0\.1#localhost#'
+      ;;
+  esac
+}
+
+start_ml() {
+  echo "    ml: LLM_ENABLED=$1 LLM_REPLAY_PATH=${2:-<пусто>}"
+  LLM_ENABLED="$1" LLM_REPLAY_PATH="${2:-}" docker compose up -d --build ml > /dev/null 2>&1
+  wait_ml || { echo "    ml не поднялся"; return 1; }
+}
+
+prepare_live() {
+  echo "==> Режим live: локальная модель + кеш, заполненный записанными ответами"
+  local host_url
+  host_url="$(host_ollama_url)"
+  if [ -n "$host_url" ]; then
+    echo "    Ollama на этой машине ($host_url) — контейнер не нужен, модель считает на GPU"
+    if ! curl -fs "$host_url/api/tags" > /dev/null; then
+      echo "    Ollama на машине не отвечает. Запустите: OLLAMA_KEEP_ALIVE=24h OLLAMA_NUM_PARALLEL=1 ollama serve"
+      return 1
+    fi
+    if command -v ollama > /dev/null; then
+      ollama pull "${OLLAMA_MODEL:-$(env_value OLLAMA_MODEL)}" > /dev/null 2>&1 || return 1
+    fi
+    docker compose --profile llm stop ollama > /dev/null 2>&1 || true
+  else
+    docker compose --profile llm up -d ollama > /dev/null 2>&1 || return 1
+    echo "    ollama-pull: проверяю, что модель скачана (первый раз — около 2,5 ГБ)"
+    docker compose --profile llm up ollama-pull > /dev/null 2>&1 || return 1
+  fi
+  start_ml true "" || return 1
+  echo "    заливаю записанные ответы модели в кеш вердиктов"
+  docker compose exec -T ml python -m scoring.verdicts eval/replay/llm_answers.jsonl || return 1
+  echo "    жду прогрева модели (до $((${DEMO_LLM_WAIT:-60} * 5)) с)"
+  wait_llm_ready "${DEMO_LLM_WAIT:-60}" || { echo "    модель не прогрелась: $(llm_status)"; return 1; }
+  if [ -n "$host_url" ] && command -v ollama > /dev/null; then
+    echo "    на чём считает модель: $(ollama ps | awk 'NR == 2 {print $5, $6}')"
+  fi
+  python3 scripts/demo_ml_check.py "$ML_URL"
+}
+
+prepare_replay() {
+  echo "==> Режим replay: записанные ответы модели, Ollama не нужна"
+  start_ml true "$REPLAY_IN_CONTAINER" || return 1
+  python3 scripts/demo_ml_check.py "$ML_URL"
+}
+
+prepare_off() {
+  echo "==> Режим off: только правила; ответы, которые словарь не решил, уходят специалисту"
+  start_ml false "" || return 1
+  python3 scripts/demo_ml_check.py "$ML_URL" || true
+}
+
+result="$MODE"
+case "$MODE" in
+  live)
+    if ! prepare_live; then
+      echo "!!  live не готов — переключаюсь на replay"
+      result="replay"
+      if ! prepare_replay; then
+        echo "!!  replay не готов — переключаюсь на off"
+        result="off"
+        prepare_off
+      fi
+    fi
+    ;;
+  replay)
+    if ! prepare_replay; then
+      echo "!!  replay не готов — переключаюсь на off"
+      result="off"
+      prepare_off
+    fi
+    ;;
+  off)
+    prepare_off
+    ;;
+  *)
+    echo "Использование: scripts/demo-ml-prepare [live|replay|off]" >&2
+    exit 2
+    ;;
+esac
+
+echo
+echo "==> Готово: режим $result. Чтобы он сохранился после перезапуска ml, в .env:"
+case "$result" in
+  live)
+    if [ -n "$(host_ollama_url)" ]; then
+      echo "    LLM_ENABLED=true, LLM_REPLAY_PATH= (пусто), OLLAMA_URL=http://host.docker.internal:11434;"
+      echo "    ollama serve на машине должна работать всё время показа"
+    else
+      echo "    LLM_ENABLED=true, LLM_REPLAY_PATH= (пусто); запуск: docker compose --profile llm up -d"
+    fi
+    ;;
+  replay) echo "    LLM_ENABLED=true, LLM_REPLAY_PATH=$REPLAY_IN_CONTAINER" ;;
+  off) echo "    LLM_ENABLED=false" ;;
+esac

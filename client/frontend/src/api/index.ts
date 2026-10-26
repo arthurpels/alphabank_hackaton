@@ -12,6 +12,7 @@ import type {
   DemoUser,
   ForkVerification,
   Product,
+  RulesResponse,
   SourceChecks,
   SpotCloseRequest,
   UserRole,
@@ -25,6 +26,7 @@ export interface Api {
   listDemoUsers(role?: UserRole): Promise<DemoUser[]>;
   getMe(): Promise<DemoUser>;
   listProducts(): Promise<Product[]>;
+  getRules(): Promise<RulesResponse>;
   listApplications(): Promise<ApplicationSummary[]>;
   getApplication(id: string): Promise<ApplicationDetails>;
   createApplication(body: ApplicationCreate): Promise<ApplicationDetails>;
@@ -49,6 +51,7 @@ const realApi: Api = {
   listDemoUsers: (role) => request('GET', `/demo/users${role ? `?role=${role}` : ''}`),
   getMe: () => request('GET', '/me'),
   listProducts: () => request('GET', '/products'),
+  getRules: () => request('GET', '/rules'),
   listApplications: () => request('GET', '/applications'),
   getApplication: (id) => request('GET', `/applications/${id}`),
   createApplication: (body) => request('POST', '/applications', body),
