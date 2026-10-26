@@ -12,15 +12,16 @@ import UnderwriterApplicationPage from './pages/UnderwriterApplicationPage';
 import './pages/pages.css';
 
 export default function App() {
-  const { pathname } = useLocation();
+  const { pathname, state } = useLocation();
   const navigate = useNavigate();
+  const back = pathname === '/rules' && typeof state?.back === 'string' ? (state.back as string) : null;
 
   return (
     <>
       {pathname !== '/' && (
         <div className={`topbar ${pathname.startsWith('/underwriter') ? 'topbar--wide' : ''}`}>
-          <Button view="text" size={40} onClick={() => navigate('/')}>
-            ← На главную
+          <Button view="text" size={40} onClick={() => navigate(back ?? '/')}>
+            {back ? '← Назад к заявке' : '← На главную'}
           </Button>
         </div>
       )}

@@ -1,4 +1,7 @@
 .repro__result { display: flex; align-items: flex-start; gap: 12px; }
+.repro__result--center { flex-direction: column; align-items: center; gap: 2px; text-align: center; }
+.repro__title { display: inline-flex; align-items: center; gap: 8px; }
+.repro__title .repro__icon { margin-top: 0; }
 .repro__icon { flex-shrink: 0; margin-top: 2px; }
 .repro__diff { width: 100%; margin-top: 12px; border-collapse: collapse; font-size: 14px; line-height: 20px; }
 .repro__diff th { text-align: left; font-weight: 400; color: var(--color-light-text-secondary); padding: 6px 12px 6px 0; }

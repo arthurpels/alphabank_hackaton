@@ -63,9 +63,11 @@ export default function ClientHomePage() {
             {me.company?.name ?? me.fio}
           </Text>
         </div>
-        <Button view="accent" size={40} onClick={() => navigate('/client/new')}>
-          Новая заявка
-        </Button>
+        {apps.length > 0 && (
+          <Button view="accent" size={40} onClick={() => navigate('/client/new')}>
+            Новая заявка
+          </Button>
+        )}
       </header>
 
       <section className="card__section">
