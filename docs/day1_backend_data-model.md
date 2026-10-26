@@ -1,7 +1,7 @@
 # Модель данных
 
 Все сущности системы и их связи. Статусы заявки и переходы — в
-`application-states.md` (там же правила статусной машины); здесь — хранение.
+`day1_backend_application-states.md` (там же правила статусной машины); здесь — хранение.
 Имена пятен, способы закрытия и продукты — из общих договорённостей команды (`concept.md`).
 
 Коды статусов заявки: `DRAFT, COLLECTING, SUBMITTED, AUTO_CHECK, UNDERWRITING,
@@ -124,6 +124,7 @@ erDiagram
         text score_response "ответ /score, канонический JSON — эталон для verify"
         string engine_version "версия движка ml (GET /health → engineVersion)"
         json verdicts "вердикты разбора цели на момент расчёта: [{spotId, scoringFactor, verdict с llm.*}]"
+        boolean reproducible "итог последней проверки POST /fork/verify: true — пересчёт совпал, false — нет, null — не проверялся"
     }
 
     UNDERWRITING_SUMMARY {
@@ -225,7 +226,7 @@ CALCULATED → OFFERED → CHOSEN
 
 ## Кто проверяет ответ по пятну
 
-Согласовано с `process-model.md`:
+Согласовано с `day1_backend_process-model.md`:
 
 | Как клиент закрыл пятно | Кто проверяет | `reviewed_by` |
 |---|---|---|

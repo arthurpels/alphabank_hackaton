@@ -9,7 +9,8 @@
 
 ## Базовые сведения
 
-- База URL: `http://localhost:8080/api/v1` (порт хоста — `BACKEND_PORT` в `.env`).
+- База URL: `http://localhost:8080/api/v1` (порт хоста — `BACKEND_PORT` в `.env`); исключения — `GET /health`,
+  Swagger UI и `/v3/api-docs` в корне `http://localhost:8080`.
 - Все тела — JSON в кодировке UTF-8; загрузка документа — `multipart/form-data`.
 - Деньги — **в копейках** (`200000000` = 2 000 000 ₽), ставки и цены пятен — в % и п.п.
 - Даты — ISO 8601 (`2026-10-23`), `registeredAt` и сроки — `YYYY-MM-DD`.
@@ -183,7 +184,8 @@ GET /api/v1/demo/users              # без заголовка; ?role=CLIENT|UN
 
 ### Служебное
 
-- `GET /health` — для compose-healthcheck: `{ "status": "ok", "dependencies":
+- `GET /health` — для compose-healthcheck. Лежит **в корне, а не под `/api/v1`**:
+  `http://localhost:8080/health`, заголовок `X-Demo-User` не нужен. Ответ: `{ "status": "ok", "dependencies":
   { "ml": "up", "mocks": "up" } }` (поле `dependencies` — информационное).
 
 ## Сквозной пример: ООО «Кофейня»
@@ -219,8 +221,9 @@ POST …/spots/{spotId}/close
 { "method": "CONNECT_SOURCE", "sourceCode": "OFD", "consent": true }
 
 Цель кредита: { "method": "ANSWER", "text": "Кофемашины и витрина" }
-Обеспечение: { "method": "ADD_COLLATERAL", "collateralType": "GUARANTEE" }
 ```
+
+Пятно про залог Кофейня оставляет открытым: вилка сходится в зоне одобрения и без обеспечения.
 
 После каждого закрытия вилка пересчитывается и сужается (`fork-history` это показывает).
 ОФД пришлёт ряд с падением марта — появится `ANOMALY` «выручка упала»:

@@ -51,7 +51,7 @@
 | А-1 | Архитектурная схема | `docs/architecture.md` | T43 |
 | А-2 | Описание API | `docs/api.md` | T47 |
 | А-3 | OpenAPI / Swagger | `docs/openapi.yaml`, `docs/openapi-ml.yaml`, `docs/openapi-mocks.yaml`; Swagger UI бэкенда | T08, T09, T10, T47 |
-| А-4 | Коллекция запросов | в репозитории | T16 |
+| А-4 | Коллекция запросов | `docs/credit-pipeline.postman_collection.json`, `docs/local.postman_environment.json` | T16 |
 | А-5 | Диаграмма состояний заявки | `docs/day1_backend_application-states.md` | T28, T47 |
 | А-6 | Модель данных | `docs/day1_backend_data-model.md` | T13, T47 |
 | А-7 | Тестовые сценарии | `docs/test-scenarios.md` | T15 |
