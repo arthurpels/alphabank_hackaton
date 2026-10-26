@@ -21,7 +21,7 @@ python -m calibration.report
 |---|---|
 | спецификация | 1.0.0 (sha256 `246d3439403358a5…`) |
 | популяция | 10000 компаний, seed 20261023, на 2026-10-23 |
-| sha256 population.jsonl | `bb056b0595cf838d9e062870add199f0383546a24b0c7e49978b7adc9a36b2d3` |
+| sha256 population.jsonl | `4aa9003b5765239d5c05d5c62925b3b783ec5be3cca509eb285018b4e27866c1` |
 | правила | 2026-10-23.draft1 |
 | Python / NumPy | 3.12.15 / 2.1.3 |
 

@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { SOURCE_LABELS } from '../constants';
 import type { Fork, ForkFactor } from '../types';
 import './ForkBreakdown.css';
@@ -37,6 +37,7 @@ function Row({ factor, showSource }: { factor: ForkFactor; showSource: boolean }
 }
 
 export function ForkBreakdown({ fork, showSource = false }: Props) {
+  const location = useLocation();
   const factors = (fork.factors ?? []).filter((f) => f.applicable);
   if (factors.length === 0) return null;
 
@@ -60,7 +61,7 @@ export function ForkBreakdown({ fork, showSource = false }: Props) {
           </span>
         </li>
       </ul>
-      <Link to="/rules" className="breakdown__more">Как мы считаем</Link>
+      <Link to="/rules" state={{ back: location.pathname + location.search }} className="breakdown__more">Как мы считаем</Link>
     </details>
   );
 }

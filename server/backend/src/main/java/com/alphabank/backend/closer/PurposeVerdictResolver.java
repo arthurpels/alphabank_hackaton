@@ -50,7 +50,7 @@ public class PurposeVerdictResolver {
         } catch (RestClientException e) {
             log.warn("ML недоступна при разборе цели: {}", e.getMessage());
             return toVerdict(product, new PurposeResponse(PurposeStatus.UNAVAILABLE, null, true, "KEYWORDS",
-                    List.of(), "ML временно недоступна", null, null));
+                    List.of(), "ML временно недоступна", null, null, null, null));
         }
     }
 
@@ -74,7 +74,7 @@ public class PurposeVerdictResolver {
     private static PurposeVerdictDto toVerdict(ProductCode product, PurposeResponse response) {
         return new PurposeVerdictDto(product, status(response), response.purpose(), response.generatedBy(),
                 response.matchedKeywords() == null ? List.of() : response.matchedKeywords(), response.reason(),
-                toDto(response.llm()), toDto(response.profile()));
+                response.evidence(), response.violation(), toDto(response.llm()), toDto(response.profile()));
     }
 
     private static ProfileCheckDto toDto(ProfileCheck profile) {

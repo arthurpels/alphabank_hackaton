@@ -49,8 +49,13 @@ llm: LlmClient | None = replay or (CachedLlm(ollama, verdict_cache) if ollama an
 warmup = LlmWarmup(ollama, verdict_cache)
 prompts = load_prompts(PROMPTS_PATH)
 okved_classes = yaml.safe_load(OKVED_PATH.read_text(encoding="utf-8"))["classes"]
-purpose_classifier = PurposeClassifier(engine.purpose_keywords, llm, prompts,
-                                       ProfileChecker(okved_classes, llm, prompts))
+purpose_classifier = PurposeClassifier(
+    engine.purpose_keywords,
+    llm,
+    prompts,
+    ProfileChecker(okved_classes, llm, prompts),
+    dictionary=engine.purpose_dictionary,
+)
 answer_classifier = AnswerClassifier(engine.answer_keywords, llm, prompts)
 answer_verifier = AnswerVerifier(engine.answer_checks, engine.anomaly_detector)
 summarizer = Summarizer(llm if llm_settings.summary_enabled else None, prompts)

@@ -23,7 +23,7 @@ export function SpotCard({ spot, onClose, busy = false, disabled = false }: Prop
   const isReview = spot.status === 'ON_REVIEW';
   const rejectedComment =
     spot.status === 'OPEN' && spot.lastAnswer?.verdict === 'REJECTED' ? spot.lastAnswer.reviewComment : null;
-    const author = answerAuthor(spot);
+    const author = answerAuthor(spot, spot.lastAnswer, 'client');
     const recognized = causeLabel(spot, spot.lastAnswer?.anomalyVerdict?.code);
 
   if (spot.type === 'STOP_FACTOR' && !isClosed) {

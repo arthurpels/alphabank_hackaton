@@ -22,7 +22,7 @@ class FakeOllama:
 
 
 def classify(llm, goal: str):
-    classifier = PurposeClassifier(engine.purpose_keywords, llm, prompts)
+    classifier = PurposeClassifier(engine.purpose_keywords, llm, prompts, dictionary=engine.purpose_dictionary)
     return classifier.classify(PurposeRequest(product_code=ProductCode.EQUIPMENT, goal=goal))
 
 

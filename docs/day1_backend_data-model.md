@@ -105,7 +105,7 @@ erDiagram
         string review_comment "при REJECTED показывается клиенту"
         timestamp created_at
         timestamp reviewed_at
-        json purpose_verdict "ответ /purpose для пятна цели: статус, значение, кто решил, обоснование, llm.*, продукт"
+        json purpose_verdict "ответ /purpose для пятна цели: статус, значение, кто решил, обоснование, цитата, нарушение, llm.*, продукт"
         json anomaly_verdict "ответ на аномалию выручки: аномалия, код причины, /answers/classify (кто решил, llm.*), /answers/verify (вердикт, правило)"
     }
 

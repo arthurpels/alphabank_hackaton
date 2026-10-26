@@ -6,14 +6,12 @@
 
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 
-/* сводка */
 .summary { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .summary__item { padding: 14px 16px; border-radius: 16px; background: var(--color-light-bg-secondary); }
 .summary__item p { margin: 0; font-size: 15px; line-height: 22px; }
 .facts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .fact { font-size: 13px; padding: 2px 10px; border-radius: 12px; background: var(--color-light-status-muted-info); }
 
-/* пятна */
 .uw-spot { margin-top: 12px; padding: 14px 16px; border-radius: 16px; background: var(--color-light-bg-secondary); display: flex; flex-direction: column; gap: 6px; }
 .uw-spot--review { background: var(--color-light-status-muted-alt-attention); }
 .uw-spot__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
@@ -22,13 +20,13 @@
 .answer__label { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--color-light-text-secondary); }
 .answer__row { font-size: 15px; line-height: 22px; }
 .answer__row--bad { color: var(--color-light-text-negative); }
+.answer__model { margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--color-light-border-primary); display: flex; flex-direction: column; gap: 4px; }
 .reject { margin-top: 8px; }
 .uw-closed { margin-top: 12px; }
 .uw-closed summary { cursor: pointer; font-size: 15px; font-weight: 600; padding: 8px 0; }
 .uw-closed ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
 .uw-closed__check { width: 18px; height: 18px; vertical-align: middle; color: var(--color-light-graphic-positive); }
 
-/* формы */
 .uw-form { display: flex; flex-direction: column; gap: 14px; margin-top: 16px; }
 .uw-form__row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .reasons { display: flex; flex-direction: column; gap: 8px; }
@@ -37,4 +35,5 @@
 
 @media (max-width: 600px) {
   .uw-form__row { grid-template-columns: 1fr; }
+  .uw-form__error { color: var(--color-light-text-negative); font-size: 14px; line-height: 20px; }
 }

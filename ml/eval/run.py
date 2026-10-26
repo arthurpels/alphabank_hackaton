@@ -120,7 +120,9 @@ def local_runner(llm: LlmClient | None) -> dict[str, Callable[[dict[str, Any]], 
     engine = Engine.from_yaml(ML_DIR / "scoring_rules.yaml")
     prompts = load_prompts(ML_DIR / "llm.yaml")
     okved = yaml.safe_load((ML_DIR / "okved.yaml").read_text(encoding="utf-8"))["classes"]
-    purpose = PurposeClassifier(engine.purpose_keywords, llm, prompts, ProfileChecker(okved, llm, prompts))
+    purpose = PurposeClassifier(
+        engine.purpose_keywords, llm, prompts, ProfileChecker(okved, llm, prompts), dictionary=engine.purpose_dictionary
+    )
     answers = AnswerClassifier(engine.answer_keywords, llm, prompts)
 
     def run_purpose(row: dict[str, Any]) -> dict[str, Any]:

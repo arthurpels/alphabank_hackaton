@@ -269,7 +269,10 @@ class PurposeResponse(CamelModel):
     reason: str | None = None
     evidence: str | None = None
     violation: (
-        Literal["FORMAT", "NO_EVIDENCE", "EVIDENCE_NOT_IN_GOAL", "GENERIC_EVIDENCE", "UNCERTAIN_REASON"] | None
+        Literal[
+            "FORMAT", "NO_EVIDENCE", "EVIDENCE_NOT_IN_GOAL", "GENERIC_EVIDENCE", "UNCERTAIN_REASON", "MANIPULATION"
+        ]
+        | None
     ) = None
     llm: LlmMeta | None = None
     profile: ProfileCheck | None = None

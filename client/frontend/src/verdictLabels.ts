@@ -1,9 +1,19 @@
-import type { AnomalyCause, AnomalyVerdict, LlmMeta, PurposeVerdict, Spot, SpotAnswer, UnderwritingSummary } from './types';
+import type {
+  AnomalyCause,
+  AnomalyVerdict,
+  LlmMeta,
+  PurposeProfile,
+  PurposeVerdict,
+  Spot,
+  SpotAnswer,
+  UnderwritingSummary,
+} from './types';
 
 export const LLM_WAIT_SECONDS = 90;
 export const SUMMARY_POLL_MS = 3000;
 export const SUMMARY_MAX_POLLS = Math.ceil((LLM_WAIT_SECONDS * 1000) / SUMMARY_POLL_MS);
 
+export type Audience = 'client' | 'staff';
 export type AuthorKind = 'RULE' | 'AI' | 'HUMAN' | 'WAITING';
 
 export interface Author {
@@ -34,7 +44,36 @@ function llmDetails(llm: LlmMeta): string[] {
   ];
 }
 
-export function purposeAuthor(v: PurposeVerdict): Author {
+const CLIENT_AI_DETAILS = 'Ответ разобрал ИИ по правилам банка. Решение по заявке принимают правила, а не ИИ.';
+const plainActivity = (a: string) => a.replace(/^ОКВЭД\s*[\d.]+\s*[—-]\s*/, '');
+
+export function purposeAuthor(v: PurposeVerdict, audience: Audience = 'staff'): Author {
+  const client = audience === 'client';
+  if (v.status === 'DECIDED' && v.purpose === 'MISMATCH') {
+    return {
+      kind: 'WAITING',
+      title: WAIT_TEXT.handedToSpecialist,
+      details: [
+        'Цель не похожа на выбранный продукт. Это не отказ: ответ посмотрит специалист банка.',
+        ...(v.evidence ? [`В вашем тексте: «${v.evidence}».`] : []),
+        ...(!client && v.reason ? [v.reason] : []),
+        ...(!client && v.llm ? llmDetails(v.llm) : []),
+      ],
+    };
+  }
+  if (v.profile?.status === 'DOES_NOT_FIT') {
+    const p = v.profile;
+    return {
+      kind: 'WAITING',
+      title: WAIT_TEXT.handedToSpecialist,
+      details: [
+        `Цель подходит продукту, но не похожа на деятельность компании${p.activity ? ` (${client ? plainActivity(p.activity) : p.activity})` : ''}. Это не отказ: ответ посмотрит специалист банка.`,
+        ...(p.evidence ? [`В вашем тексте: «${p.evidence}».`] : []),
+        ...(!client && p.reason ? [p.reason] : []),
+        ...(!client && p.llm ? llmDetails(p.llm) : []),
+      ],
+    };
+  }
   if (v.status === 'UNAVAILABLE') {
     return {
       kind: 'WAITING',
@@ -43,6 +82,7 @@ export function purposeAuthor(v: PurposeVerdict): Author {
     };
   }
   if (v.generatedBy === 'LLM' && v.llm) {
+    if (client) return { kind: 'AI', title: 'Цель распознана ИИ', details: [CLIENT_AI_DETAILS] };
     return {
       kind: 'AI',
       title: llmTitle(v.llm),
@@ -53,9 +93,9 @@ export function purposeAuthor(v: PurposeVerdict): Author {
     v.status === 'NOT_APPLICABLE'
       ? ['Для этого продукта цель кредита не учитывается.']
       : v.matchedKeywords.length > 0
-        ? [`Цель определена по словарю, совпали слова: ${v.matchedKeywords.join(', ')}.`]
-        : ['Цель определена по словарю банка.'];
-  return { kind: 'RULE', title: 'Правило', details };
+        ? [`Цель определена по словам из вашего ответа: ${v.matchedKeywords.join(', ')}.`]
+        : ['Цель определена автоматически.'];
+  return { kind: 'RULE', title: client ? 'Проверено автоматически' : 'Правило', details };
 }
 
 const CAUSE_LABELS: Record<AnomalyCause, string> = {
@@ -75,20 +115,21 @@ export function causeLabel(spot: Spot, code: AnomalyCause | null | undefined): s
   return spot.answerOptions?.find((o) => o.code === code)?.label ?? CAUSE_LABELS[code];
 }
 
-export function anomalyAuthor(spot: Spot, v: AnomalyVerdict): Author {
+export function anomalyAuthor(spot: Spot, v: AnomalyVerdict, audience: Audience = 'staff'): Author {
+  const client = audience === 'client';
   const cause = causeLabel(spot, v.code);
   const c = v.classification;
   const how: string[] = [];
   if (cause) {
     if (!c) how.push(`Вы выбрали вариант «${cause}».`);
-    else if (c.generatedBy === 'LLM' && c.llm) how.push(`Причину из вашего текста определил ИИ: «${cause}». ${llmDetails(c.llm).join(' ')}`);
+    else if (c.generatedBy === 'LLM' && c.llm) how.push(`Причину из вашего текста определил ИИ: «${cause}». ${client ? '' : llmDetails(c.llm).join(' ')}`.trim());
     else if (c.matchedKeywords.length > 0) how.push(`Причина «${cause}» определена по словам: ${c.matchedKeywords.join(', ')}.`);
     else how.push(`Причина определена как «${cause}».`);
   }
   if (c?.violation) {
     how.push('Ответ похож на попытку повлиять на проверку, поэтому причину «Другая» посмотрит специалист.');
   }
-  if (c?.reason) how.push(c.reason);
+  if (!client && c?.reason) how.push(c.reason);
 
   if (v.check?.verdict === 'ACCEPTED') {
     const rule = v.check.rule ? RULE_LABELS[v.check.rule] ?? v.check.rule : null;
@@ -112,19 +153,85 @@ export function anomalyAuthor(spot: Spot, v: AnomalyVerdict): Author {
   };
 }
 
-export function answerAuthor(spot: Spot, answer: SpotAnswer | null | undefined = spot.lastAnswer): Author | null {
+export function answerAuthor(
+  spot: Spot,
+  answer: SpotAnswer | null | undefined = spot.lastAnswer,
+  audience: Audience = 'staff',
+): Author | null {
   if (!answer) return null;
-  if (answer.anomalyVerdict) return anomalyAuthor(spot, answer.anomalyVerdict);
-  if (answer.purposeVerdict) return purposeAuthor(answer.purposeVerdict);
+  if (answer.verdict !== 'PENDING' && answer.reviewedBy && answer.reviewedBy !== 'SYSTEM') {
+    return { kind: 'HUMAN', title: 'Специалист банка', details: answer.reviewComment ? [answer.reviewComment] : [] };
+  }
+  if (answer.anomalyVerdict) return anomalyAuthor(spot, answer.anomalyVerdict, audience);
+  if (answer.purposeVerdict) return purposeAuthor(answer.purposeVerdict, audience);
   if (answer.verdict === 'ACCEPTED' && answer.reviewedBy === 'SYSTEM') {
     return {
       kind: 'RULE',
-      title: 'Правило',
+      title: audience === 'client' ? 'Проверено автоматически' : 'Правило',
       details: ['Банк проверил ответ по данным из источников и принял его без участия специалиста.'],
     };
   }
-  if (answer.verdict !== 'PENDING' && answer.reviewedBy && answer.reviewedBy !== 'SYSTEM') {
-    return { kind: 'HUMAN', title: 'Специалист банка', details: answer.reviewComment ? [answer.reviewComment] : [] };
+  return null;
+}
+
+const PURPOSE_VERDICT_LABELS: Record<'MATCH' | 'MISMATCH', string> = {
+  MATCH: 'цель подходит продукту',
+  MISMATCH: 'цель не подходит продукту',
+};
+
+const PROFILE_VERDICT_LABELS: Record<PurposeProfile['status'], string> = {
+  FITS: 'похожа на деятельность компании',
+  DOES_NOT_FIT: 'не похожа на деятельность компании',
+  UNCLEAR: 'связь с деятельностью неочевидна',
+  NOT_CHECKED: 'с деятельностью не сверяли',
+};
+
+const VIOLATION_LABELS: Record<string, string> = {
+  FORMAT: 'ответ модели не по формату',
+  NO_EVIDENCE: 'модель не привела цитату',
+  EVIDENCE_NOT_IN_GOAL: 'цитаты модели нет в тексте клиента',
+  GENERIC_EVIDENCE: 'в цитате только общие слова',
+  UNCERTAIN_REASON: 'модель сомневается',
+  UNIVERSAL_PURCHASE: 'трата нужна любому бизнесу',
+  MANIPULATION: 'похоже на попытку повлиять на проверку',
+};
+
+export interface ModelVerdict {
+  title: string;
+  evidence: string | null;
+  reason: string | null;
+  violation: string | null;
+}
+
+function purposeVerdictTitle(v: PurposeVerdict): string {
+  if (v.status === 'NOT_APPLICABLE') return 'цель для продукта не учитывается';
+  if (v.status === 'UNAVAILABLE') return 'ИИ-проверка недоступна';
+  if (!v.purpose) return 'цель не понятна';
+  const profile = v.profile && v.profile.status !== 'NOT_CHECKED' ? `, ${PROFILE_VERDICT_LABELS[v.profile.status]}` : '';
+  return PURPOSE_VERDICT_LABELS[v.purpose] + profile;
+}
+
+export function modelVerdict(spot: Spot, answer: SpotAnswer): ModelVerdict | null {
+  const p = answer.purposeVerdict;
+  if (p) {
+    const profile = p.profile?.status === 'DOES_NOT_FIT' || p.profile?.status === 'UNCLEAR' ? p.profile : null;
+    const violation = p.violation ?? profile?.violation ?? null;
+    return {
+      title: purposeVerdictTitle(p),
+      evidence: p.evidence ?? profile?.evidence ?? null,
+      reason: [p.reason, profile?.reason].filter(Boolean).join(' ') || null,
+      violation: violation ? VIOLATION_LABELS[violation] ?? violation : null,
+    };
+  }
+  const c = answer.anomalyVerdict?.classification;
+  if (c) {
+    const cause = causeLabel(spot, c.code);
+    return {
+      title: cause ? `причина: ${cause}` : 'причину определить не удалось',
+      evidence: c.evidence ?? null,
+      reason: c.reason ?? null,
+      violation: c.violation ? VIOLATION_LABELS[c.violation] ?? c.violation : null,
+    };
   }
   return null;
 }

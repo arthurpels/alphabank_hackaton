@@ -308,6 +308,19 @@ export interface PurposeVerdict {
   generatedBy: 'KEYWORDS' | 'LLM';
   matchedKeywords: string[];
   reason?: string | null;
+  evidence?: string | null;
+  violation?: string | null;
+  llm?: LlmMeta | null;
+  profile?: PurposeProfile | null;
+}
+
+export interface PurposeProfile {
+  okved: string;
+  activity?: string | null;
+  status: 'FITS' | 'DOES_NOT_FIT' | 'UNCLEAR' | 'NOT_CHECKED';
+  reason?: string | null;
+  evidence?: string | null;
+  violation?: string | null;
   llm?: LlmMeta | null;
 }
 
