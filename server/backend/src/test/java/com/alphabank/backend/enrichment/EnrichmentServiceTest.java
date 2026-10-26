@@ -38,6 +38,7 @@ import com.alphabank.backend.enums.ProductCode;
 import com.alphabank.backend.enums.SourceCode;
 import com.alphabank.backend.repository.ApplicationSourceRepository;
 import com.alphabank.backend.repository.CompanyRepository;
+import com.alphabank.backend.scoringclient.dto.BkiCredit;
 import com.alphabank.backend.scoringclient.dto.ScoreRequest;
 import com.alphabank.backend.scoringclient.enums.Collateral;
 import com.alphabank.backend.scoringclient.enums.Purpose;
@@ -156,7 +157,8 @@ class EnrichmentServiceTest {
                 120000000L,
                 Stability.CLEAN,
                 Purpose.MATCH,
-                Collateral.GUARANTEE);
+                Collateral.GUARANTEE,
+                0L);
 
         assertEquals(FIXED_DATE, req.asOf());
         assertEquals(ProductCode.WORKING_CAPITAL, req.productCode());
@@ -175,6 +177,35 @@ class EnrichmentServiceTest {
         assertEquals(Stability.CLEAN, req.stability());
         assertEquals(Purpose.MATCH, req.purpose());
         assertEquals(Collateral.GUARANTEE, req.collateral());
+        assertEquals(0L, req.bankPayment());
+        assertTrue(req.bkiCredits().isEmpty());
+    }
+
+    @Test
+    void createScoreRequestPassesBankPaymentAndOpenBkiCreditsWithDebtInKopecks() {
+        String inn = "590234567822";
+        EgrulResponse egrul = new EgrulResponse(
+                "EGRUL", inn, "ИП Петров Сергей Николаевич", "IP", "ACTIVE",
+                LocalDate.of(2024, 3, 1),
+                new EgrulResponse.Director("Петров С. Н.", LocalDate.of(2024, 3, 1), false),
+                new EgrulResponse.Address("г. Пермь, ул. Ленина, 40", false),
+                "41.20", 1);
+        BkiResponse bki = new BkiResponse(
+                "BKI", inn, 655,
+                List.of(new BkiResponse.Credit("LOAN", "ПАО «Банк»", 400000, 150000, LocalDate.of(2025, 2, 20)),
+                        new BkiResponse.Credit("OVERDRAFT", "АО «Банк»", 300000, 0, LocalDate.of(2024, 3, 11)),
+                        new BkiResponse.Credit("CREDIT_CARD", "АО «Банк»", 150000, 40000, LocalDate.of(2024, 11, 5))),
+                1, new BkiResponse.Delinquencies(0, 12, 0), 2);
+        FnsResponse fns = new FnsResponse("FNS", inn, new FnsResponse.TaxDebt(0, "RUB", LocalDate.of(2026, 10, 15),
+                null), 0, "USN");
+        EnrichmentResult enrichment = new EnrichmentResult(inn, egrul, bki, fns, List.of(), FIXED_DATE, List.of());
+
+        ScoreRequest req = enrichmentService.createScoreRequest(enrichment, ProductCode.WORKING_CAPITAL, 300000000L,
+                12, 80000000L, Stability.DOCUMENT, Purpose.MATCH, null, 7500000L);
+
+        assertEquals(7500000L, req.bankPayment());
+        assertEquals(List.of(new BkiCredit("LOAN", 15000000L), new BkiCredit("CREDIT_CARD", 4000000L)),
+                req.bkiCredits());
     }
 
     @Test

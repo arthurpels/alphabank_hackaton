@@ -145,6 +145,76 @@ def test_template_never_exceeds_five_items() -> None:
     assert len(_summary(None, {**BUILDER_SUMMARY, "spots": spots})["items"]) == 5
 
 
+EXISTING = "Действующие платежи по кредитам: "
+
+
+@pytest.mark.parametrize(
+    ("existing", "bank", "expected"),
+    [
+        (
+            7_381_862,
+            7_381_862,
+            EXISTING + "73 818,62 ₽ в месяц (договоры нашего банка 73 818,62 ₽) — учитываются в долговой нагрузке.",
+        ),
+        (
+            200_000,
+            0,
+            EXISTING + "2 000 ₽ в месяц (кредиты в БКИ по условной оценке 2 000 ₽) — учитываются в долговой нагрузке.",
+        ),
+        (
+            7_581_862,
+            7_381_862,
+            EXISTING
+            + "75 818,62 ₽ в месяц (договоры нашего банка 73 818,62 ₽, кредиты в БКИ по условной оценке 2 000 ₽)"
+            + " — учитываются в долговой нагрузке.",
+        ),
+    ],
+)
+def test_template_mentions_existing_payments_right_after_fork(existing: int, bank: int, expected: str) -> None:
+    body = _summary(None, {**BUILDER_SUMMARY, "existingPayment": existing, "bankPayment": bank})
+    texts = [item["text"] for item in body["items"]]
+    assert texts[0].startswith("Вилка 17,0–24,5 %")
+    assert texts[1] == expected
+    assert body["items"][1]["facts"] == []
+
+
+def test_template_without_existing_payments_has_no_such_line() -> None:
+    texts = [item["text"] for item in _summary(None)["items"]]
+    assert not any(text.startswith(EXISTING) for text in texts)
+
+
+def test_template_with_existing_payments_still_has_at_most_five_items() -> None:
+    spots = [
+        {"spotId": f"x{i}", "type": "ANOMALY", "title": f"Пятно {i}", "status": "OPEN", "pricePp": 1.0}
+        for i in range(8)
+    ]
+    body = _summary(None, {**BUILDER_SUMMARY, "spots": spots, "existingPayment": 100_000})
+    assert len(body["items"]) == 5
+    assert body["items"][1]["text"].startswith(EXISTING)
+
+
+def test_llm_summary_keeps_existing_payments_line_in_second_place() -> None:
+    llm = FakeLlm(
+        {
+            "items": [
+                {"text": "Кредитная история чистая.", "facts": ["F1"]},
+                {"text": "Выручка подтверждена только договором подряда.", "facts": ["F3"]},
+            ]
+        }
+    )
+    body = _summary(llm, {**BUILDER_SUMMARY, "existingPayment": 557_454})
+    assert body["generatedBy"] == "LLM"
+    texts = [item["text"] for item in body["items"]]
+    assert texts[0] == "Кредитная история чистая."
+    assert texts[1].startswith(EXISTING)
+    assert texts[2] == "Выручка подтверждена только договором подряда."
+    assert len(texts) == 3
+
+
+def test_summary_rejects_negative_existing_payment() -> None:
+    assert client.post("/summary", json={**BUILDER_SUMMARY, "existingPayment": -1}).status_code == 422
+
+
 def test_llm_summary_maps_fact_ids_and_drops_unknown() -> None:
     llm = FakeLlm(
         {

@@ -14,5 +14,7 @@ public record SummaryRequest(
         double rateTo,
         double approveMax,
         List<SummarySpot> spots,
-        List<FactRefDto> facts) {
+        List<FactRefDto> facts,
+        long existingPayment,
+        long bankPayment) {
 }

@@ -87,6 +87,9 @@ paths:
                   stability: null
                   purpose: MATCH
                   collateral: null
+                  bkiCredits:
+                  - type: LOAN
+                    debt: 15000000
               wb:
                 summary: 'ИП Кузнецова — нагрузка выше 30 %: политика не выполнена, нужна сетка'
                 value:
@@ -107,6 +110,9 @@ paths:
                   stability: CLEAN
                   purpose: MATCH
                   collateral: null
+                  bkiCredits:
+                  - type: CREDIT_CARD
+                    debt: 4000000
               fns:
                 summary: ООО «Техснаб» — открыт устранимый стоп-фактор TAX_DEBT
                 value:
@@ -178,7 +184,7 @@ paths:
                 coffee:
                   summary: 'ООО «Кофейня» — подаёт после закрытия пятен: APPROVED'
                   value:
-                    rulesVersion: 2026-10-23.draft1
+                    rulesVersion: 2026-10-26.draft2
                     productCode: EQUIPMENT
                     rateFrom: 18.0
                     rateTo: 19.5
@@ -247,13 +253,14 @@ paths:
                       metric: PTI
                       value: 0.053
                       cap: 0.3
+                      existingPayment: 0
                       amountInRange: true
                       ok: true
                     passes: true
                 builder:
                   summary: 'ИП Петров — подаёт без источника выручки: вилка пересекает порог, UNDERWRITING'
                   value:
-                    rulesVersion: 2026-10-23.draft1
+                    rulesVersion: 2026-10-26.draft2
                     productCode: WORKING_CAPITAL
                     rateFrom: 17.0
                     rateTo: 24.5
@@ -322,13 +329,14 @@ paths:
                       metric: null
                       value: null
                       cap: null
+                      existingPayment: 557454
                       amountInRange: true
                       ok: true
                     passes: false
                 wb:
                   summary: 'ИП Кузнецова — нагрузка выше 30 %: политика не выполнена, нужна сетка'
                   value:
-                    rulesVersion: 2026-10-23.draft1
+                    rulesVersion: 2026-10-26.draft2
                     productCode: WORKING_CAPITAL
                     rateFrom: 20.0
                     rateTo: 21.5
@@ -395,15 +403,16 @@ paths:
                     stopFactors: []
                     policy:
                       metric: PTI
-                      value: 0.347
+                      value: 0.352
                       cap: 0.3
+                      existingPayment: 200000
                       amountInRange: true
                       ok: false
                     passes: false
                 fns:
                   summary: ООО «Техснаб» — открыт устранимый стоп-фактор TAX_DEBT
                   value:
-                    rulesVersion: 2026-10-23.draft1
+                    rulesVersion: 2026-10-26.draft2
                     productCode: WORKING_CAPITAL
                     rateFrom: 16.0
                     rateTo: 17.5
@@ -475,13 +484,14 @@ paths:
                       metric: PTI
                       value: 0.062
                       cap: 0.3
+                      existingPayment: 0
                       amountInRange: true
                       ok: true
                     passes: true
                 shell:
                   summary: ООО «Однодневка» — неустранимые стоп-факторы
                   value:
-                    rulesVersion: 2026-10-23.draft1
+                    rulesVersion: 2026-10-26.draft2
                     productCode: WORKING_CAPITAL
                     rateFrom: 17.0
                     rateTo: 26.0
@@ -556,13 +566,14 @@ paths:
                       metric: null
                       value: null
                       cap: null
+                      existingPayment: 0
                       amountInRange: true
                       ok: true
                     passes: false
                 coffeeStart:
                   summary: 'ООО «Кофейня» — сразу после «Рассчитать»: 4 открытых пятна'
                   value:
-                    rulesVersion: 2026-10-23.draft1
+                    rulesVersion: 2026-10-26.draft2
                     productCode: EQUIPMENT
                     rateFrom: 17.0
                     rateTo: 26.0
@@ -631,6 +642,7 @@ paths:
                       metric: null
                       value: null
                       cap: null
+                      existingPayment: 0
                       amountInRange: true
                       ok: true
                     passes: false
@@ -672,6 +684,9 @@ paths:
                   stability: DOCUMENT
                   purpose: MATCH
                   collateral: null
+                  bkiCredits:
+                  - type: LOAN
+                    debt: 15000000
               wb:
                 summary: ИП Кузнецова — система сама предлагает иные условия
                 value:
@@ -692,6 +707,9 @@ paths:
                   stability: CLEAN
                   purpose: MATCH
                   collateral: null
+                  bkiCredits:
+                  - type: CREDIT_CARD
+                    debt: 4000000
       responses:
         '200':
           description: проходящие варианты
@@ -703,7 +721,7 @@ paths:
                 builder:
                   summary: ИП Петров — после принятого договора с генподрядчиком
                   value:
-                    rulesVersion: 2026-10-23.draft1
+                    rulesVersion: 2026-10-26.draft2
                     offers:
                     - productCode: WORKING_CAPITAL
                       amount: 195000000
@@ -713,14 +731,15 @@ paths:
                       rateTo: 20.5
                       policy:
                         metric: PTI
-                        value: 0.091
+                        value: 0.098
                         cap: 0.3
+                        existingPayment: 557454
                         amountInRange: true
                         ok: true
                 wb:
                   summary: ИП Кузнецова — система сама предлагает иные условия
                   value:
-                    rulesVersion: 2026-10-23.draft1
+                    rulesVersion: 2026-10-26.draft2
                     offers:
                     - productCode: WORKING_CAPITAL
                       amount: 120000000
@@ -730,8 +749,9 @@ paths:
                       rateTo: 20.5
                       policy:
                         metric: PTI
-                        value: 0.111
+                        value: 0.116
                         cap: 0.3
+                        existingPayment: 200000
                         amountInRange: true
                         ok: true
                     - productCode: OVERDRAFT
@@ -744,6 +764,7 @@ paths:
                         metric: LIMIT_SHARE
                         value: 0.3
                         cap: 0.3
+                        existingPayment: 0
                         amountInRange: true
                         ok: true
         '422':
@@ -1551,7 +1572,7 @@ paths:
                     example: 3f9c1a2b7d4e
                   rulesVersion:
                     type: string
-                    example: 2026-10-23.draft1
+                    example: 2026-10-26.draft2
   /rules:
     get:
       operationId: rules
@@ -1570,7 +1591,7 @@ paths:
                 current:
                   summary: Действующая версия правил
                   value:
-                    rulesVersion: 2026-10-23.draft1
+                    rulesVersion: 2026-10-26.draft2
                     calcRatePct: 20.0
                     products:
                     - code: EQUIPMENT
@@ -1887,6 +1908,38 @@ components:
           $ref: '#/components/schemas/Purpose'
         collateral:
           $ref: '#/components/schemas/Collateral'
+        bankPayment:
+          type: integer
+          format: int64
+          minimum: 0
+          default: 0
+          description: 'платежи по действующим кредитам нашего банка, копейки в месяц: бэкенд суммирует платежи по договорам
+            заявок компании в статусах `SIGNING` и `ISSUED`. Входят в нагрузку вместе с платежом по новому кредиту'
+        bkiCredits:
+          type: array
+          default: []
+          description: 'открытые кредиты из БКИ (`open_credits`) с ненулевым остатком. Платежа и срока в БКИ нет, поэтому платёж
+            оценивается условно по правилам `existing_obligations` (`ml/scoring_rules.yaml`): по кредитам с графиком — аннуитет
+            на остаток за `term_loan_months` по расчётной ставке, по карте и овердрафту — `revolving_share` от остатка в месяц.
+            Для продукта-овердрафта (метрика «лимит / выручка») не учитываются'
+          items:
+            $ref: '#/components/schemas/BkiCredit'
+    BkiCredit:
+      type: object
+      required:
+      - type
+      - debt
+      properties:
+        type:
+          type: string
+          description: БКИ `open_credits[].type`, например `LOAN`, `CREDIT_CARD`, `OVERDRAFT`
+          example: LOAN
+        debt:
+          type: integer
+          format: int64
+          minimum: 0
+          description: БКИ `open_credits[].debt`, текущий остаток, копейки
+          example: 15000000
     Thresholds:
       type: object
       required:
@@ -1962,7 +2015,7 @@ components:
           - PTI
           - LIMIT_SHARE
           - null
-          description: '`PTI` — платёж / выручка; `LIMIT_SHARE` — лимит овердрафта / выручка; `null` — выручка неизвестна'
+          description: '`PTI` — (платёж по новому кредиту + платежи по действующим) / выручка; `LIMIT_SHARE` — лимит овердрафта / выручка; `null` — выручка неизвестна'
         value:
           type: number
           nullable: true
@@ -1971,6 +2024,12 @@ components:
           type: number
           nullable: true
           description: допустимая доля продукта
+        existingPayment:
+          type: integer
+          format: int64
+          minimum: 0
+          description: 'платежи по действующим кредитам, которые вошли в `value`, копейки в месяц (кредиты банка и оценка
+            по БКИ); 0 — обязательств нет или метрика продукта их не учитывает (`LIMIT_SHARE`)'
         amountInRange:
           type: boolean
         ok:
@@ -2531,6 +2590,21 @@ components:
           maxItems: 50
           items:
             $ref: '#/components/schemas/FactRef'
+        existingPayment:
+          type: integer
+          format: int64
+          minimum: 0
+          default: 0
+          description: 'платежи по действующим кредитам из последнего `/score` (`policy.existingPayment`), копейки в месяц.
+            Больше 0 — сводка второй строкой сообщает о них: сначала вилка, потом эта строка, затем пятна. Строку добавляют
+            правила, а не LLM, поэтому она есть и в `generatedBy = LLM`'
+        bankPayment:
+          type: integer
+          format: int64
+          minimum: 0
+          default: 0
+          description: 'часть `existingPayment` — точные платежи по договорам нашего банка (`bankPayment` из запроса `/score`),
+            копейки в месяц; остальное — условная оценка по кредитам в БКИ'
           description: факты-источники в виде готовых подписей; `spotId` — к какому пятну относится
     FactRef:
       type: object

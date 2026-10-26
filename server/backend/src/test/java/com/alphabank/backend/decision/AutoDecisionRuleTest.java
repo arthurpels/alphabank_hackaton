@@ -110,7 +110,7 @@ class AutoDecisionRuleTest {
 
     private static ScoreResponse score(double from, double to, boolean policyOk) {
         return new ScoreResponse("test", ProductCode.EQUIPMENT, from, to, new Thresholds(20.0, 24.0), List.of(),
-                List.of(), new Policy(null, null, null, true, policyOk), to <= 20.0);
+                List.of(), new Policy(null, null, null, 0L, true, policyOk), to <= 20.0);
     }
 
     private static SpotRecord spot(SpotType type, SpotStatus status, Double price, Boolean removable) {

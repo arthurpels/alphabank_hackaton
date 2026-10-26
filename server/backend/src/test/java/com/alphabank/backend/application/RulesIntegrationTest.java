@@ -25,7 +25,7 @@ class RulesIntegrationTest {
     void rulesArePublicAndProxiedFromMl() throws Exception {
         mvc.perform(get("/api/v1/rules"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.rulesVersion").value("2026-10-23.draft1"))
+                .andExpect(jsonPath("$.rulesVersion").value("2026-10-26.draft2"))
                 .andExpect(jsonPath("$.calcRatePct").value(15.0))
                 .andExpect(jsonPath("$.products.length()").value(0))
                 .andExpect(jsonPath("$.factors.length()").value(0));

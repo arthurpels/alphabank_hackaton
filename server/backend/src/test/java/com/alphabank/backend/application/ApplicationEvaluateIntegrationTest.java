@@ -81,7 +81,7 @@ class ApplicationEvaluateIntegrationTest {
                 .andExpect(jsonPath("$.fork.rateTo").value(26.0))
                 .andExpect(jsonPath("$.fork.zone").value("UNDERWRITER"))
                 .andExpect(jsonPath("$.fork.thresholds.approveMax").value(20.0))
-                .andExpect(jsonPath("$.fork.rulesVersion").value("2026-10-23.draft1"))
+                .andExpect(jsonPath("$.fork.rulesVersion").value("2026-10-26.draft2"))
                 .andExpect(jsonPath("$.fork.reproducible").value(org.hamcrest.Matchers.nullValue()))
                 .andExpect(jsonPath("$.fork.factors.length()").value(4))
                 .andExpect(jsonPath("$.fork.factors[0].code").value("debt_load"))

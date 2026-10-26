@@ -1202,7 +1202,7 @@ components:
 
     Fork:
       type: object
-      required: [id, rateFrom, rateTo, zone, thresholds, rulesVersion, asOf, calculatedAt, factors, reproducible]
+      required: [id, rateFrom, rateTo, zone, thresholds, rulesVersion, asOf, calculatedAt, factors, existingPayment, reproducible]
       properties:
         id:
           type: string
@@ -1221,7 +1221,7 @@ components:
           $ref: '#/components/schemas/ZoneThresholds'
         rulesVersion:
           type: string
-          example: 2026-10-23.draft1
+          example: 2026-10-26.draft2
         asOf:
           type: string
           format: date
@@ -1235,6 +1235,15 @@ components:
           description: разложение из сохранённого ответа `/score`; пустой массив у снимка, рассчитанного до M06
           items:
             $ref: '#/components/schemas/ForkFactor'
+        existingPayment:
+          type: integer
+          format: int64
+          minimum: 0
+          description: 'платежи по действующим кредитам, которые вошли в долговую нагрузку этого расчёта, копейки в месяц:
+            точные платежи по договорам нашего банка (заявки компании в статусах `SIGNING` и `ISSUED`) и условная оценка
+            платежей по открытым кредитам из БКИ (`policy.existingPayment` ответа `/score`). 0 — обязательств нет;
+            у овердрафта метрика другая, действующие платежи в неё не входят'
+          example: 7381862
         reproducible:
           type: boolean
           nullable: true
@@ -1853,7 +1862,7 @@ components:
           description: true — пересчёт по снимку дал байт-в-байт тот же ответ `/score`, `diff` пустой
         rulesVersion:
           type: string
-          example: 2026-10-23.draft1
+          example: 2026-10-26.draft2
         engineVersion:
           type: string
           nullable: true
@@ -2069,6 +2078,9 @@ components:
         text:
           type: string
           example: Выручка в марте упала на 45 %, клиент объясняет ремонтом и приложил договор подряда.
+          description: 'если у компании есть действующие кредиты (`fork.existingPayment` > 0), вторым пунктом после вилки стоит
+            строка «Действующие платежи по кредитам: … в месяц (договоры нашего банка …, кредиты в БКИ по условной оценке …) —
+            учитываются в долговой нагрузке.»; её добавляют правила, в том числе в LLM-версии'
         facts:
           type: array
           items:

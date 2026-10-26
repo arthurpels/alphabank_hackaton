@@ -11,6 +11,7 @@ from scoring.conditions import Condition, ConditionError
 from scoring.schemas import (
     AnomaliesRequest,
     AnomaliesResponse,
+    BkiCredit,
     Collateral,
     Factor,
     Offer,
@@ -116,6 +117,13 @@ class ProductSpec:
 
 
 @dataclass(frozen=True)
+class ObligationsSpec:
+    term_loan_months: int
+    revolving_share: float
+    revolving_types: frozenset[str]
+
+
+@dataclass(frozen=True)
 class GridSpec:
     amount_cuts: tuple[Decimal, ...]
     amount_step: int
@@ -202,6 +210,12 @@ class Engine:
                 for item in raw["stop_factors"]
             )
             self.grid = _grid(raw["offer_grid"], self.products)
+            obligations = raw["existing_obligations"]
+            self.obligations = ObligationsSpec(
+                term_loan_months=int(obligations["term_loan_months"]),
+                revolving_share=float(obligations["revolving_share"]),
+                revolving_types=frozenset(obligations["revolving_types"]),
+            )
             self.anomaly_detector = AnomalyDetector(raw["anomalies"])
             self.purpose_keywords = {product: list(words) for product, words in raw["purpose_keywords"].items()}
             self.purpose_dictionary = dict(raw["purpose_dictionary"])
@@ -240,6 +254,7 @@ class Engine:
             metric=None if metric_value is None else product.metric,
             value=None if metric_value is None else round(metric_value, 3),
             cap=None if metric_value is None else product.cap,
+            existing_payment=round(self._existing_payment(request, product)),
             amount_in_range=amount_in_range,
             ok=amount_in_range and within_cap,
         )
@@ -329,7 +344,19 @@ class Engine:
         if product.metric == "LIMIT_SHARE":
             return request.amount / request.monthly_revenue
         payment = annuity_payment(request.amount, request.term_months, self.calc_rate_pct)
-        return payment / request.monthly_revenue
+        return (payment + self._existing_payment(request, product)) / request.monthly_revenue
+
+    def _existing_payment(self, request: ScoreRequest, product: ProductSpec) -> float:
+        if product.metric != "PTI":
+            return 0.0
+        return request.bank_payment + sum(self._credit_payment(credit) for credit in request.bki_credits)
+
+    def _credit_payment(self, credit: BkiCredit) -> float:
+        if credit.debt == 0:
+            return 0.0
+        if credit.type in self.obligations.revolving_types:
+            return credit.debt * self.obligations.revolving_share
+        return annuity_payment(credit.debt, self.obligations.term_loan_months, self.calc_rate_pct)
 
     def _context(self, request: ScoreRequest, metric_value: float | None) -> dict[str, Any]:
         return {

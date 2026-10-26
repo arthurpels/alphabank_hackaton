@@ -1,14 +1,15 @@
-import { expect, type APIRequestContext, type Locator, type Page } from '@playwright/test';
+import { execFileSync } from 'node:child_process';
+import path from 'node:path';
+import { expect, type Locator, type Page } from '@playwright/test';
 
-export const MOCKS_URL = process.env.E2E_MOCKS_URL ?? 'http://localhost:8002';
+export const RESET_SCRIPT = path.resolve(process.cwd(), '../../scripts/reset-demo');
 export const LLM_WAIT_MS = 100_000; // дольше таймаута ИИ на бэкенде (90 с)
 
 export type Fork = [number, number];
 
-export async function resetMocks(request: APIRequestContext) {
+export function resetDemo() {
   if (process.env.E2E_NO_RESET) return;
-  const res = await request.post(`${MOCKS_URL}/mock/reset`);
-  expect(res.ok(), `сервис моков не ответил на ${MOCKS_URL}/mock/reset`).toBeTruthy();
+  execFileSync(RESET_SCRIPT, { stdio: 'pipe', timeout: 120_000 });
 }
 
 export async function loginAsClient(page: Page, fio: string) {

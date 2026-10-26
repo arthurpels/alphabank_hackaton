@@ -27,6 +27,7 @@ import com.alphabank.backend.enums.SourceCode;
 import com.alphabank.backend.repository.ApplicationSourceRepository;
 import com.alphabank.backend.repository.CompanyRepository;
 import com.alphabank.backend.repository.model.CompanyRecord;
+import com.alphabank.backend.scoringclient.dto.BkiCredit;
 import com.alphabank.backend.scoringclient.dto.ScoreRequest;
 import com.alphabank.backend.scoringclient.enums.Collateral;
 import com.alphabank.backend.scoringclient.enums.Purpose;
@@ -99,7 +100,8 @@ public class EnrichmentService {
             Long confirmedMonthlyRevenueKopecks,
             Stability stability,
             Purpose purpose,
-            Collateral collateral) {
+            Collateral collateral,
+            long bankPayment) {
 
         EgrulResponse egrul = enrichment.egrul();
         BkiResponse bki = enrichment.bki();
@@ -134,7 +136,19 @@ public class EnrichmentService {
                 confirmedMonthlyRevenueKopecks,
                 stability,
                 purpose,
-                collateral);
+                collateral,
+                bankPayment,
+                bkiCredits(bki));
+    }
+
+    private static List<BkiCredit> bkiCredits(BkiResponse bki) {
+        if (bki == null || bki.openCredits() == null) {
+            return List.of();
+        }
+        return bki.openCredits().stream()
+                .filter(credit -> credit.debt() > 0)
+                .map(credit -> new BkiCredit(credit.type(), credit.debt() * 100L))
+                .toList();
     }
 
     public UUID persistCompanySnapshot(EgrulResponse egrul) {

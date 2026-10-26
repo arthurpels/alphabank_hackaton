@@ -45,6 +45,7 @@ export interface Fork {
   rateFrom: number;
   rateTo: number;
   factors?: ForkFactor[];
+  existingPayment?: number;
   reproducible?: boolean | null;
   rulesVersion?: string | null;
   asOf?: string | null;

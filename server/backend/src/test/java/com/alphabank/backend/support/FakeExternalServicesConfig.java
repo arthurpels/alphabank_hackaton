@@ -170,8 +170,8 @@ public class FakeExternalServicesConfig {
     @Bean
     @Primary
     public OfferGridClient fakeOfferGridClient() {
-        Policy passed = new Policy("PTI", 0.2, 0.3, true, true);
-        return request -> new OfferGridResponse("2026-10-23.draft1", List.of(
+        Policy passed = new Policy("PTI", 0.2, 0.3, 0L, true, true);
+        return request -> new OfferGridResponse("2026-10-26.draft2", List.of(
                 new Offer(request.productCode(), request.amount() * 6 / 10, 36, null, 19.0, 20.0, passed),
                 new Offer(ProductCode.OVERDRAFT, 12_000_000L, 12, null, 22.0, 22.0, passed)));
     }
@@ -219,7 +219,7 @@ public class FakeExternalServicesConfig {
         return () -> {
             com.fasterxml.jackson.databind.node.ObjectNode rules =
                     com.fasterxml.jackson.databind.node.JsonNodeFactory.instance.objectNode();
-            rules.put("rulesVersion", "2026-10-23.draft1");
+            rules.put("rulesVersion", "2026-10-26.draft2");
             rules.put("calcRatePct", 15.0);
             rules.putArray("products");
             rules.putArray("factors");
@@ -287,8 +287,10 @@ public class FakeExternalServicesConfig {
                 ? List.of(new StopFactor(StopFactorCode.TAX_DEBT, true, "PAY")) : List.of();
         Thresholds thresholds = request.productCode() == ProductCode.OVERDRAFT
                 ? new Thresholds(22.0, 26.0) : new Thresholds(20.0, 24.0);
-        return new ScoreResponse("2026-10-23.draft1", request.productCode(), lo, hi, thresholds,
-                factors, stops, new Policy(null, null, null, true, request.amount() <= POLICY_MAX_AMOUNT), hi <= 20.0);
+        return new ScoreResponse("2026-10-26.draft2", request.productCode(), lo, hi, thresholds,
+                factors, stops,
+                new Policy(null, null, null, request.bankPayment(), true, request.amount() <= POLICY_MAX_AMOUNT),
+                hi <= 20.0);
     }
 
     private static Factor known(FactorCode code, double value) {

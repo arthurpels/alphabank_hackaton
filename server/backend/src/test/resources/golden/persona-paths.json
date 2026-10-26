@@ -7,7 +7,7 @@
         "rateFrom" : 17.0,
         "rateTo" : 26.0,
         "zone" : "UNDERWRITER",
-        "rulesVersion" : "2026-10-23.draft1",
+        "rulesVersion" : "2026-10-26.draft2",
         "asOf" : "2026-10-23"
       },
       "spots" : [ {
@@ -46,7 +46,7 @@
         "rateFrom" : 18.0,
         "rateTo" : 23.5,
         "zone" : "UNDERWRITER",
-        "rulesVersion" : "2026-10-23.draft1",
+        "rulesVersion" : "2026-10-26.draft2",
         "asOf" : "2026-10-23"
       },
       "spots" : [ {
@@ -92,7 +92,7 @@
         "rateFrom" : 18.0,
         "rateTo" : 21.0,
         "zone" : "UNDERWRITER",
-        "rulesVersion" : "2026-10-23.draft1",
+        "rulesVersion" : "2026-10-26.draft2",
         "asOf" : "2026-10-23"
       },
       "spots" : [ {
@@ -153,7 +153,7 @@
         "rateFrom" : 18.0,
         "rateTo" : 19.5,
         "zone" : "APPROVE",
-        "rulesVersion" : "2026-10-23.draft1",
+        "rulesVersion" : "2026-10-26.draft2",
         "asOf" : "2026-10-23"
       },
       "spots" : [ {
@@ -229,7 +229,7 @@
         "rateFrom" : 18.0,
         "rateTo" : 19.5,
         "zone" : "APPROVE",
-        "rulesVersion" : "2026-10-23.draft1",
+        "rulesVersion" : "2026-10-26.draft2",
         "asOf" : "2026-10-23"
       },
       "spots" : [ {
@@ -302,10 +302,10 @@
     "decision" : {
       "type" : "APPROVED",
       "decidedBy" : "SYSTEM",
-      "rulesVersion" : "2026-10-23.draft1",
+      "rulesVersion" : "2026-10-26.draft2",
       "override" : false,
       "comment" : "Правый край вилки 19.5 % ≤ порога одобрения 20.0 %",
-      "requestHash" : "86807ced35c8af11ed90d7ceed7214b83429c028db2e0d1965e569947c99cd67",
+      "requestHash" : "5c3072fbd7c318f31e7e37ce4210cc57ed248e0eec46d93dc2215b1e11e94aae",
       "reasonSpot" : null
     },
     "offers" : [ {
@@ -321,7 +321,7 @@
         "rateFrom" : 18.0,
         "rateTo" : 19.5,
         "zone" : "APPROVE",
-        "rulesVersion" : "2026-10-23.draft1",
+        "rulesVersion" : "2026-10-26.draft2",
         "asOf" : "2026-10-23"
       }
     } ],
@@ -329,36 +329,36 @@
       "rateFrom" : 17.0,
       "rateTo" : 26.0,
       "zone" : "UNDERWRITER",
-      "rulesVersion" : "2026-10-23.draft1",
+      "rulesVersion" : "2026-10-26.draft2",
       "asOf" : "2026-10-23"
     }, {
       "rateFrom" : 18.0,
       "rateTo" : 23.5,
       "zone" : "UNDERWRITER",
-      "rulesVersion" : "2026-10-23.draft1",
+      "rulesVersion" : "2026-10-26.draft2",
       "asOf" : "2026-10-23"
     }, {
       "rateFrom" : 18.0,
       "rateTo" : 21.0,
       "zone" : "UNDERWRITER",
-      "rulesVersion" : "2026-10-23.draft1",
+      "rulesVersion" : "2026-10-26.draft2",
       "asOf" : "2026-10-23"
     }, {
       "rateFrom" : 18.0,
       "rateTo" : 19.5,
       "zone" : "APPROVE",
-      "rulesVersion" : "2026-10-23.draft1",
+      "rulesVersion" : "2026-10-26.draft2",
       "asOf" : "2026-10-23"
     }, {
       "rateFrom" : 18.0,
       "rateTo" : 19.5,
       "zone" : "APPROVE",
-      "rulesVersion" : "2026-10-23.draft1",
+      "rulesVersion" : "2026-10-26.draft2",
       "asOf" : "2026-10-23"
     } ],
     "verify" : {
       "reproducible" : true,
-      "requestHash" : "86807ced35c8af11ed90d7ceed7214b83429c028db2e0d1965e569947c99cd67",
+      "requestHash" : "5c3072fbd7c318f31e7e37ce4210cc57ed248e0eec46d93dc2215b1e11e94aae",
       "diff" : [ ]
     }
   },
@@ -370,7 +370,7 @@
         "rateFrom" : 17.0,
         "rateTo" : 26.0,
         "zone" : "UNDERWRITER",
-        "rulesVersion" : "2026-10-23.draft1",
+        "rulesVersion" : "2026-10-26.draft2",
         "asOf" : "2026-10-23"
       },
       "spots" : [ {
@@ -409,7 +409,7 @@
         "rateFrom" : 17.0,
         "rateTo" : 24.5,
         "zone" : "UNDERWRITER",
-        "rulesVersion" : "2026-10-23.draft1",
+        "rulesVersion" : "2026-10-26.draft2",
         "asOf" : "2026-10-23"
       },
       "spots" : [ {
@@ -463,7 +463,7 @@
         "rateFrom" : 17.0,
         "rateTo" : 24.5,
         "zone" : "UNDERWRITER",
-        "rulesVersion" : "2026-10-23.draft1",
+        "rulesVersion" : "2026-10-26.draft2",
         "asOf" : "2026-10-23"
       },
       "spots" : [ {
@@ -517,24 +517,24 @@
       "rateFrom" : 17.0,
       "rateTo" : 26.0,
       "zone" : "UNDERWRITER",
-      "rulesVersion" : "2026-10-23.draft1",
+      "rulesVersion" : "2026-10-26.draft2",
       "asOf" : "2026-10-23"
     }, {
       "rateFrom" : 17.0,
       "rateTo" : 24.5,
       "zone" : "UNDERWRITER",
-      "rulesVersion" : "2026-10-23.draft1",
+      "rulesVersion" : "2026-10-26.draft2",
       "asOf" : "2026-10-23"
     }, {
       "rateFrom" : 17.0,
       "rateTo" : 24.5,
       "zone" : "UNDERWRITER",
-      "rulesVersion" : "2026-10-23.draft1",
+      "rulesVersion" : "2026-10-26.draft2",
       "asOf" : "2026-10-23"
     } ],
     "verify" : {
       "reproducible" : true,
-      "requestHash" : "af7987109d7fd02521c755dec117faf59846b6b20a7400335bcf3dd0160d0c41",
+      "requestHash" : "898663e442a85dbf04e29de54b02aeb4a0eb934c9cb877450d849d3b91a6bd67",
       "diff" : [ ]
     }
   },
@@ -546,7 +546,7 @@
         "rateFrom" : 17.0,
         "rateTo" : 26.0,
         "zone" : "UNDERWRITER",
-        "rulesVersion" : "2026-10-23.draft1",
+        "rulesVersion" : "2026-10-26.draft2",
         "asOf" : "2026-10-23"
       },
       "spots" : [ {
@@ -585,7 +585,7 @@
         "rateFrom" : 20.0,
         "rateTo" : 23.0,
         "zone" : "UNDERWRITER",
-        "rulesVersion" : "2026-10-23.draft1",
+        "rulesVersion" : "2026-10-26.draft2",
         "asOf" : "2026-10-23"
       },
       "spots" : [ {
@@ -624,7 +624,7 @@
         "rateFrom" : 20.0,
         "rateTo" : 21.5,
         "zone" : "UNDERWRITER",
-        "rulesVersion" : "2026-10-23.draft1",
+        "rulesVersion" : "2026-10-26.draft2",
         "asOf" : "2026-10-23"
       },
       "spots" : [ {
@@ -678,7 +678,7 @@
         "rateFrom" : 20.0,
         "rateTo" : 21.5,
         "zone" : "UNDERWRITER",
-        "rulesVersion" : "2026-10-23.draft1",
+        "rulesVersion" : "2026-10-26.draft2",
         "asOf" : "2026-10-23"
       },
       "spots" : [ {
@@ -729,10 +729,10 @@
     "decision" : {
       "type" : "ALTERNATIVE",
       "decidedBy" : "SYSTEM",
-      "rulesVersion" : "2026-10-23.draft1",
+      "rulesVersion" : "2026-10-26.draft2",
       "override" : false,
       "comment" : "Система предлагает иные условия: вариантов 2",
-      "requestHash" : "5d5ce30ae21cbb06ed631154df506ee13a4e9dfd82731c512d45e77f219dc90c",
+      "requestHash" : "37f9f7be7b7f739a669ea2a12ccfaccc677f153b165de362a5ed8e2091a71f22",
       "reasonSpot" : null
     },
     "offers" : [ {
@@ -748,7 +748,7 @@
         "rateFrom" : 20.5,
         "rateTo" : 20.5,
         "zone" : "APPROVE",
-        "rulesVersion" : "2026-10-23.draft1",
+        "rulesVersion" : "2026-10-26.draft2",
         "asOf" : "2026-10-23"
       }
     }, {
@@ -764,7 +764,7 @@
         "rateFrom" : 22.0,
         "rateTo" : 22.0,
         "zone" : "APPROVE",
-        "rulesVersion" : "2026-10-23.draft1",
+        "rulesVersion" : "2026-10-26.draft2",
         "asOf" : "2026-10-23"
       }
     } ],
@@ -772,30 +772,30 @@
       "rateFrom" : 17.0,
       "rateTo" : 26.0,
       "zone" : "UNDERWRITER",
-      "rulesVersion" : "2026-10-23.draft1",
+      "rulesVersion" : "2026-10-26.draft2",
       "asOf" : "2026-10-23"
     }, {
       "rateFrom" : 20.0,
       "rateTo" : 23.0,
       "zone" : "UNDERWRITER",
-      "rulesVersion" : "2026-10-23.draft1",
+      "rulesVersion" : "2026-10-26.draft2",
       "asOf" : "2026-10-23"
     }, {
       "rateFrom" : 20.0,
       "rateTo" : 21.5,
       "zone" : "UNDERWRITER",
-      "rulesVersion" : "2026-10-23.draft1",
+      "rulesVersion" : "2026-10-26.draft2",
       "asOf" : "2026-10-23"
     }, {
       "rateFrom" : 20.0,
       "rateTo" : 21.5,
       "zone" : "UNDERWRITER",
-      "rulesVersion" : "2026-10-23.draft1",
+      "rulesVersion" : "2026-10-26.draft2",
       "asOf" : "2026-10-23"
     } ],
     "verify" : {
       "reproducible" : true,
-      "requestHash" : "5d5ce30ae21cbb06ed631154df506ee13a4e9dfd82731c512d45e77f219dc90c",
+      "requestHash" : "37f9f7be7b7f739a669ea2a12ccfaccc677f153b165de362a5ed8e2091a71f22",
       "diff" : [ ]
     }
   },
@@ -807,7 +807,7 @@
         "rateFrom" : 15.0,
         "rateTo" : 24.0,
         "zone" : "UNDERWRITER",
-        "rulesVersion" : "2026-10-23.draft1",
+        "rulesVersion" : "2026-10-26.draft2",
         "asOf" : "2026-10-23"
       },
       "spots" : [ {
@@ -853,7 +853,7 @@
         "rateFrom" : 16.0,
         "rateTo" : 19.0,
         "zone" : "APPROVE",
-        "rulesVersion" : "2026-10-23.draft1",
+        "rulesVersion" : "2026-10-26.draft2",
         "asOf" : "2026-10-23"
       },
       "spots" : [ {
@@ -899,7 +899,7 @@
         "rateFrom" : 16.0,
         "rateTo" : 17.5,
         "zone" : "APPROVE",
-        "rulesVersion" : "2026-10-23.draft1",
+        "rulesVersion" : "2026-10-26.draft2",
         "asOf" : "2026-10-23"
       },
       "spots" : [ {
@@ -960,7 +960,7 @@
         "rateFrom" : 16.0,
         "rateTo" : 17.5,
         "zone" : "APPROVE",
-        "rulesVersion" : "2026-10-23.draft1",
+        "rulesVersion" : "2026-10-26.draft2",
         "asOf" : "2026-10-23"
       },
       "spots" : [ {
@@ -1018,10 +1018,10 @@
     "decision" : {
       "type" : "REJECTED",
       "decidedBy" : "SYSTEM",
-      "rulesVersion" : "2026-10-23.draft1",
+      "rulesVersion" : "2026-10-26.draft2",
       "override" : false,
       "comment" : "Не устранён стоп-фактор: Долг в ФНС 3 412 ₽ — без погашения будет отказ",
-      "requestHash" : "14c3c03709a773bcdbcca097b5cbf1d3acc9784725192dcfdac2f37a1a1f06e6",
+      "requestHash" : "f10403d3a8db15ddc888930b8e4d6cfd1125c5301956284fe1ac938d9eaa3cbc",
       "reasonSpot" : "Долг в ФНС 3 412 ₽ — без погашения будет отказ"
     },
     "offers" : [ ],
@@ -1029,30 +1029,30 @@
       "rateFrom" : 15.0,
       "rateTo" : 24.0,
       "zone" : "UNDERWRITER",
-      "rulesVersion" : "2026-10-23.draft1",
+      "rulesVersion" : "2026-10-26.draft2",
       "asOf" : "2026-10-23"
     }, {
       "rateFrom" : 16.0,
       "rateTo" : 19.0,
       "zone" : "APPROVE",
-      "rulesVersion" : "2026-10-23.draft1",
+      "rulesVersion" : "2026-10-26.draft2",
       "asOf" : "2026-10-23"
     }, {
       "rateFrom" : 16.0,
       "rateTo" : 17.5,
       "zone" : "APPROVE",
-      "rulesVersion" : "2026-10-23.draft1",
+      "rulesVersion" : "2026-10-26.draft2",
       "asOf" : "2026-10-23"
     }, {
       "rateFrom" : 16.0,
       "rateTo" : 17.5,
       "zone" : "APPROVE",
-      "rulesVersion" : "2026-10-23.draft1",
+      "rulesVersion" : "2026-10-26.draft2",
       "asOf" : "2026-10-23"
     } ],
     "verify" : {
       "reproducible" : true,
-      "requestHash" : "14c3c03709a773bcdbcca097b5cbf1d3acc9784725192dcfdac2f37a1a1f06e6",
+      "requestHash" : "f10403d3a8db15ddc888930b8e4d6cfd1125c5301956284fe1ac938d9eaa3cbc",
       "diff" : [ ]
     }
   },
@@ -1064,7 +1064,7 @@
         "rateFrom" : 15.0,
         "rateTo" : 24.0,
         "zone" : "UNDERWRITER",
-        "rulesVersion" : "2026-10-23.draft1",
+        "rulesVersion" : "2026-10-26.draft2",
         "asOf" : "2026-10-23"
       },
       "spots" : [ {
@@ -1110,7 +1110,7 @@
         "rateFrom" : 16.0,
         "rateTo" : 19.0,
         "zone" : "APPROVE",
-        "rulesVersion" : "2026-10-23.draft1",
+        "rulesVersion" : "2026-10-26.draft2",
         "asOf" : "2026-10-23"
       },
       "spots" : [ {
@@ -1156,7 +1156,7 @@
         "rateFrom" : 16.0,
         "rateTo" : 17.5,
         "zone" : "APPROVE",
-        "rulesVersion" : "2026-10-23.draft1",
+        "rulesVersion" : "2026-10-26.draft2",
         "asOf" : "2026-10-23"
       },
       "spots" : [ {
@@ -1217,7 +1217,7 @@
         "rateFrom" : 16.0,
         "rateTo" : 17.5,
         "zone" : "APPROVE",
-        "rulesVersion" : "2026-10-23.draft1",
+        "rulesVersion" : "2026-10-26.draft2",
         "asOf" : "2026-10-23"
       },
       "spots" : [ {
@@ -1278,7 +1278,7 @@
         "rateFrom" : 16.0,
         "rateTo" : 17.5,
         "zone" : "APPROVE",
-        "rulesVersion" : "2026-10-23.draft1",
+        "rulesVersion" : "2026-10-26.draft2",
         "asOf" : "2026-10-23"
       },
       "spots" : [ {
@@ -1336,10 +1336,10 @@
     "decision" : {
       "type" : "APPROVED",
       "decidedBy" : "SYSTEM",
-      "rulesVersion" : "2026-10-23.draft1",
+      "rulesVersion" : "2026-10-26.draft2",
       "override" : false,
       "comment" : "Правый край вилки 17.5 % ≤ порога одобрения 21.0 %",
-      "requestHash" : "06917c49a5c6addad8b8f8a626d6f976e22db29dec4f55fc1b1105bf6ae131bd",
+      "requestHash" : "bcbb58e1ce90026cf0aee219500f43c4c575c8b541dfb1de47c0186d21da2771",
       "reasonSpot" : null
     },
     "offers" : [ {
@@ -1355,7 +1355,7 @@
         "rateFrom" : 16.0,
         "rateTo" : 17.5,
         "zone" : "APPROVE",
-        "rulesVersion" : "2026-10-23.draft1",
+        "rulesVersion" : "2026-10-26.draft2",
         "asOf" : "2026-10-23"
       }
     } ],
@@ -1363,36 +1363,36 @@
       "rateFrom" : 15.0,
       "rateTo" : 24.0,
       "zone" : "UNDERWRITER",
-      "rulesVersion" : "2026-10-23.draft1",
+      "rulesVersion" : "2026-10-26.draft2",
       "asOf" : "2026-10-23"
     }, {
       "rateFrom" : 16.0,
       "rateTo" : 19.0,
       "zone" : "APPROVE",
-      "rulesVersion" : "2026-10-23.draft1",
+      "rulesVersion" : "2026-10-26.draft2",
       "asOf" : "2026-10-23"
     }, {
       "rateFrom" : 16.0,
       "rateTo" : 17.5,
       "zone" : "APPROVE",
-      "rulesVersion" : "2026-10-23.draft1",
+      "rulesVersion" : "2026-10-26.draft2",
       "asOf" : "2026-10-23"
     }, {
       "rateFrom" : 16.0,
       "rateTo" : 17.5,
       "zone" : "APPROVE",
-      "rulesVersion" : "2026-10-23.draft1",
+      "rulesVersion" : "2026-10-26.draft2",
       "asOf" : "2026-10-23"
     }, {
       "rateFrom" : 16.0,
       "rateTo" : 17.5,
       "zone" : "APPROVE",
-      "rulesVersion" : "2026-10-23.draft1",
+      "rulesVersion" : "2026-10-26.draft2",
       "asOf" : "2026-10-23"
     } ],
     "verify" : {
       "reproducible" : true,
-      "requestHash" : "06917c49a5c6addad8b8f8a626d6f976e22db29dec4f55fc1b1105bf6ae131bd",
+      "requestHash" : "bcbb58e1ce90026cf0aee219500f43c4c575c8b541dfb1de47c0186d21da2771",
       "diff" : [ ]
     }
   },
@@ -1404,7 +1404,7 @@
         "rateFrom" : 17.0,
         "rateTo" : 26.0,
         "zone" : "UNDERWRITER",
-        "rulesVersion" : "2026-10-23.draft1",
+        "rulesVersion" : "2026-10-26.draft2",
         "asOf" : "2026-10-23"
       },
       "spots" : [ {
@@ -1429,7 +1429,7 @@
         "rateFrom" : 17.0,
         "rateTo" : 26.0,
         "zone" : "UNDERWRITER",
-        "rulesVersion" : "2026-10-23.draft1",
+        "rulesVersion" : "2026-10-26.draft2",
         "asOf" : "2026-10-23"
       },
       "spots" : [ {
@@ -1451,10 +1451,10 @@
     "decision" : {
       "type" : "REJECTED",
       "decidedBy" : "SYSTEM",
-      "rulesVersion" : "2026-10-23.draft1",
+      "rulesVersion" : "2026-10-26.draft2",
       "override" : false,
       "comment" : "Неустранимый стоп-фактор: Директор назначен меньше 3 месяцев назад",
-      "requestHash" : "2cc36fd3e5ab452bd89b023d893cfe46069306ea7fdc51fe5862f055a7d663f3",
+      "requestHash" : "34cecdc8954771e1b29ea5e48b69aa5849bef9dc5bef614ebcc48b44ec459f04",
       "reasonSpot" : "Директор назначен меньше 3 месяцев назад"
     },
     "offers" : [ ],
@@ -1462,18 +1462,18 @@
       "rateFrom" : 17.0,
       "rateTo" : 26.0,
       "zone" : "UNDERWRITER",
-      "rulesVersion" : "2026-10-23.draft1",
+      "rulesVersion" : "2026-10-26.draft2",
       "asOf" : "2026-10-23"
     }, {
       "rateFrom" : 17.0,
       "rateTo" : 26.0,
       "zone" : "UNDERWRITER",
-      "rulesVersion" : "2026-10-23.draft1",
+      "rulesVersion" : "2026-10-26.draft2",
       "asOf" : "2026-10-23"
     } ],
     "verify" : {
       "reproducible" : true,
-      "requestHash" : "2cc36fd3e5ab452bd89b023d893cfe46069306ea7fdc51fe5862f055a7d663f3",
+      "requestHash" : "34cecdc8954771e1b29ea5e48b69aa5849bef9dc5bef614ebcc48b44ec459f04",
       "diff" : [ ]
     }
   }

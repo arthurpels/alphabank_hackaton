@@ -17,5 +17,6 @@ public record ForkDto(
         LocalDate asOf,
         OffsetDateTime calculatedAt,
         List<ForkFactorDto> factors,
+        long existingPayment,
         Boolean reproducible) {
 }

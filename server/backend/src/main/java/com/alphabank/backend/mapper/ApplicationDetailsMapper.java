@@ -83,7 +83,20 @@ public class ApplicationDetailsMapper {
                 fork.rejectMin() == null ? 0 : fork.rejectMin());
         return new ForkDto(fork.id(), fork.rateFrom(), fork.rateTo(),
                 ForkZoneResolver.resolve(fork.rateFrom(), fork.rateTo(), thresholds), thresholds,
-                fork.rulesVersion(), fork.asOf(), fork.calculatedAt(), factors(fork, spots), fork.reproducible());
+                fork.rulesVersion(), fork.asOf(), fork.calculatedAt(), factors(fork, spots), existingPayment(fork),
+                fork.reproducible());
+    }
+
+    private long existingPayment(ForkSnapshotRecord fork) {
+        if (fork.trace() == null || fork.trace().scoreResponse() == null) {
+            return 0L;
+        }
+        try {
+            return objectMapper.readValue(fork.trace().scoreResponse(), ScoreResponse.class).policy()
+                    .existingPayment();
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Некорректный ответ скоринга в снимке вилки", e);
+        }
     }
 
     private List<ForkFactorDto> factors(ForkSnapshotRecord fork, List<SpotRecord> spots) {
