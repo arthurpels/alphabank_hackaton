@@ -62,6 +62,7 @@ export interface ApplicationDetails {
     product: { name: string; code?: ProductCode };
     amount: number;
     termMonths: number;
+    goal?: string;
   };
   fork: Fork | null;
   spots: Spot[];

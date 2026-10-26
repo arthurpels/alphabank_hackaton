@@ -12,9 +12,9 @@ import type { CollateralType, SourceCode, Spot, SpotCloseRequest } from '../type
 import { WAIT_TEXT } from '../verdictLabels';
 import './CloseSpotDialog.css';
 
-// окно закрытия пятна (T37) поля — по описанию closeSpot в docs/openapi.yaml
 type Props = {
   spot: Spot;
+  initialText?: string;
   onDismiss: () => void;
   onSubmit: (body: SpotCloseRequest, file?: File) => Promise<string | null>;
 };
@@ -46,12 +46,12 @@ const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
 const digits = (v: string) => v.replace(/\D/g, '');
 const OTHER_OPTION = '__text';
 
-export function CloseSpotDialog({ spot, onDismiss, onSubmit }: Props) {
+export function CloseSpotDialog({ spot, initialText, onDismiss, onSubmit }: Props) {
   const method = spot.closeMethod;
   const [consent, setConsent] = useState(false);
   const [source, setSource] = useState<SourceCode | ''>(spot.source ?? '');
   const [option, setOption] = useState('');
-  const [text, setText] = useState('');
+  const [text, setText] = useState(spot.lastAnswer?.text ?? initialText ?? '');
   const [file, setFile] = useState<File | null>(null);
   const [amount, setAmount] = useState('');
   const [term, setTerm] = useState('');

@@ -317,6 +317,7 @@ export default function ApplicationPage() {
       {dialogSpot && (
         <CloseSpotDialog
           spot={dialogSpot}
+          initialText={dialogSpot.scoringFactor === 'purpose' ? application.goal : undefined}
           onDismiss={() => setDialogSpot(null)}
           onSubmit={(b, file) => submitClose(dialogSpot, b, file)}
         />

@@ -385,6 +385,7 @@ export const mockApi: Api = {
       product: { name: product?.name ?? state.application.product.name },
       amount: body.amount,
       termMonths: body.termMonths,
+      goal: body.goal,
     };
     setStatus('DRAFT');
     createdAt = nowIso();
