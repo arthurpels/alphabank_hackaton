@@ -254,7 +254,7 @@ cd server/backend && mvn test -Dtest=PersonaGoldenMasterTest -Dgolden.update=tru
 | | |
 |---|---|
 | Тег | `main` |
-| Commit | `<commit-hash>` |
+| Commit | `b4344e9` |
 
 ## 10. Карта документации
 
