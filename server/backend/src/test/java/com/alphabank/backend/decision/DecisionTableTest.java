@@ -95,11 +95,12 @@ class DecisionTableTest {
                 NOW, NOW, null);
         ProductRecord product = mock(ProductRecord.class);
         ScoreRequest request = new ScoreRequest(LocalDate.of(2026, 10, 23), productCode, 100_000_000L, 12, "ACTIVE",
-                LocalDate.of(2020, 1, 1), LocalDate.of(2020, 1, 1), false, 700, 0, 0, 0L, 0, null, null, null, null);
-        ScoreResponse score = new ScoreResponse("2026-10-23.draft1", productCode, input.get("rateFrom").asDouble(),
+                LocalDate.of(2020, 1, 1), LocalDate.of(2020, 1, 1), false, 700, 0, 0, 0L, 0, null, null, null, null, 0L,
+                List.of());
+        ScoreResponse score = new ScoreResponse("2026-10-26.draft2", productCode, input.get("rateFrom").asDouble(),
                 input.get("rateTo").asDouble(),
                 new Thresholds(input.get("approveMax").asDouble(), input.get("rejectMin").asDouble()), List.of(),
-                List.of(), new Policy(null, null, null, true, input.get("policyOk").asBoolean()),
+                List.of(), new Policy(null, null, null, 0L, true, input.get("policyOk").asBoolean()),
                 input.get("policyOk").asBoolean() && input.get("rateTo").asDouble() <= input.get("approveMax")
                         .asDouble());
         ForkSnapshotRecord snapshot = new ForkSnapshotRecord(UUID.randomUUID(), applicationId, score.rateFrom(),

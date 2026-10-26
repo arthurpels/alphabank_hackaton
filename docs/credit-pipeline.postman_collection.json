@@ -1812,6 +1812,350 @@
       "description": "Сценарий TS-03."
     },
     {
+      "name": "TS-05 · ООО «Техснаб»: подача без погашения",
+      "item": [
+        {
+          "name": "Сбросить состояние моков",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{mocksUrl}}/mock/reset",
+              "host": [
+                "{{mocksUrl}}"
+              ],
+              "path": [
+                "mock",
+                "reset"
+              ]
+            },
+            "description": "Возвращает долг ФНС у ООО «Техснаб» после предыдущих прогонов."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Создать заявку",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_techsnab}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productCode\": \"WORKING_CAPITAL\",\n  \"amount\": 80000000,\n  \"termMonths\": 12,\n  \"goal\": \"закупка запчастей для перепродажи\",\n  \"consents\": {\n    \"bki\": true,\n    \"personalData\": true\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+                  "pm.test('статус заявки DRAFT', function () { pm.expect(pm.response.json().application.status).to.eql('DRAFT'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Рассчитать",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_techsnab}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/evaluate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "evaluate"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('статус заявки COLLECTING', function () { pm.expect(pm.response.json().application.status).to.eql('COLLECTING'); });",
+                  "pm.test('вилка 15–24 %', function () { const f = pm.response.json().fork; pm.expect(f.rateFrom).to.eql(15); pm.expect(f.rateTo).to.eql(24); });",
+                  "pm.test('открытых пятен: 5', function () { const s = pm.response.json().spots.filter(x => x.status !== 'CLOSED'); pm.expect(s.length).to.eql(5); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Подключить эквайринг",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_techsnab}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/spots/{{spot_debt_load}}/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "spots",
+                "{{spot_debt_load}}",
+                "close"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"CONNECT_SOURCE\",\n  \"sourceCode\": \"ACQUIRING\",\n  \"consent\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Описать цель",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_techsnab}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/spots/{{spot_purpose}}/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "spots",
+                "{{spot_purpose}}",
+                "close"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"ANSWER\",\n  \"text\": \"закупка запчастей для перепродажи\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('вилка 16–17.5 %', function () { const f = pm.response.json().fork; pm.expect(f.rateFrom).to.eql(16); pm.expect(f.rateTo).to.eql(17.5); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Отправить заявку",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_techsnab}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/submit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "submit"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('статус заявки REJECTED', function () { pm.expect(pm.response.json().application.status).to.eql('REJECTED'); });",
+                  "pm.test('решение принял SYSTEM', function () { pm.expect(pm.response.json().decision.decidedBy).to.eql('SYSTEM'); });",
+                  "pm.test('причина — долг в ФНС', function () { pm.expect(pm.response.json().decision.reasonSpotId).to.eql(pm.collectionVariables.get('spot_stop')); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Детерминизм · карточка",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_techsnab}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Детерминизм · история вилки",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_techsnab}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/fork-history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "fork-history"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Детерминизм · verify",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_techsnab}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/fork/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "fork",
+                "verify"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "const verify = pm.response.json();",
+                  "pm.test('последний снимок вилки воспроизводим (M06)', function () { pm.expect(verify.reproducible).to.eql(true); });",
+                  "pm.test('расхождений нет', function () { pm.expect(verify.diff).to.eql([]); });"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Сценарий TS-05."
+    },
+    {
       "name": "TS-04 · ООО «Техснаб»: погашение долга и автоодобрение",
       "item": [
         {
@@ -2279,350 +2623,6 @@
       "description": "Сценарий TS-04."
     },
     {
-      "name": "TS-05 · ООО «Техснаб»: подача без погашения",
-      "item": [
-        {
-          "name": "Сбросить состояние моков",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{mocksUrl}}/mock/reset",
-              "host": [
-                "{{mocksUrl}}"
-              ],
-              "path": [
-                "mock",
-                "reset"
-              ]
-            },
-            "description": "Возвращает долг ФНС у ООО «Техснаб» после предыдущих прогонов."
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Создать заявку",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-Demo-User",
-                "value": "{{user_techsnab}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/applications",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "applications"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"productCode\": \"WORKING_CAPITAL\",\n  \"amount\": 80000000,\n  \"termMonths\": 12,\n  \"goal\": \"закупка запчастей для перепродажи\",\n  \"consents\": {\n    \"bki\": true,\n    \"personalData\": true\n  }\n}"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
-                  "pm.test('статус заявки DRAFT', function () { pm.expect(pm.response.json().application.status).to.eql('DRAFT'); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Рассчитать",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-Demo-User",
-                "value": "{{user_techsnab}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/applications/{{appId}}/evaluate",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "applications",
-                "{{appId}}",
-                "evaluate"
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('статус заявки COLLECTING', function () { pm.expect(pm.response.json().application.status).to.eql('COLLECTING'); });",
-                  "pm.test('вилка 15–24 %', function () { const f = pm.response.json().fork; pm.expect(f.rateFrom).to.eql(15); pm.expect(f.rateTo).to.eql(24); });",
-                  "pm.test('открытых пятен: 5', function () { const s = pm.response.json().spots.filter(x => x.status !== 'CLOSED'); pm.expect(s.length).to.eql(5); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Подключить эквайринг",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-Demo-User",
-                "value": "{{user_techsnab}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/applications/{{appId}}/spots/{{spot_debt_load}}/close",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "applications",
-                "{{appId}}",
-                "spots",
-                "{{spot_debt_load}}",
-                "close"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"method\": \"CONNECT_SOURCE\",\n  \"sourceCode\": \"ACQUIRING\",\n  \"consent\": true\n}"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Описать цель",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-Demo-User",
-                "value": "{{user_techsnab}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/applications/{{appId}}/spots/{{spot_purpose}}/close",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "applications",
-                "{{appId}}",
-                "spots",
-                "{{spot_purpose}}",
-                "close"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"method\": \"ANSWER\",\n  \"text\": \"закупка запчастей для перепродажи\"\n}"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('вилка 16–17.5 %', function () { const f = pm.response.json().fork; pm.expect(f.rateFrom).to.eql(16); pm.expect(f.rateTo).to.eql(17.5); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Отправить заявку",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-Demo-User",
-                "value": "{{user_techsnab}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/applications/{{appId}}/submit",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "applications",
-                "{{appId}}",
-                "submit"
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('статус заявки REJECTED', function () { pm.expect(pm.response.json().application.status).to.eql('REJECTED'); });",
-                  "pm.test('решение принял SYSTEM', function () { pm.expect(pm.response.json().decision.decidedBy).to.eql('SYSTEM'); });",
-                  "pm.test('причина — долг в ФНС', function () { pm.expect(pm.response.json().decision.reasonSpotId).to.eql(pm.collectionVariables.get('spot_stop')); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Детерминизм · карточка",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-Demo-User",
-                "value": "{{user_techsnab}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/applications/{{appId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "applications",
-                "{{appId}}"
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Детерминизм · история вилки",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "X-Demo-User",
-                "value": "{{user_techsnab}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/applications/{{appId}}/fork-history",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "applications",
-                "{{appId}}",
-                "fork-history"
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Детерминизм · verify",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "X-Demo-User",
-                "value": "{{user_techsnab}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/applications/{{appId}}/fork/verify",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "applications",
-                "{{appId}}",
-                "fork",
-                "verify"
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
-                  "const verify = pm.response.json();",
-                  "pm.test('последний снимок вилки воспроизводим (M06)', function () { pm.expect(verify.reproducible).to.eql(true); });",
-                  "pm.test('расхождений нет', function () { pm.expect(verify.diff).to.eql([]); });"
-                ]
-              }
-            }
-          ]
-        }
-      ],
-      "description": "Сценарий TS-05."
-    },
-    {
       "name": "TS-06 · ООО «Однодневка»: неустранимые стоп-факторы",
       "item": [
         {
@@ -3009,6 +3009,369 @@
         }
       ],
       "description": "Сценарий TS-07."
+    },
+    {
+      "name": "TS-08 · ООО «Кофейня»: повторная заявка после выдачи",
+      "description": "Сценарий TS-08 из test-scenarios.md. Выполняется после TS-01: платёж по выданному кредиту входит в нагрузку.",
+      "item": [
+        {
+          "name": "Создать заявку",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_coffee}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productCode\": \"EQUIPMENT\",\n  \"amount\": 200000000,\n  \"termMonths\": 36,\n  \"goal\": \"2 кофемашины и витрина для второй точки\",\n  \"consents\": {\n    \"bki\": true,\n    \"personalData\": true\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', function () { pm.response.to.have.status(201); });",
+                  "pm.test('статус заявки DRAFT', function () { pm.expect(pm.response.json().application.status).to.eql('DRAFT'); });",
+                  "pm.collectionVariables.set('app_coffee', pm.response.json().application.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Рассчитать",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_coffee}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/evaluate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "evaluate"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('статус заявки COLLECTING', function () { pm.expect(pm.response.json().application.status).to.eql('COLLECTING'); });",
+                  "pm.test('вилка 17–26 %', function () { const f = pm.response.json().fork; pm.expect(f.rateFrom).to.eql(17); pm.expect(f.rateTo).to.eql(26); });",
+                  "pm.test('учтён платёж по выданному кредиту: 7381862', function () { pm.expect(pm.response.json().fork.existingPayment).to.eql(7381862); });",
+                  "pm.test('открытых пятен: 4', function () { const s = pm.response.json().spots.filter(x => x.status !== 'CLOSED'); pm.expect(s.length).to.eql(4); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Подключить ОФД",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_coffee}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/spots/{{spot_debt_load}}/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "spots",
+                "{{spot_debt_load}}",
+                "close"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"CONNECT_SOURCE\",\n  \"sourceCode\": \"OFD\",\n  \"consent\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('вилка 19–24.5 %', function () { const f = pm.response.json().fork; pm.expect(f.rateFrom).to.eql(19); pm.expect(f.rateTo).to.eql(24.5); });",
+                  "pm.test('появилось пятно про март', function () { pm.expect(pm.response.json().spots.some(s => s.type === 'ANOMALY' && s.status === 'OPEN')).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ответить про март: ремонт",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_coffee}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/spots/{{spot_anomaly}}/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "spots",
+                "{{spot_anomaly}}",
+                "close"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"ANSWER\",\n  \"optionCode\": \"RENOVATION\",\n  \"text\": \"Точка закрывалась на 2 недели\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('вилка 19–22 %', function () { const f = pm.response.json().fork; pm.expect(f.rateFrom).to.eql(19); pm.expect(f.rateTo).to.eql(22); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Описать цель",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_coffee}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/spots/{{spot_purpose}}/close",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "spots",
+                "{{spot_purpose}}",
+                "close"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": \"ANSWER\",\n  \"text\": \"2 кофемашины и витрина\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('вилка 19–20.5 %', function () { const f = pm.response.json().fork; pm.expect(f.rateFrom).to.eql(19); pm.expect(f.rateTo).to.eql(20.5); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Отправить заявку",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_coffee}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/submit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "submit"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('статус заявки UNDERWRITING', function () { pm.expect(pm.response.json().application.status).to.eql('UNDERWRITING'); });",
+                  "pm.test('автоматического решения нет', function () { pm.expect(pm.response.json().decision == null).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Детерминизм · карточка",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_coffee}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Детерминизм · история вилки",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_coffee}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/fork-history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "fork-history"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Детерминизм · verify",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Demo-User",
+                "value": "{{user_coffee}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{appId}}/fork/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{appId}}",
+                "fork",
+                "verify"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', function () { pm.response.to.have.status(200); });",
+                  "const verify = pm.response.json();",
+                  "pm.test('последний снимок вилки воспроизводим (M06)', function () { pm.expect(verify.reproducible).to.eql(true); });",
+                  "pm.test('расхождений нет', function () { pm.expect(verify.diff).to.eql([]); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     },
     {
       "name": "ML · детерминизм",

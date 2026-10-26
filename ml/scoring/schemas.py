@@ -35,6 +35,11 @@ class Collateral(str, Enum):
     DECLINED = "DECLINED"
 
 
+class BkiCredit(CamelModel):
+    type: str
+    debt: int = Field(ge=0)
+
+
 class ScoreRequest(CamelModel):
     as_of: date
     product_code: ProductCode
@@ -53,6 +58,8 @@ class ScoreRequest(CamelModel):
     stability: Stability | None = None
     purpose: Purpose | None = None
     collateral: Collateral | None = None
+    bank_payment: int = Field(default=0, ge=0)
+    bki_credits: list[BkiCredit] = Field(default_factory=list)
 
 
 class Thresholds(CamelModel):
@@ -81,6 +88,7 @@ class Policy(CamelModel):
     metric: str | None = None
     value: float | None = None
     cap: float | None = None
+    existing_payment: int = 0
     amount_in_range: bool
     ok: bool
 
@@ -201,6 +209,8 @@ class SummaryRequest(CamelModel):
     approve_max: float
     spots: list[SummarySpot] = Field(default_factory=list, max_length=50)
     facts: list[FactRef] = Field(default_factory=list, max_length=50)
+    existing_payment: int = Field(default=0, ge=0)
+    bank_payment: int = Field(default=0, ge=0)
 
 
 class SummaryItem(CamelModel):

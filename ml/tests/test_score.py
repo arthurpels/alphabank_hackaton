@@ -5,7 +5,7 @@ import yaml
 
 from main import BASE_DIR, RULES_PATH
 from scoring.conditions import Condition, ConditionError
-from scoring.engine import Engine, RulesError
+from scoring.engine import Engine, RulesError, annuity_payment
 from scoring.schemas import ScoreRequest
 from scoring.version import ENGINE_FILES, engine_version
 from tests.contract import SCORE_EXAMPLES as CONTRACT_EXAMPLES
@@ -91,7 +91,14 @@ def test_open_anomaly_keeps_stability_unknown() -> None:
 
 def test_overdraft_uses_limit_share_and_skips_purpose_and_collateral() -> None:
     body = _post(_request("wb", productCode="OVERDRAFT", amount=12_000_000, termMonths=12))
-    assert body["policy"] == {"metric": "LIMIT_SHARE", "value": 0.3, "cap": 0.3, "amountInRange": True, "ok": True}
+    assert body["policy"] == {
+        "metric": "LIMIT_SHARE",
+        "value": 0.3,
+        "cap": 0.3,
+        "existingPayment": 0,
+        "amountInRange": True,
+        "ok": True,
+    }
     for code in ("purpose", "collateral"):
         factor = _factor(body, code)
         assert (factor["applicable"], factor["known"], factor["value"], factor["spotPricePp"]) == (
@@ -164,3 +171,82 @@ def test_engine_version_changes_with_rules(tmp_path) -> None:
     rules.write_text(rules.read_text(encoding="utf-8") + "\n# правка\n", encoding="utf-8")
     assert engine_version(tmp_path) != before
     assert before == engine_version(BASE_DIR)
+
+
+def test_request_without_obligations_equals_request_with_zero_obligations() -> None:
+    plain = _request("coffee")
+    explicit = _request("coffee", bankPayment=0, bkiCredits=[])
+    assert _post(plain) == _post(explicit)
+    assert _post(plain)["policy"]["existingPayment"] == 0
+
+
+def test_bank_payment_is_added_to_the_new_payment_in_load() -> None:
+    base = _post(_request("coffee"))
+    revenue = _request("coffee")["monthlyRevenue"]
+    loaded = _post(_request("coffee", bankPayment=5_000_000))
+    assert loaded["policy"]["existingPayment"] == 5_000_000
+    assert loaded["policy"]["value"] == pytest.approx(base["policy"]["value"] + 5_000_000 / revenue, abs=0.0011)
+
+
+@pytest.mark.parametrize(
+    ("credit", "expected"),
+    [
+        ({"type": "LOAN", "debt": 15_000_000}, round(annuity_payment(15_000_000, 36, 20))),
+        ({"type": "LEASING", "debt": 15_000_000}, round(annuity_payment(15_000_000, 36, 20))),
+        ({"type": "CREDIT_CARD", "debt": 4_000_000}, 200_000),
+        ({"type": "OVERDRAFT", "debt": 10_000_000}, 500_000),
+        ({"type": "LOAN", "debt": 0}, 0),
+        ({"type": "OVERDRAFT", "debt": 0}, 0),
+    ],
+)
+def test_bki_credit_payment_is_estimated_by_rules(credit: dict, expected: int) -> None:
+    body = _post(_request("wb", bkiCredits=[credit]))
+    assert body["policy"]["existingPayment"] == expected
+
+
+def test_bki_credits_and_bank_payment_are_summed() -> None:
+    credits = [{"type": "CREDIT_CARD", "debt": 4_000_000}, {"type": "OVERDRAFT", "debt": 10_000_000}]
+    body = _post(_request("wb", bankPayment=1_000_000, bkiCredits=credits))
+    assert body["policy"]["existingPayment"] == 1_000_000 + 200_000 + 500_000
+
+
+def test_existing_payments_can_break_the_policy_cap() -> None:
+    before = _post(_request("fns"))
+    assert before["policy"]["ok"] and before["policy"]["value"] < before["policy"]["cap"]
+    after = _post(_request("fns", bankPayment=40_000_000))
+    assert not after["policy"]["ok"] and after["passes"] is False
+
+
+def test_existing_payments_can_move_load_to_a_worse_band() -> None:
+    base = _post(_request("fns"))
+    loaded = _post(_request("fns", bankPayment=9_000_000))
+    assert _factor(loaded, "debt_load")["value"] > _factor(base, "debt_load")["value"]
+    assert loaded["rateTo"] > base["rateTo"]
+
+
+def test_overdraft_ignores_existing_payments() -> None:
+    plain = _post(_request("wb", productCode="OVERDRAFT", amount=12_000_000, termMonths=12))
+    loaded = _post(
+        _request(
+            "wb",
+            productCode="OVERDRAFT",
+            amount=12_000_000,
+            termMonths=12,
+            bankPayment=5_000_000,
+            bkiCredits=[{"type": "LOAN", "debt": 15_000_000}],
+        )
+    )
+    assert loaded == plain
+
+
+def test_existing_payments_do_not_matter_while_revenue_is_unknown() -> None:
+    plain = _post(_request("builder"))
+    loaded = _post(_request("builder", bankPayment=5_000_000))
+    assert (loaded["rateFrom"], loaded["rateTo"]) == (plain["rateFrom"], plain["rateTo"])
+    assert loaded["policy"]["value"] is None
+    assert loaded["policy"]["existingPayment"] == plain["policy"]["existingPayment"] + 5_000_000
+
+
+@pytest.mark.parametrize("payload", [{"bankPayment": -1}, {"bkiCredits": [{"type": "LOAN", "debt": -1}]}])
+def test_negative_obligations_are_rejected(payload: dict) -> None:
+    assert client.post("/score", json=_request("coffee", **payload)).status_code == 422

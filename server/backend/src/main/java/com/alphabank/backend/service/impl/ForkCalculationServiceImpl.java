@@ -33,6 +33,7 @@ import com.alphabank.backend.scoringclient.dto.Factor;
 import com.alphabank.backend.scoringclient.dto.ScoreRequest;
 import com.alphabank.backend.scoringclient.dto.ScoreResponse;
 import com.alphabank.backend.service.FactorStateService;
+import com.alphabank.backend.service.ExistingObligationsService;
 import com.alphabank.backend.service.ForkCalculationService;
 import com.alphabank.backend.service.ForkSnapshotService;
 
@@ -48,6 +49,7 @@ public class ForkCalculationServiceImpl implements ForkCalculationService {
     private final SpotRepository spotRepository;
     private final SpotAnswerRepository spotAnswerRepository;
     private final OfferRepository offerRepository;
+    private final ExistingObligationsService existingObligationsService;
     private final Clock clock;
     private final LocalDate demoDate;
 
@@ -56,7 +58,8 @@ public class ForkCalculationServiceImpl implements ForkCalculationService {
                                       FactorStateService factorStateService, ScoringClient scoringClient,
                                       ForkSnapshotService forkSnapshotService, SpotRepository spotRepository,
                                       SpotAnswerRepository spotAnswerRepository, OfferRepository offerRepository,
-                                      Clock clock, @Value("${app.demo-date}") LocalDate demoDate) {
+                                      ExistingObligationsService existingObligationsService, Clock clock,
+                                      @Value("${app.demo-date}") LocalDate demoDate) {
         this.enrichmentService = enrichmentService;
         this.applicationRepository = applicationRepository;
         this.applicationSourceRepository = applicationSourceRepository;
@@ -66,6 +69,7 @@ public class ForkCalculationServiceImpl implements ForkCalculationService {
         this.spotRepository = spotRepository;
         this.spotAnswerRepository = spotAnswerRepository;
         this.offerRepository = offerRepository;
+        this.existingObligationsService = existingObligationsService;
         this.clock = clock;
         this.demoDate = demoDate;
     }
@@ -88,7 +92,8 @@ public class ForkCalculationServiceImpl implements ForkCalculationService {
                 .orElse(null);
         FactorStates states = factorStateService.resolve(application.id(), revenue != null, sourceRevenue == null);
         ScoreRequest request = enrichmentService.createScoreRequest(enrichment, product.code(), application.amount(),
-                application.termMonths(), revenue, states.stability(), states.purpose(), states.collateral());
+                application.termMonths(), revenue, states.stability(), states.purpose(), states.collateral(),
+                existingObligationsService.bankMonthlyPayment(application, asOf));
         return new ForkCalculation(enrichment, request, scoringClient.score(request));
     }
 

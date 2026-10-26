@@ -53,6 +53,12 @@ def _number(value: float) -> str:
     return f"{value:.1f}".replace(".", ",")
 
 
+def _rubles(kopecks: int) -> str:
+    whole, rest = divmod(kopecks, 100)
+    text = f"{whole:,}".replace(",", " ")
+    return f"{text},{rest:02d} ₽" if rest else f"{text} ₽"
+
+
 def _fact_id(index: int) -> str:
     return f"F{index + 1}"
 
@@ -69,7 +75,7 @@ class Summarizer:
             result = self._llm_items(request)
             if result is not None:
                 items, meta = result
-                return UnderwritingSummary(generated_by="LLM", items=items, llm=meta)
+                return UnderwritingSummary(generated_by="LLM", items=self._with_existing(items, request), llm=meta)
         return UnderwritingSummary(generated_by="TEMPLATE", items=self._template_items(request))
 
     def _llm_items(self, request: SummaryRequest) -> tuple[list[SummaryItem], LlmMeta] | None:
@@ -117,12 +123,12 @@ class Summarizer:
         )
 
     def _template_items(self, request: SummaryRequest) -> list[SummaryItem]:
-        items = [SummaryItem(text=self._fork_text(request), facts=[])]
+        items = self._with_existing([SummaryItem(text=self._fork_text(request), facts=[])], request)
         open_spots = sorted(
             (spot for spot in request.spots if spot.status != SpotStatus.CLOSED),
             key=lambda spot: (-(spot.price_pp or 0), spot.title),
         )
-        for spot in open_spots[: MAX_ITEMS - 1]:
+        for spot in open_spots[: MAX_ITEMS - len(items)]:
             items.append(
                 SummaryItem(
                     text=self._spot_text(spot),
@@ -140,6 +146,23 @@ class Summarizer:
             title = SOURCE_TITLES.get(source, source)
             items.append(SummaryItem(text=f"{title}: {'; '.join(fact.label for fact in facts)}.", facts=facts))
         return items
+
+    def _with_existing(self, items: list[SummaryItem], request: SummaryRequest) -> list[SummaryItem]:
+        if request.existing_payment <= 0:
+            return items
+        return [*items[:1], SummaryItem(text=self._existing_text(request), facts=[]), *items[1:]][:MAX_ITEMS]
+
+    def _existing_text(self, request: SummaryRequest) -> str:
+        bki = max(request.existing_payment - request.bank_payment, 0)
+        parts = []
+        if request.bank_payment > 0:
+            parts.append(f"договоры нашего банка {_rubles(request.bank_payment)}")
+        if bki > 0:
+            parts.append(f"кредиты в БКИ по условной оценке {_rubles(bki)}")
+        return (
+            f"Действующие платежи по кредитам: {_rubles(request.existing_payment)} в месяц "
+            f"({', '.join(parts)}) — учитываются в долговой нагрузке."
+        )
 
     def _fork_text(self, request: SummaryRequest) -> str:
         fork = f"Вилка {_number(request.rate_from)}–{_number(request.rate_to)} %"

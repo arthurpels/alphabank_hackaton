@@ -89,3 +89,25 @@ def test_other_products_never_offer_guarantee_for_overdraft() -> None:
 
 def test_grid_rejects_invalid_request() -> None:
     assert client.post("/offers/grid", json=persona_request("wb", amount=0)).status_code == 422
+
+
+def test_grid_cuts_the_amount_when_existing_payments_take_the_load() -> None:
+    request = persona_request("builder", monthlyRevenue=80_000_000, stability="DOCUMENT")
+    plain = _grid(request)
+    loaded = _grid({**request, "bankPayment": 1_000_000})
+    assert plain and loaded
+    assert loaded[0]["amount"] < plain[0]["amount"]
+    for offer in loaded:
+        assert offer["policy"]["existingPayment"] == 1_000_000 + 557_454
+        assert offer["policy"]["ok"]
+
+
+def test_grid_is_empty_when_existing_payments_alone_exceed_the_cap() -> None:
+    request = persona_request("builder", monthlyRevenue=80_000_000, stability="DOCUMENT")
+    offers = _grid({**request, "bankPayment": 100_000_000})
+    assert [offer for offer in offers if offer["productCode"] != "OVERDRAFT"] == []
+
+
+def test_grid_is_deterministic_with_obligations() -> None:
+    request = persona_request("wb", bankPayment=2_000_000, bkiCredits=[{"type": "CREDIT_CARD", "debt": 4_000_000}])
+    assert _grid(request) == _grid(request)

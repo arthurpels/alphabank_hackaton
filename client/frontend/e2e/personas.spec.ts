@@ -12,7 +12,7 @@ import {
   loginAsClient,
   paySpot,
   readFork,
-  resetMocks,
+  resetDemo,
   submitApplication,
   uploadDocument,
   type Fork,
@@ -262,10 +262,10 @@ const scenarios: Scenario[] = [
 ];
 
 for (const scenario of scenarios) {
-  test(scenario.name, async ({ context, request }) => {
+  test(scenario.name, async ({ context }) => {
     const traces: Trace[] = [];
     for (let run = 1; run <= 2; run += 1) {
-      await resetMocks(request);
+      resetDemo();
       const page = await context.newPage();
       traces.push(await test.step(`прогон ${run}`, () => scenario.run(page, context)));
       await page.close();

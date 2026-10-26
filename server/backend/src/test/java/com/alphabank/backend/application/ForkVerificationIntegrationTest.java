@@ -81,7 +81,7 @@ class ForkVerificationIntegrationTest {
                 .andExpect(jsonPath("$.snapshotId").value(snapshotId))
                 .andExpect(jsonPath("$.reproducible").value(true))
                 .andExpect(jsonPath("$.diff").isEmpty())
-                .andExpect(jsonPath("$.rulesVersion").value("2026-10-23.draft1"))
+                .andExpect(jsonPath("$.rulesVersion").value("2026-10-26.draft2"))
                 .andExpect(jsonPath("$.engineVersion").value(FakeExternalServicesConfig.ENGINE_VERSION))
                 .andExpect(jsonPath("$.currentEngineVersion").value(FakeExternalServicesConfig.ENGINE_VERSION));
 
@@ -91,7 +91,8 @@ class ForkVerificationIntegrationTest {
 
         String request = column("score_request", snapshotId);
         assertThat(column("request_hash", snapshotId)).isEqualTo(canonicalJson.sha256(request)).hasSize(64);
-        assertThat(request).startsWith("{\"amount\":200000000,\"asOf\":\"2026-10-23\",\"bkiCurrentOverdue\":0");
+        assertThat(request).startsWith("{\"amount\":200000000,\"asOf\":\"2026-10-23\",\"bankPayment\":0,"
+                + "\"bkiCredits\":[],\"bkiCurrentOverdue\":0");
     }
 
     @Test

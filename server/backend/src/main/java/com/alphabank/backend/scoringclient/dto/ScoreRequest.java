@@ -1,6 +1,7 @@
 package com.alphabank.backend.scoringclient.dto;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import com.alphabank.backend.enums.ProductCode;
 import com.alphabank.backend.scoringclient.enums.Collateral;
@@ -24,5 +25,7 @@ public record ScoreRequest(
         Long monthlyRevenue,
         Stability stability,
         Purpose purpose,
-        Collateral collateral) {
+        Collateral collateral,
+        long bankPayment,
+        List<BkiCredit> bkiCredits) {
 }

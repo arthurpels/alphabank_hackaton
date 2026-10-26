@@ -1,7 +1,7 @@
 import type { RulesResponse } from '../types';
 
 export const mockRules: RulesResponse = {
-  rulesVersion: '2026-10-23.draft1',
+  rulesVersion: '2026-10-26.draft2',
   calcRatePct: 20,
   products: [
     { code: 'EQUIPMENT', name: 'Кредит на оборудование', baseRate: 22, thresholds: { approveMax: 20, rejectMin: 24 }, amount: { min: 30000000, max: 1000000000 }, terms: [12, 24, 36], policy: { metric: 'PTI', cap: 0.3 }, skipFactors: [] },

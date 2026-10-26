@@ -41,6 +41,11 @@ class IssuanceIntegrationTest {
             {"productCode":"EQUIPMENT","amount":200000000,"termMonths":36,"goal":"витрина",
              "consents":{"bki":true,"personalData":true}}
             """;
+    private static final long COFFEE_LOAN_PAYMENT = 7381862L;
+    private static final String BUILDER_REQUEST = """
+            {"productCode":"WORKING_CAPITAL","amount":300000000,"termMonths":12,
+             "goal":"закупка материалов под договор подряда","consents":{"bki":true,"personalData":true}}
+            """;
     private static final String BIG_REQUEST = """
             {"productCode":"EQUIPMENT","amount":800000000,"termMonths":36,"goal":"витрина",
              "consents":{"bki":true,"personalData":true}}
@@ -174,6 +179,75 @@ class IssuanceIntegrationTest {
         String id = approvedCoffee();
         accept(id, JsonPath.read(details(id), "$.offers[0].id"));
         cancel(id, "{}").andExpect(status().isConflict());
+    }
+
+    @Test
+    void issuedLoanPaymentIsPassedToScoringOfNextApplication() throws Exception {
+        String first = issuedCoffee();
+
+        String second = evaluated(COFFEE_REQUEST);
+
+        mvc.perform(get(API + "/" + second).header(DemoUserAuthFilter.HEADER, COFFEE))
+                .andExpect(jsonPath("$.fork.existingPayment").value(COFFEE_LOAN_PAYMENT));
+        mvc.perform(post(API + "/" + second + "/fork/verify").header(DemoUserAuthFilter.HEADER, COFFEE))
+                .andExpect(jsonPath("$.reproducible").value(true));
+        mvc.perform(get(API + "/" + first).header(DemoUserAuthFilter.HEADER, COFFEE))
+                .andExpect(jsonPath("$.fork.existingPayment").value(0));
+        List<String> secondSummary = summaryTexts(second);
+        assertThat(secondSummary.get(1)).isEqualTo("Действующие платежи по кредитам: 73 818,62 ₽ в месяц "
+                + "(договоры нашего банка 73 818,62 ₽) — учитываются в долговой нагрузке.");
+        assertThat(summaryTexts(first)).noneMatch(text -> text.startsWith("Действующие платежи"));
+    }
+
+    @Test
+    void loanInSigningAlreadyCountsAsObligation() throws Exception {
+        String first = approvedCoffee();
+        accept(first, JsonPath.read(details(first), "$.offers[0].id")).andExpect(status().isOk());
+
+        String second = evaluated(COFFEE_REQUEST);
+
+        mvc.perform(get(API + "/" + second).header(DemoUserAuthFilter.HEADER, COFFEE))
+                .andExpect(jsonPath("$.fork.existingPayment").value(COFFEE_LOAN_PAYMENT));
+    }
+
+    @Test
+    void approvedButNotAcceptedLoanDoesNotCount() throws Exception {
+        approvedCoffee();
+
+        String second = evaluated(COFFEE_REQUEST);
+
+        mvc.perform(get(API + "/" + second).header(DemoUserAuthFilter.HEADER, COFFEE))
+                .andExpect(jsonPath("$.fork.existingPayment").value(0));
+    }
+
+    @Test
+    void loanOfAnotherCompanyDoesNotCount() throws Exception {
+        issuedCoffee();
+
+        String json = mvc.perform(post(API).header(DemoUserAuthFilter.HEADER, StubIds.BUILDER_USER_ID.toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(BUILDER_REQUEST))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String id = JsonPath.read(json, "$.application.id");
+        mvc.perform(post(API + "/" + id + "/evaluate")
+                        .header(DemoUserAuthFilter.HEADER, StubIds.BUILDER_USER_ID.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fork.existingPayment").value(0));
+    }
+
+    private List<String> summaryTexts(String id) throws Exception {
+        String json = mvc.perform(get("/api/v1/underwriting/applications/" + id + "/summary")
+                        .header(DemoUserAuthFilter.HEADER, UNDERWRITER))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        return JsonPath.read(json, "$.items[*].text");
+    }
+
+    private String issuedCoffee() throws Exception {
+        String id = approvedCoffee();
+        accept(id, JsonPath.read(details(id), "$.offers[0].id")).andExpect(status().isOk());
+        sign(id).andExpect(jsonPath("$.application.status").value("ISSUED"));
+        return id;
     }
 
     private String approvedCoffee() throws Exception {

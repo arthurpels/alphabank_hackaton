@@ -15,7 +15,7 @@ import { ApiError } from './http';
 
 export const BUILDER_ID = 'builder-application';
 
-const RULES_VERSION = '2026-10-23.draft1';
+const RULES_VERSION = '2026-10-26.draft2';
 const UW_ACTIONS: ApplicationDetails['application']['availableActions'] = ['REVIEW_SPOT', 'ADD_SPOT', 'DECIDE'];
 
 const BUILDER_FACTORS: NonNullable<Fork['factors']> = [

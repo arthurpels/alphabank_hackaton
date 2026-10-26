@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 
 import com.alphabank.backend.dto.response.FactRefDto;
 import com.alphabank.backend.dto.response.SummaryItemDto;
+import com.alphabank.backend.enrichment.rule.SpotRules;
 import com.alphabank.backend.enums.SpotStatus;
 import com.alphabank.backend.scoringclient.dto.SummaryRequest;
 import com.alphabank.backend.scoringclient.dto.SummarySpot;
@@ -34,11 +35,14 @@ public class TemplateSummaryFactory {
     public List<SummaryItemDto> create(SummaryRequest request) {
         List<SummaryItemDto> items = new ArrayList<>();
         items.add(new SummaryItemDto(forkText(request), List.of()));
+        if (request.existingPayment() > 0) {
+            items.add(new SummaryItemDto(existingText(request), List.of()));
+        }
         request.spots().stream()
                 .filter(spot -> spot.status() != SpotStatus.CLOSED)
                 .sorted(Comparator.comparing((SummarySpot spot) -> spot.pricePp() == null ? 0 : spot.pricePp(),
                         Comparator.reverseOrder()).thenComparing(SummarySpot::title))
-                .limit(MAX_ITEMS - 1L)
+                .limit(MAX_ITEMS - (long) items.size())
                 .forEach(spot -> items.add(new SummaryItemDto(spotText(spot), factsForSpot(request, spot))));
         Map<String, List<FactRefDto>> unlinked = new LinkedHashMap<>();
         request.facts().stream()
@@ -69,6 +73,25 @@ public class TemplateSummaryFactory {
             return fork + " целиком выше порога одобрения " + threshold + " %.";
         }
         return fork + " пересекает порог одобрения " + threshold + " % — решение зависит от открытых пятен.";
+    }
+
+    private static String existingText(SummaryRequest request) {
+        long bki = Math.max(request.existingPayment() - request.bankPayment(), 0L);
+        List<String> parts = new ArrayList<>();
+        if (request.bankPayment() > 0) {
+            parts.add("договоры нашего банка " + rubles(request.bankPayment()));
+        }
+        if (bki > 0) {
+            parts.add("кредиты в БКИ по условной оценке " + rubles(bki));
+        }
+        return "Действующие платежи по кредитам: " + rubles(request.existingPayment()) + " в месяц ("
+                + String.join(", ", parts) + ") — учитываются в долговой нагрузке.";
+    }
+
+    private static String rubles(long kopecks) {
+        String whole = SpotRules.formatRubles(kopecks / 100);
+        long rest = kopecks % 100;
+        return (rest == 0 ? whole : whole + "," + String.format("%02d", rest)) + " ₽";
     }
 
     private static String spotText(SummarySpot spot) {

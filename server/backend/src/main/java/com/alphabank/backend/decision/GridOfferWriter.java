@@ -56,7 +56,7 @@ public class GridOfferWriter {
                 request.egrulStatus(), request.registeredAt(), request.directorSince(), request.massAddress(),
                 request.creditScore(), request.delinq12m(), request.bkiCurrentOverdue(), request.taxDebt(),
                 request.unfiledReports(), request.monthlyRevenue(), request.stability(), request.purpose(),
-                collateral);
+                collateral, request.bankPayment(), request.bkiCredits());
     }
 
     public ScoreResponse score(ScoreRequest request) {

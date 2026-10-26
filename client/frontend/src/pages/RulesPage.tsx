@@ -14,7 +14,7 @@ const TERMS: Record<string, string> = {
   delinquencies_12m: 'просрочки за 12 мес.',
   age_months: 'возраст бизнеса, мес.',
   unfiled_reports: 'несданные отчёты',
-  pti: 'платёж / выручка',
+  pti: '(новый платёж + действующие платежи) / выручка',
   limit_share: 'лимит / выручка',
   series: 'есть история выручки',
   no_anomalies: 'резких скачков нет',
@@ -72,7 +72,7 @@ function humanize(condition: string): string {
 function policyText(p: RulesProduct) {
   const share = ruNum(Math.round(p.policy.cap * 1000) / 10);
   return p.policy.metric === 'PTI'
-    ? `Платёж по кредиту — не больше ${share} % среднемесячной выручки`
+    ? `Платёж по новому кредиту вместе с действующими — не больше ${share} % среднемесячной выручки`
     : `Лимит — не больше ${share} % среднемесячной выручки`;
 }
 
@@ -229,6 +229,10 @@ export default function RulesPage() {
           <li>Окончательное решение по спорным заявкам принимает человек.</li>
         </ul>
         <p className="rules__p rules__note">Расчётная ставка для платежа при проверке нагрузки: {ruNum(rules.calcRatePct)} %.</p>
+        <p className="rules__p rules__note">
+          Действующие обязательства входят в нагрузку: платежи по кредитам нашего банка берутся из договоров, по открытым
+          кредитам из БКИ платёж оценивается условно по остатку долга — в БКИ нет ни платежа, ни срока.
+        </p>
       </section>
     </div>
   );

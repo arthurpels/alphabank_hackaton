@@ -81,7 +81,7 @@ factors:
     unknown:
     - -0.5
     - 1.0
-    metric: pti = платёж по кредиту / среднемесячная подтверждённая выручка
+    metric: pti = (платёж по новому кредиту + платежи по действующим кредитам) / среднемесячная подтверждённая выручка
     rules:
     - if: pti <= 0.05
       value: 0.0
@@ -163,6 +163,12 @@ offer_grid:
   - OVERDRAFT
   pick: по каждому продукту — наибольшая проходящая сумма; без обеспечения важнее
   passes: политика продукта выполнена и правый край ≤ approve_max
+existing_obligations:
+  term_loan_months: 36
+  revolving_share: 0.05
+  revolving_types:
+  - CREDIT_CARD
+  - OVERDRAFT
 anomalies:
   REVENUE_DROP:
     if: change_pct < -30
