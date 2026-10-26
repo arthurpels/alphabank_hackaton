@@ -50,11 +50,14 @@ bash, Python 3.9+ и Node.js (newman запускается через `npx`).
 ## 4. Запуск
 
 ```bash
-git clone <адрес-репозитория> alphabank_hackaton
+git clone https://github.com/arthurpels/alphabank_hackaton
 cd alphabank_hackaton
-git checkout v1.0-submission
+git checkout main
 cp .env.example .env
 docker compose up --build
+scripts/demo-ml-prepare live
+curl -s localhost:8001/health/llm
+docker compose --profile llm up -d
 ```
 
 В Windows вместо `cp` — `copy .env.example .env`. Первая сборка скачивает образы и зависимости и занимает
@@ -252,7 +255,7 @@ cd server/backend && mvn test -Dtest=PersonaGoldenMasterTest -Dgolden.update=tru
 
 | | |
 |---|---|
-| Тег | `v1.0-submission` |
+| Тег | `main` |
 | Commit | `<commit-hash>` |
 
 ## 10. Карта документации
