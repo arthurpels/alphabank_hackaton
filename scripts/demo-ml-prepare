@@ -3,6 +3,10 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+PYTHON=python3
+"$PYTHON" -c "" > /dev/null 2>&1 || PYTHON=python
+export PYTHONUTF8=1 PYTHONIOENCODING=utf-8
+
 MODE="${1:-live}"
 ML_URL="http://localhost:${ML_PORT:-8001}"
 REPLAY_IN_CONTAINER="/app/eval/replay/llm_answers.jsonl"
@@ -16,7 +20,7 @@ wait_ml() {
 }
 
 llm_status() {
-  curl -fs "$ML_URL/health/llm" | python3 -c "import json, sys; print(json.load(sys.stdin)['status'])" 2> /dev/null || echo "unreachable"
+  curl -fs "$ML_URL/health/llm" | "$PYTHON" -c "import json, sys; print(json.load(sys.stdin)['status'])" 2> /dev/null || echo "unreachable"
 }
 
 wait_llm_ready() {
@@ -73,19 +77,19 @@ prepare_live() {
   if [ -n "$host_url" ] && command -v ollama > /dev/null; then
     echo "    на чём считает модель: $(ollama ps | awk 'NR == 2 {print $5, $6}')"
   fi
-  python3 scripts/demo_ml_check.py "$ML_URL"
+  "$PYTHON" scripts/demo_ml_check.py "$ML_URL"
 }
 
 prepare_replay() {
   echo "==> Режим replay: записанные ответы модели, Ollama не нужна"
   start_ml true "$REPLAY_IN_CONTAINER" || return 1
-  python3 scripts/demo_ml_check.py "$ML_URL"
+  "$PYTHON" scripts/demo_ml_check.py "$ML_URL"
 }
 
 prepare_off() {
   echo "==> Режим off: только правила; ответы, которые словарь не решил, уходят специалисту"
   start_ml false "" || return 1
-  python3 scripts/demo_ml_check.py "$ML_URL" || true
+  "$PYTHON" scripts/demo_ml_check.py "$ML_URL" || true
 }
 
 result="$MODE"

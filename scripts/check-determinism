@@ -3,6 +3,10 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+PYTHON=python3
+"$PYTHON" -c "" > /dev/null 2>&1 || PYTHON=python
+export PYTHONUTF8=1 PYTHONIOENCODING=utf-8
+
 NEWMAN="newman@6.2.1"
 COLLECTION="docs/credit-pipeline.postman_collection.json"
 ENVIRONMENT="docs/local.postman_environment.json"
@@ -78,7 +82,7 @@ fi
 
 echo "==> Сравнение прогонов"
 compare_status=0
-python3 scripts/determinism_compare.py "$OUT/run-1.json" "$OUT/run-2.json" || compare_status=$?
+"$PYTHON" scripts/determinism_compare.py "$OUT/run-1.json" "$OUT/run-2.json" || compare_status=$?
 
 echo "Отчёты newman и логи: $OUT"
 if [ "$newman_status" != 0 ] || [ "$compare_status" != 0 ]; then
